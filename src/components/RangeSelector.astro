@@ -1,0 +1,31 @@
+---
+/** Selector de periodo (enlaces ?dias=N), estilo button group de Flowbite. */
+interface Props {
+  options: { value: number; label: string }[];
+  current: number;
+  param?: string;
+}
+const { options, current, param = 'dias' } = Astro.props;
+---
+
+<div class="inline-flex rounded-lg shadow-xs" role="group" aria-label="Periodo">
+  {
+    options.map((o, i) => (
+      <a
+        href={`?${param}=${o.value}`}
+        aria-current={o.value === current ? 'true' : undefined}
+        class:list={[
+          'border border-gray-200 px-3 py-1.5 text-sm font-medium dark:border-gray-600',
+          i === 0 && 'rounded-s-lg',
+          i === options.length - 1 && 'rounded-e-lg',
+          i > 0 && '-ms-px',
+          o.value === current
+            ? 'bg-blue-700 text-white dark:bg-blue-600'
+            : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700',
+        ]}
+      >
+        {o.label}
+      </a>
+    ))
+  }
+</div>

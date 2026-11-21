@@ -1,0 +1,129 @@
+---
+import Base from '../layouts/Base.astro';
+import ConnectPrompt from '../components/ConnectPrompt.astro';
+import ErrorState from '../components/ErrorState.astro';
+import StatCard from '../components/StatCard.astro';
+import ChartCard from '../components/ChartCard.astro';
+import RangeSelector from '../components/RangeSelector.astro';
+import { clientFor, getDailyHealth, type DayHealth } from '../lib/garmin';
+import { addDays, isoDate } from '../lib/dates';
+import { avgOf } from '../lib/stats';
+import { hoursMinutes, hrvStatus, int, shortDate } from '../lib/format';
+import type { ChartSpec } from '../lib/chart-spec';
+
+const DAY_OPTIONS = [
+  { value: 7, label: '7 días' },
+  { value: 30, label: '30 días' },
+  { value: 90, label: '90 días' },
+];
+const requested = Number(Astro.url.searchParams.get('dias'));
+const days = DAY_OPTIONS.some((o) => o.value === requested) ? requested : 30;
+
+const client = clientFor(Astro.locals);
+const today = isoDate();
+
+let health: DayHealth[] = [];
+let error: unknown;
+if (client) {
+  try {
+    health = await getDailyHealth(client, addDays(today, -(days - 1)), today);
+  } catch (err) {
+    error = err;
+  }
+}
+
+const cats = health.map((d) => shortDate(d.date));
+const v = (x?: number) => x ?? null;
+const last = [...health].reverse().find((d) => d.hrvStatus);
+
+const restingSpec: ChartSpec = { type: 'line', categories: cats, series: [{ name: 'FC en reposo', data: health.map((d) => v(d.restingHr)), color: 2 }], format: 'bpm' };
+const hrvSpec: ChartSpec = {
+  type: 'line',
+  categories: cats,
+  series: [
+    { name: 'HRV noche', data: health.map((d) => v(d.hrvLastNight)), color: 1 },
+    { name: 'Media 7 días', data: health.map((d) => v(d.hrvWeeklyAvg)), color: 3 },
+  ],
+  format: 'ms',
+};
+const sleepSpec: ChartSpec = {
+  type: 'bar',
+  stacked: true,
+  categories: cats,
+  series: [
+    { name: 'Profundo', data: health.map((d) => v(d.deepS)), color: 1 },
+    { name: 'Ligero', data: health.map((d) => v(d.lightS)), color: 2 },
+    { name: 'REM', data: health.map((d) => v(d.remS)), color: 3 },
+    { name: 'Despierto', data: health.map((d) => v(d.awakeS)), color: 4 },
+  ],
+  format: 'hm',
+  height: 280,
+};
+const bbSpec: ChartSpec = {
+  type: 'rangeBar',
+  categories: cats,
+  series: [{ name: 'Body Battery (mín–máx)', data: health.map((d) => (d.bodyBatteryMin !== undefined && d.bodyBatteryMax !== undefined ? [d.bodyBatteryMin, d.bodyBatteryMax] : null)), color: 1 }],
+  format: 'int',
+  yMin: 0,
+  yMax: 100,
+};
+const stepGoal = avgOf(health, 'stepGoal');
+const stepsSpec: ChartSpec = {
+  type: 'bar',
+  categories: cats,
+  series: [{ name: 'Pasos', data: health.map((d) => v(d.steps)), color: 1 }],
+  format: 'int',
+  reference: stepGoal ? { value: Math.round(stepGoal), label: 'Objetivo' } : undefined,
+};
+const stressSpec: ChartSpec = { type: 'line', categories: cats, series: [{ name: 'Estrés medio', data: health.map((d) => v(d.stressAvg)), color: 2 }], format: 'int', yMin: 0 };
+
+const rows = (pick: (d: DayHealth) => string) => health.map((d) => [shortDate(d.date), pick(d)]);
+---
+
+<Base title="Salud">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold">Salud diaria</h1>
+    {client && <RangeSelector options={DAY_OPTIONS} current={days} />}
+  </div>
+
+  {
+    !client ? (
+      <ConnectPrompt />
+    ) : error ? (
+      <ErrorState error={error} />
+    ) : (
+      <div class="space-y-6">
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <StatCard label="FC en reposo" value={int(avgOf(health, 'restingHr'))} unit="ppm" hint="media del periodo" />
+          <StatCard label="HRV" value={int(avgOf(health, 'hrvLastNight'))} unit="ms" hint={`Estado: ${hrvStatus(last?.hrvStatus)}`} />
+          <StatCard label="Sueño" value={hoursMinutes(avgOf(health, 'sleepS'))} hint="media por noche" />
+          <StatCard label="Puntuación sueño" value={int(avgOf(health, 'sleepScore'))} hint="media" />
+          <StatCard label="Pasos" value={int(avgOf(health, 'steps'))} hint="media diaria" />
+          <StatCard label="Estrés" value={int(avgOf(health, 'stressAvg'))} hint="media (0–100)" />
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard title="FC en reposo" subtitle="ppm" spec={restingSpec} table={{ headers: ['Día', 'ppm'], rows: rows((d) => int(d.restingHr)) }} />
+          <ChartCard title="Variabilidad de la FC (HRV)" subtitle="ms · media nocturna" spec={hrvSpec} table={{ headers: ['Día', 'Noche', 'Media 7d'], rows: health.map((d) => [shortDate(d.date), int(d.hrvLastNight), int(d.hrvWeeklyAvg)]) }} />
+        </div>
+
+        <ChartCard
+          title="Sueño por fases"
+          subtitle="horas por noche"
+          spec={sleepSpec}
+          table={{
+            headers: ['Noche', 'Total', 'Profundo', 'Ligero', 'REM', 'Despierto', 'Puntuación'],
+            rows: health.map((d) => [shortDate(d.date), hoursMinutes(d.sleepS), hoursMinutes(d.deepS), hoursMinutes(d.lightS), hoursMinutes(d.remS), hoursMinutes(d.awakeS), int(d.sleepScore)]),
+          }}
+        />
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard title="Body Battery" subtitle="rango diario mínimo–máximo" spec={bbSpec} table={{ headers: ['Día', 'Mín', 'Máx', 'Cargado', 'Gastado'], rows: health.map((d) => [shortDate(d.date), int(d.bodyBatteryMin), int(d.bodyBatteryMax), int(d.bodyBatteryCharged), int(d.bodyBatteryDrained)]) }} />
+          <ChartCard title="Estrés" subtitle="nivel medio diario (0–100)" spec={stressSpec} table={{ headers: ['Día', 'Estrés'], rows: rows((d) => int(d.stressAvg)) }} />
+        </div>
+
+        <ChartCard title="Pasos" spec={stepsSpec} table={{ headers: ['Día', 'Pasos', 'Objetivo'], rows: health.map((d) => [shortDate(d.date), int(d.steps), int(d.stepGoal)]) }} />
+      </div>
+    )
+  }
+</Base>

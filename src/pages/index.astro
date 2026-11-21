@@ -1,0 +1,107 @@
+---
+import Base from '../layouts/Base.astro';
+import ConnectPrompt from '../components/ConnectPrompt.astro';
+import ErrorState from '../components/ErrorState.astro';
+import StatCard from '../components/StatCard.astro';
+import ChartCard from '../components/ChartCard.astro';
+import RunTable from '../components/RunTable.astro';
+import { clientFor, getDailyHealth, getRuns, type DayHealth, type RunActivity } from '../lib/garmin';
+import { addDays, isoDate, weekStart } from '../lib/dates';
+import { avgOf, pctChange, runsBetween, totals, weeklyTotals } from '../lib/stats';
+import { hoursMinutes, hrvStatus, int, km, pace, shortDate } from '../lib/format';
+import type { ChartSpec } from '../lib/chart-spec';
+
+const WEEKS = 12;
+const client = clientFor(Astro.locals);
+const today = isoDate();
+const thisWeek = weekStart(today);
+const lastWeek = addDays(thisWeek, -7);
+
+let runs: RunActivity[] = [];
+let health: DayHealth[] = [];
+let error: unknown;
+if (client) {
+  try {
+    [runs, health] = await Promise.all([
+      getRuns(client, addDays(thisWeek, -7 * (WEEKS - 1)), today),
+      getDailyHealth(client, addDays(today, -27), today),
+    ]);
+  } catch (err) {
+    error = err;
+  }
+}
+
+// Semana actual (lun→hoy) frente al mismo tramo de la semana pasada, para comparar en igualdad.
+const elapsed = Math.round((Date.parse(today) - Date.parse(thisWeek)) / 86_400_000);
+const cur = totals(runsBetween(runs, thisWeek, today));
+const prev = totals(runsBetween(runs, lastWeek, addDays(lastWeek, elapsed)));
+
+const last7 = health.slice(-7);
+const prev7 = health.slice(-14, -7);
+const latestHrv = [...health].reverse().find((d) => d.hrvStatus);
+
+const weekly = weeklyTotals(runs, WEEKS, today);
+const weeklySpec: ChartSpec = {
+  type: 'bar',
+  categories: weekly.map((w) => shortDate(w.week)),
+  series: [{ name: 'Kilómetros', data: weekly.map((w) => Math.round(w.km * 10) / 10), color: 1 }],
+  format: 'km',
+  height: 220,
+};
+const restingSpec: ChartSpec = {
+  type: 'line',
+  categories: health.map((d) => shortDate(d.date)),
+  series: [{ name: 'FC en reposo', data: health.map((d) => d.restingHr ?? null), color: 2 }],
+  format: 'bpm',
+  height: 220,
+};
+const vsLabel = 'vs mismo tramo semana pasada';
+---
+
+<Base title="Resumen">
+  <h1 class="mb-1 text-2xl font-bold">Resumen</h1>
+  <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Semana del {shortDate(thisWeek)} · hoy {shortDate(today)}</p>
+
+  {
+    !client ? (
+      <ConnectPrompt />
+    ) : error ? (
+      <ErrorState error={error} />
+    ) : (
+      <div class="space-y-6">
+        <div>
+          <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Carrera esta semana</h2>
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard label="Distancia" value={km(cur.km)} unit="km" delta={pctChange(cur.km, prev.km)} deltaLabel={vsLabel} />
+            <StatCard label="Sesiones" value={int(cur.runs)} hint={`${int(prev.runs)} la semana pasada a estas alturas`} />
+            <StatCard label="Ritmo medio" value={pace(cur.paceSPerKm)} unit="/km" delta={pctChange(cur.paceSPerKm, prev.paceSPerKm)} deltaLabel={vsLabel} higherIsBetter={false} />
+            <StatCard label="Tiempo" value={hoursMinutes(cur.movingS)} delta={pctChange(cur.movingS, prev.movingS)} deltaLabel={vsLabel} />
+          </div>
+        </div>
+
+        <div>
+          <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Salud · últimos 7 días</h2>
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard label="FC en reposo" value={int(avgOf(last7, 'restingHr'))} unit="ppm" delta={pctChange(avgOf(last7, 'restingHr'), avgOf(prev7, 'restingHr'))} deltaLabel="vs 7 días previos" higherIsBetter={false} />
+            <StatCard label="HRV" value={int(avgOf(last7, 'hrvLastNight'))} unit="ms" hint={`Estado: ${hrvStatus(latestHrv?.hrvStatus)}`} />
+            <StatCard label="Sueño" value={hoursMinutes(avgOf(last7, 'sleepS'))} delta={pctChange(avgOf(last7, 'sleepS'), avgOf(prev7, 'sleepS'))} deltaLabel="vs 7 días previos" />
+            <StatCard label="Body Battery máx" value={int(avgOf(last7, 'bodyBatteryMax'))} hint="media del máximo diario" />
+          </div>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard title="Kilómetros por semana" subtitle={`Últimas ${WEEKS} semanas`} spec={weeklySpec} />
+          <ChartCard title="FC en reposo" subtitle="Últimos 28 días" spec={restingSpec} />
+        </div>
+
+        <section>
+          <div class="mb-3 flex items-baseline justify-between">
+            <h2 class="text-base font-semibold">Últimas carreras</h2>
+            <a href="/running" class="text-sm text-blue-700 hover:underline dark:text-blue-400">Ver todas →</a>
+          </div>
+          {runs.length ? <RunTable runs={runs.slice(0, 5)} /> : <p class="text-sm text-gray-500">Sin carreras recientes.</p>}
+        </section>
+      </div>
+    )
+  }
+</Base>

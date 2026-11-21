@@ -1,0 +1,119 @@
+---
+import Base from '../../layouts/Base.astro';
+import ConnectPrompt from '../../components/ConnectPrompt.astro';
+import ErrorState from '../../components/ErrorState.astro';
+import StatCard from '../../components/StatCard.astro';
+import ChartCard from '../../components/ChartCard.astro';
+import RangeSelector from '../../components/RangeSelector.astro';
+import RunTable from '../../components/RunTable.astro';
+import { clientFor, getRuns, getVo2Max, type RunActivity, type Vo2Point } from '../../lib/garmin';
+import { addDays, isoDate, weekStart } from '../../lib/dates';
+import { totals, weeklyTotals, type WeekTotal } from '../../lib/stats';
+import { duration, hoursMinutes, int, km, pace, shortDate } from '../../lib/format';
+import type { ChartSpec } from '../../lib/chart-spec';
+
+const WEEK_OPTIONS = [
+  { value: 4, label: '4 sem' },
+  { value: 12, label: '12 sem' },
+  { value: 26, label: '6 meses' },
+  { value: 52, label: '1 año' },
+];
+const requested = Number(Astro.url.searchParams.get('semanas'));
+const weeks = WEEK_OPTIONS.some((o) => o.value === requested) ? requested : 12;
+
+const client = clientFor(Astro.locals);
+const today = isoDate();
+const from = addDays(weekStart(today), -7 * (weeks - 1));
+
+let runs: RunActivity[] = [];
+let vo2: Vo2Point[] = [];
+let weekly: WeekTotal[] = [];
+let error: unknown;
+if (client) {
+  try {
+    [runs, vo2] = await Promise.all([getRuns(client, from, today), getVo2Max(client, from, today).catch(() => [])]);
+    weekly = weeklyTotals(runs, weeks, today);
+  } catch (err) {
+    error = err;
+  }
+}
+
+const t = totals(runs);
+const chrono = [...runs].reverse();
+const lastVo2 = vo2.at(-1);
+
+const weeklySpec: ChartSpec = {
+  type: 'bar',
+  categories: weekly.map((w) => shortDate(w.week)),
+  series: [{ name: 'Kilómetros', data: weekly.map((w) => Math.round(w.km * 10) / 10), color: 1 }],
+  format: 'km',
+};
+const paceSpec: ChartSpec = {
+  type: 'line',
+  categories: chrono.map((r) => shortDate(r.date)),
+  series: [{ name: 'Ritmo medio', data: chrono.map((r) => (r.paceSPerKm ? Math.round(r.paceSPerKm) : null)), color: 1 }],
+  format: 'pace',
+  reversed: true,
+};
+const hrSpec: ChartSpec = {
+  type: 'line',
+  categories: chrono.map((r) => shortDate(r.date)),
+  series: [{ name: 'FC media', data: chrono.map((r) => r.avgHr ?? null), color: 2 }],
+  format: 'bpm',
+};
+const vo2Spec: ChartSpec = {
+  type: 'line',
+  categories: vo2.map((v) => shortDate(v.date)),
+  series: [{ name: 'VO2máx', data: vo2.map((v) => v.value), color: 3 }],
+  format: 'int',
+  height: 200,
+};
+---
+
+<Base title="Carrera">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold">Carrera</h1>
+    {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
+  </div>
+
+  {
+    !client ? (
+      <ConnectPrompt />
+    ) : error ? (
+      <ErrorState error={error} />
+    ) : (
+      <div class="space-y-6">
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <StatCard label="Distancia" value={km(t.km)} unit="km" />
+          <StatCard label="Sesiones" value={int(t.runs)} />
+          <StatCard label="Tiempo" value={hoursMinutes(t.movingS)} />
+          <StatCard label="Ritmo medio" value={pace(t.paceSPerKm)} unit="/km" />
+          <StatCard label="FC media" value={int(t.avgHr)} unit="ppm" />
+          <StatCard label="VO2máx" value={lastVo2 ? km(lastVo2.value) : '—'} hint={lastVo2 ? `a ${shortDate(lastVo2.date)}` : undefined} />
+        </div>
+
+        <ChartCard
+          title="Kilómetros por semana"
+          subtitle="Semanas de lunes a domingo"
+          spec={weeklySpec}
+          table={{
+            headers: ['Semana', 'Km', 'Sesiones', 'Tiempo'],
+            rows: weekly.map((w) => [shortDate(w.week), km(w.km), int(w.runs), duration(w.movingS)]),
+          }}
+        />
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard title="Ritmo por sesión" subtitle="min/km · más rápido arriba" spec={paceSpec} />
+          <ChartCard title="FC media por sesión" subtitle="ppm" spec={hrSpec} />
+        </div>
+
+        {vo2.length > 1 && <ChartCard title="VO2máx estimado" spec={vo2Spec} />}
+
+        <section>
+          <h2 class="mb-3 text-base font-semibold">Actividades ({runs.length})</h2>
+          {runs.length ? <RunTable runs={runs} /> : <p class="text-sm text-gray-500">No hay carreras en este periodo.</p>}
+        </section>
+      </div>
+    )
+  }
+</Base>

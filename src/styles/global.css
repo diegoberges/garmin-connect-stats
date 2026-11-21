@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "flowbite/src/themes/default";
+@plugin "flowbite/plugin";
+@source "../../node_modules/flowbite";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Tokens de gráficas (paleta validada: ver skill dataviz). Oscuro con pasos propios, no invertido. */
+:root {
+  --viz-surface: #ffffff;
+  --viz-text: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-1: #2a78d6; /* azul */
+  --viz-2: #eb6834; /* naranja */
+  --viz-3: #1baf7a; /* aqua */
+  --viz-4: #eda100; /* amarillo */
+  --viz-seq-light: #86b6ef; /* azul claro (rango / banda) */
+}
+.dark {
+  --viz-surface: #1f2937; /* gray-800 de las tarjetas */
+  --viz-text: #c3c2b7;
+  --viz-muted: #898781;
+  --viz-grid: #374151;
+  --viz-axis: #4b5563;
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-seq-light: #1c5cab;
+}
