@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import Analytics from '@vercel/analytics/astro';
 
 interface Props {
   title: string;
@@ -30,6 +31,7 @@ const connected = Boolean(Astro.locals.settings.garminApiKey);
         document.documentElement.classList.add('dark');
       }
     </script>
+    <Analytics />
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
     <nav class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
