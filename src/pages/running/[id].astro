@@ -1,0 +1,88 @@
+---
+import Base from '../../layouts/Base.astro';
+import ConnectPrompt from '../../components/ConnectPrompt.astro';
+import ErrorState from '../../components/ErrorState.astro';
+import StatCard from '../../components/StatCard.astro';
+import ChartCard from '../../components/ChartCard.astro';
+import { clientFor, getHrZones, getRun, type HrZones, type RunActivity } from '../../lib/garmin';
+import { dayLabel, duration, int, km, pace, runType, trainingEffect } from '../../lib/format';
+import type { ChartSpec } from '../../lib/chart-spec';
+
+const id = Number(Astro.params.id);
+const client = clientFor(Astro.locals);
+
+let run: RunActivity | undefined;
+let zones: HrZones | undefined;
+let error: unknown;
+if (client && Number.isInteger(id) && id > 0) {
+  try {
+    [run, zones] = await Promise.all([getRun(client, id), getHrZones(client).catch(() => undefined)]);
+  } catch (err) {
+    error = err;
+  }
+}
+if (client && !error && !run) return new Response('Actividad no encontrada', { status: 404 });
+
+const zoneTotal = run ? run.hrZonesS.reduce((a, b) => a + b, 0) : 0;
+const zoneLabels = [1, 2, 3, 4, 5].map((z, i) => {
+  const lo = zones?.floors[i];
+  const hi = zones?.floors[i + 1] ?? zones?.maxHr;
+  return lo ? `Z${z} · ${lo}${hi ? `–${hi - 1}` : '+'}` : `Z${z}`;
+});
+const zonesSpec: ChartSpec = {
+  type: 'bar',
+  categories: zoneLabels,
+  series: [{ name: 'Tiempo en zona', data: run ? run.hrZonesS.map((s) => Math.round(s)) : [], color: 1 }],
+  format: 'hm',
+  height: 220,
+};
+---
+
+<Base title={run?.name ?? 'Actividad'}>
+  <a href="/running" class="text-sm text-blue-700 hover:underline dark:text-blue-400">← Carrera</a>
+  {
+    !client ? (
+      <ConnectPrompt />
+    ) : error ? (
+      <ErrorState error={error} />
+    ) : (
+      run && (
+        <div class="mt-3 space-y-6">
+          <div>
+            <h1 class="text-2xl font-bold">{run.name}</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {dayLabel(run.date)} · {run.startLocal.slice(11, 16)} · {runType(run.typeKey)}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <StatCard label="Distancia" value={km(run.distanceKm, 2)} unit="km" />
+            <StatCard label="Tiempo en movimiento" value={duration(run.movingS)} hint={`Total ${duration(run.durationS)}`} />
+            <StatCard label="Ritmo medio" value={pace(run.paceSPerKm)} unit="/km" />
+            <StatCard label="FC media / máx" value={`${int(run.avgHr)} / ${int(run.maxHr)}`} unit="ppm" />
+            <StatCard label="Desnivel +" value={int(run.elevationGainM)} unit="m" />
+            <StatCard label="Cadencia" value={int(run.cadenceSpm)} unit="pasos/min" />
+            <StatCard
+              label="Efecto entreno"
+              value={run.aerobicTE !== undefined ? km(run.aerobicTE) : '—'}
+              hint={`${trainingEffect(run.trainingEffectLabel)} · anaeróbico ${run.anaerobicTE !== undefined ? km(run.anaerobicTE) : '—'}`}
+            />
+            <StatCard label="Carga" value={int(run.trainingLoad)} hint={run.calories ? `${int(run.calories)} kcal` : undefined} />
+          </div>
+
+          {zoneTotal > 0 && (
+            <ChartCard
+              title="Tiempo en zonas de FC"
+              subtitle={zones ? 'Rangos en ppm según tus zonas de Garmin' : undefined}
+              spec={zonesSpec}
+              table={{
+                headers: ['Zona', 'Tiempo', '%'],
+                rows: zoneLabels.map((z, i) => [z, duration(run!.hrZonesS[i]), `${Math.round((run!.hrZonesS[i] / zoneTotal) * 100)} %`]),
+              }}
+            />
+          )}
+        </div>
+      )
+    )
+  }
+</Base>

@@ -1,0 +1,22 @@
+---
+import { GarminAuthError } from '../lib/garmin/auth';
+import { GarminApiError } from '../lib/garmin/client';
+
+interface Props {
+  error: unknown;
+}
+const { error } = Astro.props;
+const auth = error instanceof GarminAuthError || (error instanceof GarminApiError && error.status === 401);
+const message = auth
+  ? 'Tu API key de Garmin no es válida o ha caducado.'
+  : error instanceof Error
+    ? error.message
+    : 'Error inesperado al cargar los datos.';
+if (!auth) console.error('[garmin]', error);
+---
+
+<div class="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-800 dark:border-red-900 dark:bg-gray-800 dark:text-red-400" role="alert">
+  <p class="font-semibold">No se han podido cargar los datos</p>
+  <p class="mt-1 break-words">{message}</p>
+  <a href="/ajustes" class="mt-3 inline-block font-medium underline">{auth ? 'Actualizar la key en Ajustes' : 'Comprobar la conexión'}</a>
+</div>
