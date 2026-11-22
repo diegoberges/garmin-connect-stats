@@ -16,6 +16,8 @@ function fmt(format: ValueFormat, v: number | null | undefined): string {
       const t = Math.round(v);
       return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')} ${format === 'pace' ? '/km' : '/100 m'}`;
     }
+    case 'dec2':
+      return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     case 'dec1':
       return v.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     case 'kmh':

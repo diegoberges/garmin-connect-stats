@@ -74,6 +74,12 @@ const headline: { label: string; value: string; unit?: string }[] = run
       ]
   : [];
 
+// Ritmo ajustado por pendiente (Minetti): solo a pie y si el desnivel lo cambia de forma apreciable
+const gapPace =
+  kind === 'foot' && track?.gapDistanceM && track.activeS && run?.elevationGainM && run.elevationGainM / run.distanceKm >= 5
+    ? track.activeS / (track.gapDistanceM / 1000)
+    : undefined;
+
 // Secundarias del panel
 const secondary = [
   run?.avgHr && showDistance ? ['FC media', `${int(run.avgHr)} ppm`] : null,
@@ -83,6 +89,8 @@ const secondary = [
   run?.calories && showDistance ? ['Calorías', `${int(run.calories)} kcal`] : null,
   run?.trainingLoad ? ['Carga', int(run.trainingLoad)] : null,
   run && run.durationS - run.movingS > 30 ? ['Tiempo total', duration(run.durationS)] : null,
+  gapPace !== undefined ? ['Ritmo ajustado por pendiente', `${pace(gapPace)} /km`] : null,
+  track?.decoupling ? ['Desacoplamiento', `${km(track.decoupling.pct)} %`] : null,
 ].filter((r): r is [string, string] => r !== null);
 
 // Efecto del entrenamiento (escala de Garmin 0–5)
@@ -127,6 +135,14 @@ const paceSeries = speeds.map((ms) => {
   const v = fromMs(ms);
   return v === undefined ? null : cycling ? Math.round(v * 10) / 10 : Math.round(v);
 });
+// Mismo ritmo ajustado por pendiente (solo a pie y con desnivel apreciable)
+const gapSeries =
+  gapPace !== undefined
+    ? smooth(series.map((p) => (p.gapSpeed !== undefined && p.gapSpeed >= 0.5 ? p.gapSpeed : undefined))).map((ms) => {
+        const v = fromMs(ms);
+        return v === undefined ? null : Math.round(v);
+      })
+    : undefined;
 const charts: { title: string; spec: ChartSpec }[] = [];
 if (kind !== 'other' && paceSeries.some((v) => v !== null)) {
   charts.push({
@@ -134,7 +150,10 @@ if (kind !== 'other' && paceSeries.some((v) => v !== null)) {
     spec: {
       type: 'line',
       categories: xCats,
-      series: [{ name: cycling ? 'Velocidad' : 'Ritmo', data: paceSeries, color: 1 }],
+      series: [
+        { name: cycling ? 'Velocidad' : 'Ritmo', data: paceSeries, color: 1 },
+        ...(gapSeries ? [{ name: 'Ajustado por pendiente', data: gapSeries, color: 4 as const }] : []),
+      ],
       format: cycling ? 'kmh' : swim ? 'pace100' : 'pace',
       reversed: !cycling,
       height: 150,

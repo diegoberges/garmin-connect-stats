@@ -7,6 +7,7 @@ import { Decoder, Stream, type EventMesg, type RecordMesg } from '@garmin/fitsdk
 import { unzipSync } from 'fflate';
 import type { GarminClient } from './client';
 import { GarminApiError } from './client';
+import { gradeFactor } from '../efficiency';
 
 /** Punto ya agregado para gráficas (x = distancia en km, o minutos si no hay distancia). */
 export interface SeriesPoint {
@@ -14,6 +15,8 @@ export interface SeriesPoint {
   hr?: number;
   /** velocidad media del tramo, m/s */
   speed?: number;
+  /** velocidad ajustada por pendiente (Minetti), m/s */
+  gapSpeed?: number;
   alt?: number;
   cadence?: number;
 }
@@ -37,11 +40,18 @@ export interface ActivityTrack {
   splits: KmSplit[];
   /** mejor km completo (s) */
   fastestSplitS?: number;
+  /** distancia "en llano equivalente" (m) y tiempo activo (s), para el ritmo ajustado por pendiente */
+  gapDistanceM?: number;
+  activeS?: number;
+  /** Desacoplamiento FC/ritmo ajustado entre 1.ª y 2.ª mitad (%), sin los 10 primeros minutos */
+  decoupling?: { pct: number; durationS: number };
 }
 
 interface Sample {
   /** segundos de tiempo activo (sin pausas) */
   t: number;
+  /** distancia acumulada ajustada por pendiente (m) */
+  gd?: number;
   d?: number;
   lat?: number;
   lon?: number;
@@ -76,10 +86,15 @@ export function parseActivityFile(bytes: Uint8Array): ActivityTrack | undefined 
   const { messages } = new Decoder(Stream.fromByteArray(fit)).read();
   const samples = toSamples(messages.recordMesgs ?? [], messages.eventMesgs ?? []);
   if (samples.length < 2) return undefined;
+  addGradeAdjusted(samples);
+  const last = samples.at(-1)!;
   return {
     route: simplifyRoute(samples),
     ...buildSeries(samples),
     ...buildSplits(samples),
+    gapDistanceM: last.gd,
+    activeS: last.t,
+    decoupling: decoupling(samples),
   };
 }
 
@@ -157,10 +172,12 @@ function buildSeries(samples: Sample[]): Pick<ActivityTrack, 'series' | 'xUnit'>
     const end = g.at(-1)!;
     const dt = end.t - first.t;
     const dd = (end.d ?? 0) - (first.d ?? 0);
+    const dgd = (end.gd ?? 0) - (first.gd ?? 0);
     series.push({
       x: Math.round((i + 0.5) * width * 100) / 100,
       hr: round(avg(g.map((s) => s.hr))),
       speed: byDistance && dt > 0 && dd >= 0 ? dd / dt : undefined,
+      gapSpeed: byDistance && dt > 0 && dgd >= 0 && end.gd !== undefined ? dgd / dt : undefined,
       alt: round(avg(g.map((s) => s.alt)), 1),
       cadence: round(avg(g.map((s) => s.cadence))),
     });
@@ -217,4 +234,45 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
   }
   const full = splits.filter((s) => s.distanceM >= 999 && s.timeS > 0);
   return { splits, fastestSplitS: full.length ? Math.min(...full.map((s) => s.timeS)) : undefined };
+}
+
+/**
+ * Distancia acumulada "en llano equivalente": cada tramo se multiplica por el factor de coste de Minetti
+ * según la pendiente, medida sobre ≥ 20 m de recorrido con la altitud suavizada (el barómetro tiene ruido).
+ */
+function addGradeAdjusted(samples: Sample[]) {
+  const alt = samples.map((_, i) => avg(samples.slice(Math.max(0, i - 5), i + 6).map((s) => s.alt)));
+  let gd = 0;
+  let j = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const s = samples[i];
+    if (s.d === undefined) continue;
+    const prev = samples[i - 1];
+    const dd = prev?.d !== undefined ? Math.max(0, s.d - prev.d) : 0;
+    while (j < i && samples[j].d !== undefined && s.d - samples[j].d! > 20) j++;
+    const k = Math.max(0, j - 1);
+    const run = samples[k].d !== undefined ? s.d - samples[k].d! : 0;
+    const grade = run >= 20 && alt[i] !== undefined && alt[k] !== undefined ? (alt[i]! - alt[k]!) / run : 0;
+    gd += dd * gradeFactor(grade);
+    s.gd = gd;
+  }
+}
+
+/** EF (velocidad ajustada ÷ FC) en la 1.ª frente a la 2.ª mitad del tiempo activo, sin calentamiento. */
+function decoupling(samples: Sample[]): ActivityTrack['decoupling'] {
+  const last = samples.at(-1)!;
+  const warmup = last.t > 40 * 60 ? 10 * 60 : 0;
+  const body = samples.filter((s) => s.t >= warmup && s.gd !== undefined);
+  if (body.length < 10 || last.t - warmup < 20 * 60) return undefined;
+  const mid = (body[0].t + body.at(-1)!.t) / 2;
+  const half = (part: Sample[]) => {
+    const hr = avg(part.map((s) => s.hr));
+    const dt = part.at(-1)!.t - part[0].t;
+    const dgd = part.at(-1)!.gd! - part[0].gd!;
+    return hr && dt > 0 ? dgd / dt / hr : undefined;
+  };
+  const ef1 = half(body.filter((s) => s.t <= mid));
+  const ef2 = half(body.filter((s) => s.t >= mid));
+  if (!ef1 || !ef2) return undefined;
+  return { pct: ((ef1 - ef2) / ef1) * 100, durationS: body.at(-1)!.t - body[0].t };
 }

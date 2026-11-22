@@ -53,6 +53,10 @@ const HISTORY_TTL_MS = 6 * 60 * 60 * 1000;
 export const getAllRuns = (client: GarminClient, today: string) =>
   client.memo(`all-runs`, HISTORY_TTL_MS, () => getRuns(client, HISTORY_START, today));
 
+/** Todo el historial de actividades (cualquier tipo), 6 h en memoria por usuario. Para comparar años. */
+export const getAllActivities = (client: GarminClient, today: string) =>
+  client.memo(`all-activities`, HISTORY_TTL_MS, () => getActivities(client, HISTORY_START, today));
+
 /** Actividades marcadas como competición (tipo de evento "race" en Garmin Connect), de cualquier deporte. */
 export const getRaces = (client: GarminClient, today: string) =>
   client.memo(`races`, HISTORY_TTL_MS, () => getActivities(client, HISTORY_START, today, undefined, 'race'));

@@ -2,7 +2,7 @@
  * Especificación serializable de una gráfica: la página la genera en el servidor y
  * src/scripts/charts.ts la convierte en opciones de ApexCharts en el navegador.
  */
-export type ValueFormat = 'int' | 'dec1' | 'km' | 'pace' | 'pace100' | 'kmh' | 'hm' | 'bpm' | 'ms' | 'pct';
+export type ValueFormat = 'int' | 'dec1' | 'dec2' | 'km' | 'pace' | 'pace100' | 'kmh' | 'hm' | 'bpm' | 'ms' | 'pct';
 
 export type ColorSlot = 1 | 2 | 3 | 4 | 'seq-light';
 
