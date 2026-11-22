@@ -6,6 +6,7 @@
  *  - sleep*Timestamp* llegan como epoch ms (number), la spec dice string.
  *  - bodyBatteryValuesArray / heartRateValues son tuplas [epochMs, valor], la spec dice object.
  *  - Hay campos extra no documentados (se ignoran).
+ *  - /fitnessage-service/fitnessage/v2/{date} devuelve un objeto, la spec dice lista.
  */
 import type { paths } from './schema';
 
