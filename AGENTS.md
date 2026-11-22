@@ -323,7 +323,16 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 - **Tablas en móvil**: oculta las columnas secundarias por debajo de `sm`, para no obligar a desplazarse de lado.
 - **Colores críticos** (trofeo, etiquetas de competición): van fijados en el propio componente con
   `<style>`, no con clases que dependan de que Tailwind las genere.
-- **Indicador de carga**: `LoadingIndicator` se muestra al navegar y al enviar formularios.
+- **Navegación entre páginas**:
+  - Fundido con `@view-transition` (desactivado con movimiento reducido).
+  - Precarga con Speculation Rules en `Base.astro`: la navegación principal al pasar el ratón y el resto
+    al empezar el clic; nunca `/api` ni `/dev`. Por eso **ninguna petición GET puede cambiar nada**
+    (guardar, borrar…): todo lo que modifica va por POST. La única excepción es el aviso de un solo uso
+    (`gcs_flash`), que no se pierde porque ya lo gasta la página que se está viendo antes de precargar otra.
+- **Gráficas**: `scripts/charts.ts` pinta cada una al acercarse a la pantalla y cede el hilo entre una y
+  otra (`scheduler.yield`), para no bloquear la página con una tarea larga.
+- **Indicador de carga**: `LoadingIndicator` se muestra al navegar y al enviar formularios. El texto se
+  anuncia desde una región de estado que siempre está en la página; el aviso visual va oculto al lector.
   - Para un mensaje propio, usa `data-loading="…"` en el enlace o formulario.
   - Para desactivarlo, `data-no-loading`.
   - Si una página nueva carga datos lentos, añade su mensaje en `messageFor()`.
