@@ -1,7 +1,9 @@
 /**
- * Carga de entrenamiento y su balance (ver reports/Métricas de salud y rendimiento.md):
- *  - Carga por sesión: la "Training Load" de Garmin (EPOC) que trae cada actividad. Si falta, TRIMP de Edwards
- *    con los minutos en zonas (otra escala: solo como respaldo puntual).
+ * Carga de entrenamiento y su balance (ver reports/Métricas de salud y rendimiento.md y el informe del dashboard):
+ *  - Carga por sesión: **TRIMP de Banister**, la única métrica de carga de la app (no se mezcla con la de
+ *    Garmin ni con otras escalas): `min × HRr × a × e^(b × HRr)`, con HRr = (FC media − reposo)/(máx − reposo)
+ *    y a/b = 0,64/1,92 (hombres) o 0,86/1,67 (mujeres). FC en reposo y máxima, de las zonas de Garmin.
+ *    Se calcula igual para cualquier deporte con FC (también caminatas y fuerza); sin FC, la sesión no suma.
  *  - Forma física / fatiga / forma: medias exponenciales de 42 y 7 días de la carga diaria (modelo Banister/Coggan),
  *    forma = forma física − fatiga, y forma en % de la forma física (como intervals.icu).
  *  - Las bandas de forma son heurísticas de entrenadores, no umbrales validados.
@@ -15,16 +17,48 @@ export const FATIGUE_DAYS = 7;
 export const WARMUP_DAYS = 120;
 export const WEEKLY_SPIKE_PCT = 25;
 
-/** TRIMP de Edwards: minutos en zona × número de zona (1–5). */
-export const edwardsTrimp = (zonesS: number[]) => zonesS.reduce((acc, s, i) => acc + (s / 60) * (i + 1), 0);
+/** FC de referencia para el TRIMP (de la configuración de zonas de Garmin) y sexo (de tu perfil). */
+export interface HrParams {
+  restingHr: number;
+  maxHr: number;
+  /** Sin indicar se usan los coeficientes masculinos (los del informe). */
+  sex?: 'male' | 'female';
+}
 
-export const sessionLoad = (a: Activity) =>
-  a.trainingLoad ?? (a.hrZonesS.some((s) => s > 0) ? edwardsTrimp(a.hrZonesS) : 0);
+/**
+ * Respaldo si Garmin no da la FC de referencia: la máxima registrada en las actividades (al menos 150) y
+ * 60 ppm en reposo. Es una estimación y la interfaz debe decirlo.
+ */
+export function estimateHrParams(activities: Pick<Activity, 'maxHr'>[]): { restingHr: number; maxHr: number } {
+  const observed = Math.max(0, ...activities.map((a) => a.maxHr ?? 0));
+  return { restingHr: 60, maxHr: observed >= 150 ? observed : 190 };
+}
+
+/** Coeficientes de Banister por sexo. */
+const BANISTER = { male: { a: 0.64, b: 1.92 }, female: { a: 0.86, b: 1.67 } } as const;
+
+/** TRIMP de Banister de una sesión (0 si la FC de referencia no tiene sentido). */
+export function banisterTrimp(minutes: number, avgHr: number, p: HrParams): number {
+  const reserve = p.maxHr - p.restingHr;
+  if (minutes <= 0 || reserve <= 0) return 0;
+  const hrr = Math.min(1, Math.max(0, (avgHr - p.restingHr) / reserve));
+  const { a, b } = BANISTER[p.sex ?? 'male'];
+  return minutes * hrr * a * Math.exp(b * hrr);
+}
+
+/** Carga de una sesión: TRIMP de Banister con la FC media; sin FC, 0. */
+export const sessionLoad = (act: Activity, p: HrParams) =>
+  act.avgHr ? banisterTrimp(act.movingS / 60, act.avgHr, p) : 0;
 
 /** Carga total por día en [from, to] (días sin actividad = 0). */
-export function dailyLoad(activities: Activity[], from: string, to: string): { date: string; load: number }[] {
+export function dailyLoad(
+  activities: Activity[],
+  from: string,
+  to: string,
+  p: HrParams,
+): { date: string; load: number }[] {
   const byDate = new Map(dateRange(from, to).map((d) => [d, 0]));
-  for (const a of activities) if (byDate.has(a.date)) byDate.set(a.date, byDate.get(a.date)! + sessionLoad(a));
+  for (const a of activities) if (byDate.has(a.date)) byDate.set(a.date, byDate.get(a.date)! + sessionLoad(a, p));
   return [...byDate.entries()].map(([date, load]) => ({ date, load }));
 }
 
@@ -96,6 +130,34 @@ export const ACWR_ZONES: { zone: AcwrZone; max: number; label: string }[] = [
 export const acwr = (p: Pick<PmcPoint, 'fitness' | 'fatigue'>) => (p.fitness >= 1 ? p.fatigue / p.fitness : undefined);
 export const acwrZone = (ratio: number) => ACWR_ZONES.find((z) => ratio < z.max)!;
 
+/** Rampa: cuánto ha subido la forma física (CTL) en 7 días. Orientativo: > 5 vigilar, > 8 demasiado rápido. */
+export const RAMP_WATCH = 5;
+export const RAMP_ALERT = 8;
+export function rampRate(points: PmcPoint[]): number | undefined {
+  const now = points.at(-1);
+  const weekAgo = points.at(-8);
+  return now && weekAgo && now.formPct !== undefined ? now.fitness - weekAgo.fitness : undefined;
+}
+
+/**
+ * Monotonía y strain de Foster con la carga de los últimos 7 días:
+ * monotonía = media / DE (cuanto más alta, menos variedad entre días duros y suaves; > 2 suele indicar
+ * poca variedad) y strain = carga semanal × monotonía. Sin variación (DE = 0) no se puede calcular.
+ */
+export const MONOTONY_HIGH = 2;
+export function monotonyStrain(
+  days: { load: number }[],
+): { monotony: number; strain: number; total: number } | undefined {
+  const week = days.slice(-7).map((d) => d.load);
+  if (week.length < 7) return undefined;
+  const total = week.reduce((a, b) => a + b, 0);
+  const avg = total / 7;
+  const sd = Math.sqrt(week.reduce((a, b) => a + (b - avg) ** 2, 0) / 7);
+  if (total <= 0 || sd === 0) return undefined;
+  const monotony = avg / sd;
+  return { monotony, strain: total * monotony, total };
+}
+
 export interface WeekLoad {
   week: string;
   total: number;
@@ -110,7 +172,7 @@ export interface WeekLoad {
 }
 
 /** Carga, tipos e intensidad por semana (lunes–domingo) para las `weeks` semanas que acaban en la de `today`. */
-export function weeklyLoad(activities: Activity[], weeks: number, today: string): WeekLoad[] {
+export function weeklyLoad(activities: Activity[], weeks: number, today: string, p: HrParams): WeekLoad[] {
   const current = weekStart(today);
   const out: WeekLoad[] = [];
   for (let i = weeks - 1; i >= 0; i--)
@@ -120,7 +182,7 @@ export function weeklyLoad(activities: Activity[], weeks: number, today: string)
   for (const a of activities) {
     const w = byWeek.get(weekStart(a.date));
     if (!w) continue;
-    const l = sessionLoad(a);
+    const l = sessionLoad(a, p);
     w.total += l;
     w.byType[a.typeKey] = (w.byType[a.typeKey] ?? 0) + l;
     const [z1, z2, z3, z4, z5] = a.hrZonesS;

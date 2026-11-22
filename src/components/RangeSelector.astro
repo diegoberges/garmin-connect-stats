@@ -1,20 +1,27 @@
 ---
-/** Selector de periodo (enlaces ?semanas=N), estilo button group de Flowbite. Conserva el resto de parámetros. */
+/**
+ * Selector de opciones por enlaces (?semanas=N, ?carga=…), estilo button group de Flowbite.
+ * Conserva el resto de parámetros.
+ */
 interface Props {
-  options: { value: number; label: string }[];
-  current: number;
+  options: { value: number | string; label: string }[];
+  current: number | string;
   param?: string;
+  /** Nombre accesible del grupo. */
+  label?: string;
+  /** Ancla a la que volver tras elegir (p. ej. la sección donde está el selector). */
+  anchor?: string;
 }
-const { options, current, param = 'semanas' } = Astro.props;
-const hrefFor = (value: number) => {
+const { options, current, param = 'semanas', label = 'Periodo', anchor = '' } = Astro.props;
+const hrefFor = (value: number | string) => {
   const params = new URLSearchParams(Astro.url.search);
   params.set(param, String(value));
   params.delete('pagina');
-  return `?${params}`;
+  return `?${params}${anchor ? `#${anchor}` : ''}`;
 };
 ---
 
-<nav class="inline-flex rounded-lg shadow-xs" aria-label="Periodo">
+<nav class="inline-flex rounded-lg shadow-xs" aria-label={label}>
   {options.map((o, i) => (
     <a
       href={hrefFor(o.value)}

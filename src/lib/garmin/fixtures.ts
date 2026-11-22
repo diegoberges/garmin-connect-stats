@@ -39,6 +39,32 @@ function spread<T extends { calendarDate: string }>(items: T[], [from, to]: [str
   return out;
 }
 
+/** Desplaza `days` días una fecha "YYYY-MM-DD…" conservando el resto (la hora). */
+const shiftDate = (v: unknown, days: number) =>
+  typeof v === 'string' && v.length >= 10 ? `${addDays(v.slice(0, 10), days)}${v.slice(10)}` : v;
+
+/** Copias de la captura desplazadas en bloques de semanas completas hasta cubrir [from, to], más recientes primero. */
+function repeatActivities(base: Record<string, unknown>[], from: string, to: string): Record<string, unknown>[] {
+  const dates = base.map((a) => String(a.startTimeLocal).slice(0, 10)).sort();
+  if (!dates.length) return [];
+  const span = Math.round((Date.parse(dates.at(-1)!) - Date.parse(dates[0])) / 86_400_000) + 1;
+  const block = Math.ceil(span / 7) * 7;
+  const out: Record<string, unknown>[] = [];
+  for (let k = 0; addDays(dates.at(-1)!, -block * k) >= from; k++) {
+    for (const a of base) {
+      const copy = {
+        ...a,
+        activityId: Number(a.activityId) - k,
+        startTimeLocal: shiftDate(a.startTimeLocal, -block * k),
+        startTimeGMT: shiftDate(a.startTimeGMT, -block * k),
+      };
+      const d = String(copy.startTimeLocal).slice(0, 10);
+      if (d >= from && d <= to) out.push(copy);
+    }
+  }
+  return out.sort((a, b) => String(b.startTimeLocal).localeCompare(String(a.startTimeLocal)));
+}
+
 export const fixturesEnabled = () => import.meta.env.DEV && process.env.GARMIN_FIXTURES === '1';
 
 /** Respuesta de la captura correspondiente a la petición (o 404 si no hay). */
@@ -63,6 +89,20 @@ function serveFixture(req: Request): Response {
     const start = Number(searchParams.get('start') ?? 0);
     const limit = Number(searchParams.get('limit') ?? 100);
     return new Response(JSON.stringify(history.slice(start, start + limit)), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  // Búsqueda por periodo: la captura (~30 días) se repite hacia atrás en bloques de semanas completas
+  // para cubrir el rango pedido (así la carga de 42 días y los históricos tienen datos)
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
+  const periodSearch = startDate && endDate && startDate !== '2000-01-01';
+  if ((file === 'activities-30d' || file === 'activities-running') && periodSearch) {
+    const base = JSON.parse(readFileSync(`.data/raw/${file}.json`, 'utf8')) as Record<string, unknown>[];
+    const all = repeatActivities(base, startDate!, endDate!);
+    const start = Number(searchParams.get('start') ?? 0);
+    const limit = Number(searchParams.get('limit') ?? 100);
+    return new Response(JSON.stringify(all.slice(start, start + limit)), {
       headers: { 'Content-Type': 'application/json' },
     });
   }

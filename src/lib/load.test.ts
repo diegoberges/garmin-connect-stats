@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   acwr,
   acwrZone,
+  banisterTrimp,
   bestEfforts,
   dailyLoad,
-  edwardsTrimp,
+  estimateHrParams,
   formZone,
+  type HrParams,
+  monotonyStrain,
   pmc,
+  rampRate,
   sessionLoad,
   weeklyChange,
   weeklyLoad,
@@ -28,20 +32,36 @@ const act = (date: string, over: Partial<Activity> = {}): Activity => ({
   ...over,
 });
 
-describe('carga por sesión', () => {
-  it('usa la carga de Garmin y si falta, TRIMP de Edwards', () => {
-    expect(sessionLoad(act('2026-11-02', { trainingLoad: 80 }))).toBe(80);
-    // 10·1 + 20·2 + 10·3 + 10·4 = 120
-    expect(edwardsTrimp([600, 1200, 600, 600, 0])).toBe(120);
-    expect(sessionLoad(act('2026-11-02'))).toBe(120);
+const HR: HrParams = { restingHr: 43, maxHr: 192 };
+
+describe('carga por sesión (TRIMP de Banister)', () => {
+  it('min × HRr × 0,64 × e^(1,92 × HRr) en hombres y 0,86/1,67 en mujeres', () => {
+    // HRr = (150 − 43) / (192 − 43) = 0,718
+    expect(banisterTrimp(60, 150, HR)).toBeCloseTo(109.47, 1);
+    expect(banisterTrimp(60, 150, { ...HR, sex: 'female' })).toBeCloseTo(122.94, 1);
+  });
+  it('limita la reserva de FC entre 0 y 1 y descarta parámetros sin sentido', () => {
+    expect(banisterTrimp(30, 200, HR)).toBeCloseTo(30 * 0.64 * Math.exp(1.92), 5);
+    expect(banisterTrimp(30, 40, HR)).toBe(0);
+    expect(banisterTrimp(30, 150, { restingHr: 60, maxHr: 60 })).toBe(0);
+  });
+  it('usa la FC media y el tiempo en movimiento; sin FC no suma', () => {
+    expect(sessionLoad(act('2026-11-02', { avgHr: 150, movingS: 3600 }), HR)).toBeCloseTo(109.47, 1);
+    expect(sessionLoad(act('2026-11-02', { avgHr: undefined, trainingLoad: 80 }), HR)).toBe(0);
+  });
+  it('sin FC de referencia de Garmin, estima con la máxima registrada', () => {
+    expect(estimateHrParams([{ maxHr: 181 }, { maxHr: 188 }, {}])).toEqual({ restingHr: 60, maxHr: 188 });
+    expect(estimateHrParams([{ maxHr: 120 }])).toEqual({ restingHr: 60, maxHr: 190 });
   });
   it('suma por día y rellena con ceros', () => {
+    const one = sessionLoad(act('2026-11-02', { avgHr: 150 }), HR);
     const d = dailyLoad(
-      [act('2026-11-02', { trainingLoad: 50 }), act('2026-11-02', { trainingLoad: 30 })],
+      [act('2026-11-02', { avgHr: 150 }), act('2026-11-02', { avgHr: 150 })],
       '2026-11-01',
       '2026-11-03',
+      HR,
     );
-    expect(d.map((x) => x.load)).toEqual([0, 80, 0]);
+    expect(d.map((x) => x.load)).toEqual([0, 2 * one, 0]);
   });
 });
 
@@ -80,20 +100,41 @@ describe('pmc', () => {
 
 describe('semanas', () => {
   it('agrupa carga, intensidad y días de fuerza; compara con la media de 4 semanas', () => {
+    const base = { avgHr: 150, movingS: 3600 };
     const acts = [
-      ...['2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02'].map((d) => act(d, { trainingLoad: 100 })),
-      act('2026-11-09', { trainingLoad: 150 }),
-      act('2026-11-10', { typeKey: 'strength_training', trainingLoad: 20, hrZonesS: [0, 0, 0, 0, 0] }),
-      act('2026-11-10', { typeKey: 'strength_training', trainingLoad: 10, hrZonesS: [0, 0, 0, 0, 0] }),
+      ...['2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02'].map((d) => act(d, base)),
+      act('2026-11-09', { ...base, movingS: 5400 }),
+      act('2026-11-10', { typeKey: 'strength_training', hrZonesS: [0, 0, 0, 0, 0] }),
+      act('2026-11-10', { typeKey: 'strength_training', hrZonesS: [0, 0, 0, 0, 0] }),
     ];
-    const w = weeklyLoad(acts, 7, '2026-11-18');
+    const w = weeklyLoad(acts, 7, '2026-11-18', HR);
+    const one = sessionLoad(act('2026-11-02', base), HR);
     const nov9 = w.find((x) => x.week === '2026-11-09')!;
-    expect(nov9.total).toBe(180);
+    expect(nov9.total).toBeCloseTo(1.5 * one, 5);
     expect(nov9.strengthDays).toBe(1);
     expect(nov9.low).toBe(1800);
     const ch = weeklyChange(w)!;
-    expect(ch.avg4).toBe(100);
-    expect(ch.pct).toBe(80);
+    expect(ch.avg4).toBeCloseTo(one, 5);
+    expect(ch.pct).toBeCloseTo(50, 5);
+  });
+});
+
+describe('rampa, monotonía y strain', () => {
+  it('rampa = forma física de hoy − la de hace 7 días (solo con 42 días de historial)', () => {
+    const days = Array.from({ length: 80 }, (_, i) => ({ date: `d${i}`, load: i < 70 ? 50 : 150 }));
+    const p = pmc(days);
+    expect(rampRate(p)).toBeCloseTo(p.at(-1)!.fitness - p.at(-8)!.fitness, 5);
+    expect(rampRate(p)).toBeGreaterThan(0);
+    expect(rampRate(pmc(days.slice(0, 20)))).toBeUndefined();
+  });
+  it('monotonía = media / DE y strain = carga semanal × monotonía (Foster)', () => {
+    const week = [100, 0, 100, 0, 100, 0, 100].map((load) => ({ load }));
+    const m = monotonyStrain(week)!;
+    // media 57,14; DE 49,49 → 1,155
+    expect(m.monotony).toBeCloseTo(1.155, 2);
+    expect(m.strain).toBeCloseTo(400 * 1.155, 0);
+    expect(monotonyStrain(Array(7).fill({ load: 50 }))).toBeUndefined();
+    expect(monotonyStrain(Array(6).fill({ load: 50 }))).toBeUndefined();
   });
 });
 
