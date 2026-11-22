@@ -3,13 +3,17 @@
  * no están en el repositorio).
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import { GAP_BUCKET, parseActivityFile } from './track';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { type ActivityTrack, GAP_BUCKET, parseActivityFile } from './track';
 
 const FIT = '.data/raw/activity-fit.zip';
 
 describe.skipIf(!existsSync(FIT))('FIT real', () => {
-  const track = parseActivityFile(new Uint8Array(readFileSync(FIT)))!;
+  // Se lee aquí y no en el cuerpo del describe: ese cuerpo se ejecuta aunque se salte (y en CI no hay captura)
+  let track: ActivityTrack;
+  beforeAll(() => {
+    track = parseActivityFile(new Uint8Array(readFileSync(FIT)))!;
+  });
 
   it('parciales por km con su distancia ajustada por pendiente', () => {
     const full = track.splits.filter((s) => s.distanceM >= 999);
