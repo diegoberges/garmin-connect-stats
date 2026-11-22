@@ -7,6 +7,12 @@ import { clearSettings, secretConfigured, writeSettings, type UserSettings } fro
 import { forgetToken, getAccessToken, GarminAuthError } from '../../lib/garmin/auth';
 import { setFlash, type Flash } from '../../lib/flash';
 
+/** Campo de texto del formulario (un archivo u otro tipo cuenta como vacío). */
+const textField = (form: FormData, name: string) => {
+  const v = form.get(name);
+  return typeof v === 'string' ? v : '';
+};
+
 /** Solo rutas internas, para no convertir el formulario en una redirección abierta. */
 const safePath = (v: unknown) => (typeof v === 'string' && /^\/(?![/\\])/.test(v) ? v : '/');
 
@@ -25,7 +31,7 @@ function persist({ cookies, settings, secure }: Ctx) {
 
 /** Valida la key contra Garmin antes de guardarla. */
 async function saveKey(ctx: Ctx): Promise<Flash> {
-  const apiKey = String(ctx.form.get('garminApiKey') ?? '').trim();
+  const apiKey = textField(ctx.form, 'garminApiKey').trim();
   if (!apiKey) return { type: 'error', text: 'Pega tu API key antes de guardar.' };
   try {
     await getAccessToken(apiKey, { force: true });
@@ -63,7 +69,7 @@ const ACTIONS = new Map<string, (ctx: Ctx) => Flash | Promise<Flash>>([
 export const POST: APIRoute = async ({ request, cookies, locals, url, redirect }) => {
   const form = await request.formData();
   const secure = url.protocol === 'https:';
-  const handler = ACTIONS.get(String(form.get('action')));
+  const handler = ACTIONS.get(textField(form, 'action'));
   const flash: Flash = handler
     ? await handler({ form, cookies, settings: { ...locals.settings }, secure })
     : { type: 'error', text: 'Acción no reconocida.' };
