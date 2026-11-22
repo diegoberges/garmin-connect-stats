@@ -54,11 +54,66 @@ const TYPE_LABELS: Record<string, string> = {
   trail_running: 'Trail',
   treadmill_running: 'Cinta',
   track_running: 'Pista',
-  indoor_running: 'Indoor',
-  virtual_run: 'Virtual',
+  indoor_running: 'Carrera indoor',
+  street_running: 'Carrera urbana',
+  virtual_run: 'Carrera virtual',
   ultra_run: 'Ultra',
+  obstacle_run: 'Carrera de obstáculos',
+  walking: 'Caminar',
+  casual_walking: 'Paseo',
+  speed_walking: 'Marcha rápida',
+  hiking: 'Senderismo',
+  mountaineering: 'Montañismo',
+  rucking: 'Rucking',
+  cycling: 'Ciclismo',
+  road_biking: 'Ciclismo en carretera',
+  mountain_biking: 'BTT',
+  gravel_cycling: 'Gravel',
+  indoor_cycling: 'Ciclismo indoor',
+  virtual_ride: 'Ciclismo virtual',
+  e_bike_fitness: 'E-bike',
+  e_bike_mountain: 'E-MTB',
+  swimming: 'Natación',
+  lap_swimming: 'Natación en piscina',
+  open_water_swimming: 'Aguas abiertas',
+  strength_training: 'Fuerza',
+  hiit: 'HIIT',
+  yoga: 'Yoga',
+  pilates: 'Pilates',
+  mobility: 'Movilidad',
+  breathwork: 'Respiración',
+  meditation: 'Meditación',
+  indoor_cardio: 'Cardio',
+  elliptical: 'Elíptica',
+  stair_climbing: 'Escaleras',
+  indoor_rowing: 'Remo indoor',
+  rowing_v2: 'Remo',
+  jump_rope: 'Comba',
+  indoor_climbing: 'Escalada indoor',
+  bouldering: 'Búlder',
+  rock_climbing: 'Escalada',
+  tennis_v2: 'Tenis',
+  padel: 'Pádel',
+  paddelball: 'Pádel',
+  soccer: 'Fútbol',
+  basketball: 'Baloncesto',
+  golf: 'Golf',
+  resort_skiing: 'Esquí',
+  cross_country_skiing_ws: 'Esquí de fondo',
+  stand_up_paddleboarding_v2: 'Paddle surf',
+  surfing_v2: 'Surf',
+  multi_sport: 'Multideporte',
+  other: 'Otro',
 };
-export const runType = (key: string) => TYPE_LABELS[key] ?? key.replaceAll('_', ' ');
+/** Nombre en español del tipo de actividad de Garmin ("strength_training" → "Fuerza"). */
+export function activityLabel(key: string): string {
+  if (TYPE_LABELS[key]) return TYPE_LABELS[key];
+  const text = key.replace(/_v\d+$|_ws$/, '').replaceAll('_', ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** 28.34 → "28,3" (km/h) */
+export const speed = (kmh?: number) => km(kmh);
 
 const HRV_STATUS: Record<string, string> = {
   BALANCED: 'Equilibrado',

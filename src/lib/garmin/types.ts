@@ -30,7 +30,7 @@ export type ApiVo2 = ApiJson<'/metrics-service/metrics/maxmet/daily/{startDate}/
 
 // ---------- Dominio ----------
 
-export interface RunActivity {
+export interface Activity {
   id: number;
   name: string;
   typeKey: string; // running, trail_running, treadmill_running…
