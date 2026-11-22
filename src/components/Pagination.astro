@@ -10,8 +10,10 @@ interface Props {
   pageSize: number;
   param?: string;
   anchor?: string;
+  /** Nombre accesible de la paginación. */
+  label?: string;
 }
-const { page, pages, total, pageSize, param = 'pagina', anchor = '' } = Astro.props;
+const { page, pages, total, pageSize, param = 'pagina', anchor = '', label = 'Paginación de sesiones' } = Astro.props;
 
 const href = (n: number) => {
   const params = new URLSearchParams(Astro.url.search);
@@ -36,7 +38,7 @@ const idle =
 ---
 
 {pages > 1 && (
-  <nav class="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Paginación de sesiones">
+  <nav class="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label={label}>
     <span class="text-sm text-gray-500 dark:text-gray-400">
       <span class="font-semibold text-gray-900 tabular-nums dark:text-white">
         {first}–{last}

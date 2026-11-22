@@ -129,6 +129,7 @@ src/
     actividades/[id].astro    # detalle: mapa, resumen, series sincronizadas, parciales, zonas
     competiciones.astro       # actividades con eventType=race
     comparador.astro          # comparación entre años
+    calidad.astro             # calidad de datos de todo el historial
     api/ajustes.ts            # POST de los formularios del perfil (key, sexo)
     dev/capture.ts            # SOLO DEV: guarda respuestas reales en .data/raw/
   components/                 # StatCard, ChartCard, ActivityTable, Pagination, RangeSelector,
@@ -152,7 +153,10 @@ src/
     readiness.ts              # disposición 0–100 (z de VFC, FC reposo, sueño y TSB con pesos documentados)
     efficiency.ts             # Rendimiento: Minetti, EF, VDOT, velocidad crítica
     compare.ts                # Comparador: totales por mes y año
-    races.ts                  # categorías de competición y mejores marcas
+    races.ts                  # categorías de competición, tiempo de carrera (total) y mejores marcas
+    progression.ts            # VO2máx estimado por sesión, pronósticos en el tiempo, VDOT de carrera vs forma
+    consistency.ts            # número de Eddington, rachas y calendario anual
+    data-quality.ts           # avisos de calidad de datos (duplicadas, sin FC, GPS, FC imposible)
     vo2-norms.ts              # percentiles de VO2máx (FRIEND 2015)
     activity-kinds.ts         # familia de cada tipo (a pie, ciclismo, natación, otros)
     stats.ts, dates.ts, format.ts, settings.ts, flash.ts, chart-spec.ts
@@ -292,6 +296,12 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Ritmo a la FC mediana de rodaje.
   - Desacoplamiento de las últimas 8 tiradas de 60 minutos o más (FIT, ritmo ajustado por pendiente de Minetti).
   - Predicción con VDOT de Daniels, velocidad crítica y curva de marcas.
+- **Progresión**:
+  - VO2máx estimado por carrera (coste de Daniels del ritmo / %VO2máx de la FC según Swain), solo asfalto o
+    cinta, 20–150 min, ≤ 15 m/km y FC entre el 65 y el 95 % de la máxima; media de 28 días, con el de
+    Garmin como referencia.
+  - Pronóstico de 10K y media semana a semana (VDOT de la mejor marca ≥ 5 km de los 90 días previos).
+- **Constancia**: número de Eddington de carrera, racha de días con actividad y de semanas corriendo.
 
 ### Actividades
 
@@ -310,6 +320,11 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - parciales por km, zonas de FC y dinámica de carrera.
 - `/competiciones`: `eventType=race` de todo el historial, por años; mejor marca de 5K, 10K, media y
   maratón con trofeo; etiquetas por distancia (maratón > media > 10K > 5K).
+  - Tiempos y ritmos sobre el **tiempo total** (`elapsedDuration`, con pausas), como Strava.
+  - VDOT de la marca frente al VO2máx estimado de las 4 semanas previas (no en trail ni ultra).
+  - Calendario anual (`?anio=`) con los minutos de actividad por día y las competiciones destacadas.
+- `/calidad`: avisos de todo el historial (posibles duplicadas, carreras sin FC, errores de GPS, FC
+  imposible), filtrables por tipo y paginados de 50 en 50. Son heurísticas: un aviso no es un error seguro.
 - `/comparador`:
   - tipo de actividad (incluido "Correr" = carrera + trail + cinta) y hasta 4 años;
   - del 1 de enero a hoy, km o tiempo por mes, acumulado anual y resumen por año.

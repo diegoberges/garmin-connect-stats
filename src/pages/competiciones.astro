@@ -2,27 +2,85 @@
 /**
  * Competiciones: actividades marcadas con el tipo de evento "Competición" (race) en Garmin Connect,
  * de cualquier deporte y de todo el historial, con la mejor marca en cada distancia estándar.
+ * Tiempos y ritmos sobre el tiempo total (con pausas), como Strava. Cada carrera se compara con tu
+ * forma de ese momento (VDOT de la marca frente al VO2máx estimado de las 4 semanas previas), y el
+ * calendario anual muestra tus días de actividad con las competiciones destacadas.
  */
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
 import TrophyTip from '../components/TrophyTip.astro';
-import { clientFor, getRaces, type Activity } from '../lib/garmin';
-import { isoDate } from '../lib/dates';
-import { bestRaceIds, raceCategory, type RaceCategory } from '../lib/races';
+import { clientFor, getAllActivities, getHrReference, getRaces, type Activity } from '../lib/garmin';
+import { addDays, isoDate, weekStart } from '../lib/dates';
+import { bestRaceIds, raceCategory, raceTime, type RaceCategory } from '../lib/races';
+import { analyzeRace, vo2Trend } from '../lib/progression';
+import { yearCalendar } from '../lib/consistency';
+import { estimateHrParams } from '../lib/load';
 import { activityLabel, duration, int, km, pace, shortDate } from '../lib/format';
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
 
 let races: Activity[] | undefined;
+let everything: Activity[] | undefined;
+let hrRef: { restingHr: number; maxHr: number } | undefined;
 let error: unknown;
 if (client) {
   try {
-    races = await getRaces(client, today);
+    [races, everything, hrRef] = await Promise.all([
+      getRaces(client, today),
+      // Para la forma de cada carrera y el calendario: si falla, la lista se muestra igual
+      getAllActivities(client, today).catch(() => undefined),
+      getHrReference(client).catch(() => undefined),
+    ]);
   } catch (err) {
     error = err;
   }
+}
+
+// Forma de cada carrera: VO2máx estimado con las carreras de entreno
+const maxHr = (hrRef ?? estimateHrParams(everything ?? [])).maxHr;
+const trend = everything
+  ? vo2Trend(
+      everything.filter((a) => /run/.test(a.typeKey)),
+      maxHr,
+    )
+  : [];
+const analysis = new Map((races ?? []).map((r) => [r.id, analyzeRace(r, trend)]));
+const signed = (v: number) => `${v >= 0 ? '+' : '−'}${km(Math.abs(v))}`;
+
+// Calendario anual (?anio=): años con actividad, el actual por defecto
+const calYears = [...new Set((everything ?? []).map((a) => Number(a.date.slice(0, 4))))].sort((a, b) => b - a);
+const requestedYear = Number(Astro.url.searchParams.get('anio'));
+const calYear = calYears.includes(requestedYear) ? requestedYear : (calYears[0] ?? Number(today.slice(0, 4)));
+const raceIds = new Set((races ?? []).map((r) => r.id));
+const calendar = everything ? yearCalendar(everything, calYear, raceIds) : [];
+// Semanas (columnas) de lunes a domingo; cada celda es un día
+const firstMonday = weekStart(`${calYear}-01-01`);
+const calWeeks: { date: string; inYear: boolean }[][] = [];
+for (let w = firstMonday; w <= `${calYear}-12-31`; w = addDays(w, 7)) {
+  calWeeks.push(
+    Array.from({ length: 7 }, (_, i) => addDays(w, i)).map((date) => ({ date, inYear: date.startsWith(`${calYear}`) })),
+  );
+}
+const byDate = new Map(calendar.map((d) => [d.date, d]));
+/** Nivel 0–4 según los minutos del día. */
+function level(minutes: number): number {
+  if (minutes <= 0) return 0;
+  if (minutes < 30) return 1;
+  if (minutes < 60) return 2;
+  if (minutes < 90) return 3;
+  return 4;
+}
+const activeDays = calendar.filter((d) => d.minutes > 0).length;
+const yearRaces = (races ?? []).filter((r) => r.date.startsWith(`${calYear}`));
+const MONTH_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+const yearHref = (y: number) => `?anio=${y}#calendario`;
+/** Mes que empieza en esa semana (la etiqueta va encima de su columna); la primera, siempre enero. */
+function monthLabel(week: { date: string; inYear: boolean }[], index: number): string {
+  const first = week.find((d) => d.inYear && d.date.endsWith('-01'));
+  if (first) return MONTH_SHORT[Number(first.date.slice(5, 7)) - 1];
+  return index === 0 ? MONTH_SHORT[0] : '';
 }
 
 const bestRaces = bestRaceIds(races ?? []);
@@ -73,9 +131,9 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
               </p>
               {race ? (
                 <>
-                  <p class="mt-1 text-2xl font-semibold tabular-nums">{duration(race.durationS)}</p>
+                  <p class="mt-1 text-2xl font-semibold tabular-nums">{duration(raceTime(race))}</p>
                   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {pace(race.durationS / race.distanceKm)} /km ·{' '}
+                    {pace(raceTime(race) / race.distanceKm)} /km ·{' '}
                     <a
                       href={`/actividades/${race.id}`}
                       class="text-blue-700 hover:underline dark:text-blue-400"
@@ -134,13 +192,16 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
                 <th scope="col" class="hidden px-4 py-3 text-right sm:table-cell">
                   Desnivel +
                 </th>
+                <th scope="col" class="hidden px-4 py-3 text-right md:table-cell">
+                  VDOT (vs forma)
+                </th>
               </tr>
             </thead>
             {raceYears.map((year) => (
               <tbody class="tabular-nums">
                 <tr class="bg-gray-50/60 dark:bg-gray-900/40">
                   <th
-                    colspan="7"
+                    colspan="8"
                     scope="rowgroup"
                     class="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400"
                   >
@@ -174,15 +235,36 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
                         <td class="px-3 py-2.5 text-right sm:px-4">
                           <span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                             {bestRaces.has(r.id) && <TrophyTip label={`Mejor ${cat}`} />}
-                            <span class="font-semibold">{duration(r.durationS)}</span>
+                            <span class="font-semibold">{duration(raceTime(r))}</span>
                           </span>
                         </td>
                         <td class="hidden px-4 py-2.5 text-right whitespace-nowrap sm:table-cell">
-                          {r.distanceKm > 0.5 ? `${pace(r.durationS / r.distanceKm)} /km` : '—'}
+                          {r.distanceKm > 0.5 ? `${pace(raceTime(r) / r.distanceKm)} /km` : '—'}
                         </td>
                         <td class="hidden px-4 py-2.5 text-right sm:table-cell">{int(r.avgHr)}</td>
                         <td class="hidden px-4 py-2.5 text-right whitespace-nowrap sm:table-cell">
                           {r.elevationGainM ? `${int(r.elevationGainM)} m` : '—'}
+                        </td>
+                        <td class="hidden px-4 py-2.5 text-right whitespace-nowrap md:table-cell">
+                          {analysis.get(r.id)?.raceVdot === undefined ? (
+                            '—'
+                          ) : (
+                            <>
+                              {km(analysis.get(r.id)!.raceVdot)}
+                              {analysis.get(r.id)!.diff !== undefined && (
+                                <span
+                                  class:list={[
+                                    'ml-1 text-xs',
+                                    analysis.get(r.id)!.diff! >= 0
+                                      ? 'text-green-700 dark:text-green-400'
+                                      : 'text-gray-500 dark:text-gray-400',
+                                  ]}
+                                >
+                                  ({signed(analysis.get(r.id)!.diff!)})
+                                </span>
+                              )}
+                            </>
+                          )}
                         </td>
                       </tr>
                     );
@@ -192,11 +274,163 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
           </table>
         </section>
       )}
+      {races && races.length > 0 && (
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Tiempos y ritmos sobre el tiempo total, con las pausas (como en Strava). VDOT: el de Daniels que da la marca;
+          entre paréntesis, frente a tu VO2máx estimado de las 4 semanas previas (positivo = rendiste por encima de lo
+          que indicaba tu forma). Orientativo; en trail o con mucho desnivel no es comparable.
+        </p>
+      )}
+
+      {/* ---------- Calendario anual ---------- */}
+      {everything && calYears.length > 0 && (
+        <section id="calendario" class:list={[card, 'scroll-mt-4 p-4']} aria-labelledby="calendario-titulo">
+          <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="calendario-titulo" class="text-base font-semibold">
+              Calendario {calYear}
+            </h2>
+            <nav aria-label="Año del calendario" class="flex flex-wrap gap-1">
+              {calYears.map((y) => (
+                <a
+                  href={yearHref(y)}
+                  aria-current={y === calYear ? 'true' : undefined}
+                  class:list={[
+                    'rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums',
+                    y === calYear
+                      ? 'border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700',
+                  ]}
+                >
+                  {y}
+                </a>
+              ))}
+            </nav>
+          </div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {activeDays} días con actividad · {yearRaces.length}{' '}
+            {yearRaces.length === 1 ? 'competición' : 'competiciones'} (con borde ámbar)
+          </p>
+          <div class="mt-3 overflow-x-auto pb-1">
+            <div
+              class="cal-grid"
+              role="img"
+              aria-label={`Calendario de ${calYear}: ${activeDays} días con actividad y ${yearRaces.length} competiciones`}
+            >
+              {calWeeks.map((week, wi) => (
+                <div class="cal-week">
+                  <span class="cal-month" aria-hidden="true">
+                    {monthLabel(week, wi)}
+                  </span>
+                  {week.map((d) => {
+                    const day = byDate.get(d.date);
+                    return (
+                      <span
+                        class:list={[
+                          'cal-day',
+                          !d.inYear && 'cal-out',
+                          d.inYear && `cal-l${level(day?.minutes ?? 0)}`,
+                          day?.race && 'cal-race',
+                        ]}
+                        title={
+                          d.inYear
+                            ? `${shortDate(d.date)}: ${day && day.minutes > 0 ? `${Math.round(day.minutes)} min` : 'sin actividad'}${day?.race ? ' · competición' : ''}`
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div
+            class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
+            aria-hidden="true"
+          >
+            <span class="flex items-center gap-1">
+              Menos <span class="cal-day cal-l0" /> <span class="cal-day cal-l1" /> <span class="cal-day cal-l2" />{' '}
+              <span class="cal-day cal-l3" /> <span class="cal-day cal-l4" /> Más (minutos)
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="cal-day cal-l2 cal-race" /> Competición
+            </span>
+          </div>
+        </section>
+      )}
     </div>
   )}
 </Base>
 
 <style>
+  /* Calendario anual: columnas = semanas (lunes arriba), celdas = días; colores fijados aquí */
+  .cal-grid {
+    display: flex;
+    gap: 3px;
+    width: max-content;
+  }
+  .cal-week {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .cal-month {
+    height: 0.875rem;
+    width: 0.75rem;
+    font-size: 0.625rem;
+    line-height: 0.875rem;
+    white-space: nowrap;
+    color: #6b7280;
+  }
+  .cal-day {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 2px;
+  }
+  .cal-out {
+    visibility: hidden;
+  }
+  .cal-l0 {
+    background: #e5e7eb;
+  }
+  .cal-l1 {
+    background: #cfe2f8;
+  }
+  .cal-l2 {
+    background: #86b6ef;
+  }
+  .cal-l3 {
+    background: #3f8ae0;
+  }
+  .cal-l4 {
+    background: #1c5cab;
+  }
+  .cal-race {
+    outline: 2px solid #d97706;
+    outline-offset: 1px;
+  }
+  :global(.dark) .cal-l0 {
+    background: #3f3f46;
+  }
+  :global(.dark) .cal-l1 {
+    background: #1e3a5f;
+  }
+  :global(.dark) .cal-l2 {
+    background: #1c5cab;
+  }
+  :global(.dark) .cal-l3 {
+    background: #3987e5;
+  }
+  :global(.dark) .cal-l4 {
+    background: #86b6ef;
+  }
+  :global(.dark) .cal-race {
+    outline-color: #fbbf24;
+  }
+  :global(.dark) .cal-month {
+    color: #a1a1aa;
+  }
+
   /* Etiquetas de distancia: intensidad creciente de 5K a maratón */
   .race-badge {
     display: inline-block;
