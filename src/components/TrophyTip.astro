@@ -32,8 +32,14 @@ const { label, class: className = 'h-4 w-4' } = Astro.props;
   :global(.dark) .trophy-tip {
     color: #fbbf24;
   }
-  .trophy-tip:focus {
-    outline: none;
+  /* Anillo de foco visible al llegar con el teclado (no al tocar o hacer clic) */
+  .trophy-tip:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  :global(.dark) .trophy-tip:focus-visible {
+    outline-color: #60a5fa;
   }
   .trophy-tip-text {
     position: absolute;

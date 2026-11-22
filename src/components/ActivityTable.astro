@@ -9,8 +9,13 @@ interface Props {
   activities: Activity[];
   /** Muestra la etiqueta del tipo junto al nombre (útil cuando se mezclan tipos). */
   showType?: boolean;
+  /** Nombre accesible de la tabla (va en un <caption> solo para lectores de pantalla). */
+  caption?: string;
 }
-const { activities, showType = false } = Astro.props;
+const { activities, showType = false, caption = 'Actividades' } = Astro.props;
+const captionId = `tabla-${crypto.randomUUID()}`;
+/** Columnas secundarias: se ocultan en móvil para no obligar a desplazarse de lado. */
+const secondary = 'hidden sm:table-cell';
 const kinds = activities.map((a) => kindOf(a.typeKey));
 const anyDistance = activities.some((a, i) => hasDistance(kinds[i]) && a.distanceKm > 0);
 const anySpeed = activities.some((a, i) => speedValue(kinds[i], a.distanceKm, a.movingS) !== undefined);
@@ -31,26 +36,51 @@ const distanceText = (a: Activity, i: number) =>
       : `${km(a.distanceKm, 2)} km`;
 ---
 
-<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+<!-- Contenedor con scroll lateral: con tabindex se puede desplazar con el teclado (guía responsive-table). La regla
+     noNoninteractiveTabindex de Biome está desactivada para este archivo en biome.json (su biome-ignore no surte efecto). -->
+<section
+  class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700"
+  tabindex="0"
+  aria-labelledby={captionId}
+>
   <table class="w-full text-left text-sm">
+    <caption id={captionId} class="sr-only">
+      {caption}
+    </caption>
     <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
       <tr>
-        <th class="px-4 py-3">Fecha</th>
-        <th class="px-4 py-3">Actividad</th>
-        {anyDistance && <th class="px-4 py-3 text-right">Distancia</th>}
-        <th class="px-4 py-3 text-right">Tiempo</th>
-        {anySpeed && <th class="px-4 py-3 text-right">Ritmo / vel.</th>}
-        <th class="px-4 py-3 text-right">FC media</th>
-        <th class="px-4 py-3 text-right">FC máx</th>
-        {anyElevation && <th class="px-4 py-3 text-right">Desnivel +</th>}
-        {anyCalories && <th class="px-4 py-3 text-right">kcal</th>}
+        <th scope="col" class="px-2.5 py-3 sm:px-4">Fecha</th>
+        <th scope="col" class="px-2.5 py-3 sm:px-4">Actividad</th>
+        {anyDistance && (
+          <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
+            Distancia
+          </th>
+        )}
+        <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">Tiempo</th>
+        {anySpeed && (
+          <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
+            Ritmo / vel.
+          </th>
+        )}
+        <th scope="col" class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>FC media</th>
+        <th scope="col" class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>FC máx</th>
+        {anyElevation && (
+          <th scope="col" class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>
+            Desnivel +
+          </th>
+        )}
+        {anyCalories && (
+          <th scope="col" class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>
+            kcal
+          </th>
+        )}
       </tr>
     </thead>
     <tbody class="tabular-nums">
       {activities.map((a, i) => (
         <tr class="border-b border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
-          <td class="px-4 py-3 whitespace-nowrap">{dayLabel(a.date)}</td>
-          <td class="px-4 py-3">
+          <td class="px-2.5 py-3 sm:px-4 whitespace-nowrap">{dayLabel(a.date)}</td>
+          <td class="px-2.5 py-3 sm:px-4">
             <a href={`/actividades/${a.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
               {a.name}
             </a>
@@ -60,24 +90,24 @@ const distanceText = (a: Activity, i: number) =>
               </span>
             )}
             {showType && (
-              <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+              <span class="mt-1 block w-fit rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap sm:mt-0 sm:ml-2 sm:inline text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                 {activityLabel(a.typeKey)}
               </span>
             )}
           </td>
-          {anyDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
-          <td class="px-4 py-3 text-right">{duration(a.movingS)}</td>
-          {anySpeed && <td class="px-4 py-3 text-right whitespace-nowrap">{speedText(a, i)}</td>}
-          <td class="px-4 py-3 text-right">{int(a.avgHr)}</td>
-          <td class="px-4 py-3 text-right">{int(a.maxHr)}</td>
+          {anyDistance && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
+          <td class="px-2.5 py-3 sm:px-4 text-right">{duration(a.movingS)}</td>
+          {anySpeed && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{speedText(a, i)}</td>}
+          <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>{int(a.avgHr)}</td>
+          <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>{int(a.maxHr)}</td>
           {anyElevation && (
-            <td class="px-4 py-3 text-right whitespace-nowrap">
+            <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right whitespace-nowrap']}>
               {a.elevationGainM ? `${int(a.elevationGainM)} m` : '—'}
             </td>
           )}
-          {anyCalories && <td class="px-4 py-3 text-right">{int(a.calories)}</td>}
+          {anyCalories && <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>{int(a.calories)}</td>}
         </tr>
       ))}
     </tbody>
   </table>
-</div>
+</section>

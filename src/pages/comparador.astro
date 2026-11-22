@@ -258,21 +258,46 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
           </div>
 
           {/* Resumen por año */}
-          <section class:list={[card, 'overflow-x-auto']}>
+          <section class:list={[card, 'overflow-x-auto']} tabindex="0" aria-labelledby="tabla-resumen">
             <table class="w-full text-left text-sm">
+              <caption id="tabla-resumen" class="sr-only">
+                Resumen por año
+              </caption>
               <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
                 <tr>
-                  <th class="px-4 py-3">Año</th>
-                  <th class="px-4 py-3 text-right">Sesiones</th>
-                  {byDistance && <th class="px-4 py-3 text-right">Distancia</th>}
-                  <th class="px-4 py-3 text-right">Tiempo</th>
+                  <th scope="col" class="px-4 py-3">
+                    Año
+                  </th>
+                  <th scope="col" class="px-4 py-3 text-right">
+                    Sesiones
+                  </th>
                   {byDistance && (
-                    <th class="px-4 py-3 text-right">{kind === 'cycling' ? 'Velocidad media' : 'Ritmo medio'}</th>
+                    <th scope="col" class="px-4 py-3 text-right">
+                      Distancia
+                    </th>
                   )}
-                  <th class="hidden px-4 py-3 text-right sm:table-cell">FC media</th>
-                  {byDistance && <th class="hidden px-4 py-3 text-right md:table-cell">Desnivel +</th>}
-                  <th class="hidden px-4 py-3 text-right sm:table-cell">Mejor mes</th>
-                  <th class="px-4 py-3 text-right">vs año anterior</th>
+                  <th scope="col" class="px-4 py-3 text-right">
+                    Tiempo
+                  </th>
+                  {byDistance && (
+                    <th scope="col" class="px-4 py-3 text-right">
+                      {kind === 'cycling' ? 'Velocidad media' : 'Ritmo medio'}
+                    </th>
+                  )}
+                  <th scope="col" class="hidden px-4 py-3 text-right sm:table-cell">
+                    FC media
+                  </th>
+                  {byDistance && (
+                    <th scope="col" class="hidden px-4 py-3 text-right md:table-cell">
+                      Desnivel +
+                    </th>
+                  )}
+                  <th scope="col" class="hidden px-4 py-3 text-right sm:table-cell">
+                    Mejor mes
+                  </th>
+                  <th scope="col" class="px-4 py-3 text-right">
+                    vs año anterior
+                  </th>
                 </tr>
               </thead>
               <tbody class="tabular-nums">

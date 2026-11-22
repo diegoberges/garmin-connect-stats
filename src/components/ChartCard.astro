@@ -12,6 +12,7 @@ interface Props {
   class?: string;
 }
 const { title, subtitle, spec, table, class: className } = Astro.props;
+const captionId = `datos-${crypto.randomUUID()}`;
 const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== undefined));
 ---
 
@@ -39,12 +40,17 @@ const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== u
       <summary class="cursor-pointer text-gray-500 select-none hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
         Ver datos
       </summary>
-      <div class="mt-2 max-h-72 overflow-auto">
+      <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby={captionId}>
         <table class="w-full text-left text-xs">
+          <caption id={captionId} class="sr-only">
+            Datos de la gráfica: {title}
+          </caption>
           <thead class="sticky top-0 bg-gray-50 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
             <tr>
               {table.headers.map((h) => (
-                <th class="px-2 py-1 font-medium">{h}</th>
+                <th scope="col" class="px-2 py-1 font-medium">
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -58,7 +64,7 @@ const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== u
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </details>
   )}
 </section>

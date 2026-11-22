@@ -67,40 +67,79 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
     <Analytics />
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
-    <nav class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <a
+      href="#contenido"
+      class="sr-only z-70 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      data-no-loading
+    >
+      Saltar al contenido
+    </a>
+    <header class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
         <ProfileMenu />
-        <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
-          {nav.map((item) =>
-            item.children ? (
-              <button
-                type="button"
-                data-dropdown-toggle={menuId(item)}
-                data-dropdown-placement="bottom-end"
-                class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
-                aria-haspopup="menu"
+        <div class="flex min-w-0 items-center gap-1">
+          <nav aria-label="Principal" class="flex min-w-0 items-center">
+            <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
+              {nav.map((item) =>
+                item.children ? (
+                  <button
+                    type="button"
+                    data-dropdown-toggle={menuId(item)}
+                    data-dropdown-placement="bottom-end"
+                    class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
+                    aria-controls={menuId(item)}
+                    aria-expanded="false"
+                  >
+                    {item.children.find((c) => isActive(c.href))?.label ?? item.label}
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                ) : (
+                  <a
+                    href={item.href}
+                    class:list={linkClass(isActive(item.href))}
+                    aria-current={isActive(item.href) ? 'page' : undefined}
+                  >
+                    {item.label}
+                  </a>
+                ),
+              )}
+            </div>
+            {/* Fuera del contenedor con scroll lateral, para que no recorte los paneles */}
+            {dropdowns.map((item) => (
+              <ul
+                id={menuId(item)}
+                class="z-50 hidden w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
               >
-                {item.children.find((c) => isActive(c.href))?.label ?? item.label}
-                <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
-                  <path
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="m1 1 4 4 4-4"
-                  />
-                </svg>
-              </button>
-            ) : (
-              <a
-                href={item.href}
-                class:list={linkClass(isActive(item.href))}
-                aria-current={isActive(item.href) ? 'page' : undefined}
-              >
-                {item.label}
-              </a>
-            ),
-          )}
+                {item.children!.map((c) => (
+                  <li>
+                    <a
+                      href={c.href}
+                      aria-current={isActive(c.href) ? 'page' : undefined}
+                      class:list={[
+                        'block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
+                        isActive(c.href) && 'bg-blue-50 dark:bg-gray-700',
+                      ]}
+                    >
+                      <span
+                        class:list={['block text-sm font-medium', isActive(c.href) && 'text-blue-700 dark:text-white']}
+                      >
+                        {c.label}
+                      </span>
+                      <span class="block text-xs text-gray-500 dark:text-gray-400">{c.description}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ))}
+          </nav>
           <button
             id="theme-toggle"
             type="button"
@@ -120,33 +159,9 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
           </button>
         </div>
       </div>
-      {dropdowns.map((item) => (
-        <div
-          id={menuId(item)}
-          class="z-50 hidden w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-          role="menu"
-        >
-          {item.children!.map((c) => (
-            <a
-              href={c.href}
-              role="menuitem"
-              aria-current={isActive(c.href) ? 'page' : undefined}
-              class:list={[
-                'block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
-                isActive(c.href) && 'bg-blue-50 dark:bg-gray-700',
-              ]}
-            >
-              <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-blue-700 dark:text-white']}>
-                {c.label}
-              </span>
-              <span class="block text-xs text-gray-500 dark:text-gray-400">{c.description}</span>
-            </a>
-          ))}
-        </div>
-      ))}
-    </nav>
+    </header>
 
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main id="contenido" class="mx-auto max-w-6xl px-4 py-6">
       <slot />
     </main>
 
@@ -155,6 +170,7 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
     <script>
       import 'flowbite';
       import '../scripts/theme';
+      import '../scripts/dropdowns';
     </script>
   </body>
 </html>
