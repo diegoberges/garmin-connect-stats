@@ -64,6 +64,33 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
         document.documentElement.classList.toggle('dark', dark);
       }
     </script>
+    <!-- Transición entre páginas: no pintar hasta tener el contenido, para no animar hacia una página a medias -->
+    <link rel="expect" href="#contenido" blocking="render">
+    <!--
+      Precarga de la siguiente página (Speculation Rules; donde no hay soporte no hace nada). Cada página
+      consulta Garmin en el servidor, así que se precarga con prudencia: la navegación principal al pasar
+      el ratón (moderate) y el resto solo al empezar el clic (conservative). Nunca /api ni /dev.
+    -->
+    <script is:inline type="speculationrules">
+      {
+        "prefetch": [
+          {
+            "where": { "and": [{ "selector_matches": "header nav a" }, { "href_matches": "/*" }] },
+            "eagerness": "moderate"
+          },
+          {
+            "where": {
+              "and": [
+                { "href_matches": "/*" },
+                { "not": { "href_matches": ["/api/*", "/dev/*"] } },
+                { "not": { "selector_matches": "[download], [data-no-loading]" } }
+              ]
+            },
+            "eagerness": "conservative"
+          }
+        ]
+      }
+    </script>
     <Analytics />
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
