@@ -54,3 +54,8 @@ Las desviaciones detectadas frente a respuestas reales están documentadas en `s
 - `/dev/capture` (solo dev): guarda respuestas reales en `.data/raw/` (ignorado por git) para contrastarlas con
   la spec. Los tests de mapeadores las usan si existen.
 - `GARMIN_FIXTURES=1 pnpm dev`: sirve esas capturas en lugar de llamar a Garmin, para revisar la UI sin key.
+
+## Licencia
+
+Código **no abierto**: el repositorio es público solo para consultarlo. Todos los derechos reservados;
+no se permite usar, copiar, modificar ni distribuir el código sin permiso. Detalles en [LICENSE](LICENSE).
