@@ -33,6 +33,8 @@ export function mapActivity(a: ApiActivity): Activity {
     ),
     calories: num(a.calories),
     isPr: a.pr === true,
+    startLat: num(a.startLatitude),
+    startLon: num(a.startLongitude),
     bestEfforts: Object.fromEntries(
       BEST_EFFORT_DISTANCES.map((m) => [m, num((a as Record<string, unknown>)[`fastestSplit_${m}`])]).filter(
         ([, s]) => s !== undefined,
@@ -128,6 +130,12 @@ export async function getActivity(
       verticalRatio: num(s.verticalRatio),
       respirationRate: num(s.avgRespirationRate),
       maxCadence: num(s.maxRunCadence),
+      // Garmin guarda el RPE ×10 (10–100)
+      rpe: num(s.directWorkoutRpe) === undefined ? undefined : num(s.directWorkoutRpe)! / 10,
+      feel: num(s.directWorkoutFeel),
+      avgPower: num(s.averagePower),
+      normPower: num(s.normalizedPower),
+      maxPower: num(s.maxPower),
     },
   };
 }

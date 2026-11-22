@@ -5,18 +5,26 @@ import ErrorState from '../../components/ErrorState.astro';
 import RouteMap from '../../components/RouteMap.astro';
 import TrophyTip from '../../components/TrophyTip.astro';
 import {
+  GAP_BUCKET,
   clientFor,
   getActivity,
   getActivityTrack,
+  getAllActivities,
+  getHrReference,
   getHrZones,
+  getWeights,
   type Activity,
   type ActivityExtra,
   type ActivityTrack,
   type HrZones,
 } from '../../lib/garmin';
 import { hasDistance, kindOf, mapStyleFor, speedUnit, speedValue } from '../../lib/activity-kinds';
-import { activityLabel, dayLabel, duration, int, km, pace, speed, trainingEffect } from '../../lib/format';
+import { activityLabel, dayLabel, duration, int, km, pace, shortDate, speed, trainingEffect } from '../../lib/format';
 import type { ChartSpec } from '../../lib/chart-spec';
+import { addDays, isoDate } from '../../lib/dates';
+import { estimateHrParams, sessionLoad } from '../../lib/load';
+import { efficiencyFactor } from '../../lib/efficiency';
+import { PACE_ZONES, paceZoneBounds, sameRoute, timeInPaceZones, vdotForDate } from '../../lib/activity-analysis';
 
 const id = Number(Astro.params.id);
 const client = clientFor(Astro.locals);
@@ -24,6 +32,9 @@ const client = clientFor(Astro.locals);
 let run: (Activity & { extra: ActivityExtra }) | undefined;
 let track: ActivityTrack | undefined;
 let zones: HrZones | undefined;
+let history: Activity[] | undefined;
+let hrRef: { restingHr: number; maxHr: number } | undefined;
+let weightKg: number | undefined;
 let error: unknown;
 if (client && Number.isInteger(id) && id > 0) {
   try {
@@ -32,12 +43,22 @@ if (client && Number.isInteger(id) && id > 0) {
       const k = kindOf(run.typeKey);
       const sport = k === 'cycling' ? 'CYCLING' : k === 'swim' ? 'SWIMMING' : 'RUNNING';
       // El recorrido sale del archivo FIT: si falla, la página se muestra sin él
-      [zones, track] = await Promise.all([
+      const today = isoDate();
+      [zones, track, history, hrRef, weightKg] = await Promise.all([
         getHrZones(client, sport).catch(() => undefined),
         getActivityTrack(client, id).catch((err) => {
           console.error('[garmin] recorrido', id, err);
           return undefined;
         }),
+        // Historial (memo de 6 h): zonas de ritmo de esa fecha y actividades en la misma ruta
+        getAllActivities(client, today).catch(() => undefined),
+        getHrReference(client).catch(() => undefined),
+        // Peso más reciente hasta esa fecha, solo si hay potencia (para W/kg)
+        run.extra.avgPower
+          ? getWeights(client, addDays(run.date, -90), run.date)
+              .then((w) => w.at(-1)?.kg)
+              .catch(() => undefined)
+          : Promise.resolve(undefined),
       ]);
     }
   } catch (err) {
@@ -96,6 +117,29 @@ const gapPace =
     ? track.activeS / (track.gapDistanceM / 1000)
     : undefined;
 
+// Carga de la sesión con la métrica única de la app (TRIMP de Banister)
+const trimp =
+  run?.avgHr && run.movingS > 0
+    ? sessionLoad(run, { ...(hrRef ?? estimateHrParams(history ?? [run])), sex: Astro.locals.settings.sex })
+    : undefined;
+/** Sensación de Garmin (0, 25, 50, 75, 100) en texto. */
+function feelLabel(v: number): string {
+  if (v >= 87.5) return 'Muy bien';
+  if (v >= 62.5) return 'Bien';
+  if (v >= 37.5) return 'Normal';
+  if (v >= 12.5) return 'Mal';
+  return 'Muy mal';
+}
+
+// Potencia (solo con sensor): media, normalizada, índice de variabilidad y W/kg
+const power = [
+  x?.avgPower !== undefined ? ['Potencia media', `${int(x.avgPower)} W`] : null,
+  x?.normPower !== undefined ? ['Potencia normalizada', `${int(x.normPower)} W`] : null,
+  x?.avgPower && x?.normPower ? ['Índice de variabilidad', km(x.normPower / x.avgPower, 2)] : null,
+  x?.avgPower && weightKg ? ['Potencia por kilo', `${km(x.avgPower / weightKg, 2)} W/kg`] : null,
+  x?.maxPower !== undefined ? ['Potencia máxima', `${int(x.maxPower)} W`] : null,
+].filter((r): r is [string, string] => r !== null);
+
 // Secundarias del panel
 const secondary = [
   run?.avgHr && showDistance ? ['FC media', `${int(run.avgHr)} ppm`] : null,
@@ -103,7 +147,9 @@ const secondary = [
   run?.elevationGainM ? ['Desnivel', `+${int(run.elevationGainM)} / −${int(x?.elevationLossM)} m`] : null,
   run?.cadenceSpm ? ['Cadencia', `${int(run.cadenceSpm)} pasos/min`] : null,
   run?.calories && showDistance ? ['Calorías', `${int(run.calories)} kcal`] : null,
-  run?.trainingLoad ? ['Carga', int(run.trainingLoad)] : null,
+  trimp ? ['Carga (TRIMP)', int(trimp)] : null,
+  run?.extra.rpe !== undefined ? ['Esfuerzo percibido', `${km(run.extra.rpe)} / 10`] : null,
+  run?.extra.feel !== undefined ? ['Sensación', feelLabel(run.extra.feel)] : null,
   run && run.durationS - run.movingS > 30 ? ['Tiempo total', duration(run.durationS)] : null,
   gapPace !== undefined ? ['Ritmo ajustado por pendiente', `${pace(gapPace)} /km`] : null,
   track?.decoupling ? ['Desacoplamiento', `${km(track.decoupling.pct)} %`] : null,
@@ -202,9 +248,46 @@ if (hasDistance(kind) && series.filter((p) => p.alt !== undefined).length > 2) {
     },
   });
 }
+// Cadencia a pie: el FIT la da en zancadas/min (una pierna); se muestra en pasos/min
+if (kind === 'foot' && series.filter((p) => p.cadence).length > 2) {
+  charts.push({
+    title: 'Cadencia (pasos/min)',
+    spec: {
+      type: 'line',
+      categories: xCats,
+      series: [
+        {
+          name: 'Cadencia',
+          data: smooth(series.map((p) => (p.cadence && p.cadence > 20 ? p.cadence * 2 : undefined))).map((v) =>
+            v === undefined ? null : Math.round(v),
+          ),
+          color: 4,
+        },
+      ],
+      format: 'int',
+      height: 130,
+    },
+  });
+}
+if (series.filter((p) => p.resp !== undefined).length > 2) {
+  charts.push({
+    title: 'Respiración (rpm)',
+    spec: {
+      type: 'line',
+      categories: xCats,
+      series: [{ name: 'Respiración', data: series.map((p) => p.resp ?? null), color: 3 }],
+      format: 'int',
+      height: 130,
+    },
+  });
+}
 charts.forEach((c, i) => {
   c.spec.group = 'actividad';
   c.spec.hideXLabels = i < charts.length - 1;
+  // Arrastrar sobre una gráfica amplía el tramo en todas (mismo grupo)
+  c.spec.zoom = charts.length > 1;
+  // Los botones solo en la primera: el zoom y el restablecer valen para todas
+  c.spec.zoomControls = i === 0;
 });
 
 // ---------- Parciales ----------
@@ -214,6 +297,20 @@ const vals = splitRows.map((r) => r.v).filter((v): v is number => v !== undefine
 const best = vals.length ? (cycling ? Math.max(...vals) : Math.min(...vals)) : undefined;
 const worst = vals.length ? (cycling ? Math.min(...vals) : Math.max(...vals)) : undefined;
 /** Ancho de barra: el km más rápido al 100 %, el más lento al 35 % (vale para ritmo y para velocidad) */
+/** Media de los km completos y diferencia de cada parcial (s/km a pie; km/h en bici). */
+const fullVals = splitRows.filter((r) => r.distanceM >= 999 && r.v !== undefined).map((r) => r.v!);
+const splitMean = fullVals.length ? fullVals.reduce((a, b) => a + b, 0) / fullVals.length : undefined;
+function vsMean(v?: number): string {
+  if (v === undefined || splitMean === undefined) return '';
+  const d = v - splitMean;
+  if (cycling) return `${d >= 0 ? '+' : '−'}${km(Math.abs(d))}`;
+  if (Math.abs(d) < 1) return '±0 s';
+  return `${d > 0 ? '+' : '−'}${Math.round(Math.abs(d))} s`;
+}
+/** Ritmo ajustado por pendiente de cada parcial (a pie y con desnivel apreciable). */
+const showSplitGap = kind === 'foot' && gapPace !== undefined;
+const splitGap = (sp: { gapDistanceM?: number; timeS: number }) =>
+  sp.gapDistanceM && sp.gapDistanceM > 0 ? sp.timeS / (sp.gapDistanceM / 1000) : undefined;
 const barPct = (v?: number) =>
   v === undefined || best === undefined || worst === undefined
     ? 0
@@ -234,6 +331,53 @@ const zoneRows = [1, 2, 3, 4, 5].map((z, i) => {
     pct: zoneTotal ? (s / zoneTotal) * 100 : 0,
   };
 });
+// ---------- Zonas de ritmo (GAP), con el VDOT de los 180 días anteriores a la actividad ----------
+const runHistory = (history ?? []).filter((a) => /run/.test(a.typeKey));
+const zoneVdot =
+  run && kind === 'foot' && /run/.test(run.typeKey) ? vdotForDate([...runHistory, run], run.date) : undefined;
+const paceBounds = zoneVdot ? paceZoneBounds(zoneVdot) : undefined;
+const paceZoneS =
+  paceBounds && track?.gapTimeBySpeed ? timeInPaceZones(track.gapTimeBySpeed, GAP_BUCKET, paceBounds) : undefined;
+const paceZoneTotal = paceZoneS?.reduce((a, b) => a + b, 0) ?? 0;
+const paceZoneRows = PACE_ZONES.map((z, i) => {
+  const fast = paceBounds?.[i];
+  const slow = i > 0 ? paceBounds?.[i - 1] : undefined;
+  let range = '';
+  if (fast === undefined) range = `más rápido de ${pace(1000 / slow!)}`;
+  else if (slow === undefined) range = `más lento de ${pace(1000 / fast)}`;
+  else range = `${pace(1000 / slow)}–${pace(1000 / fast)}`;
+  const sec = paceZoneS?.[i] ?? 0;
+  return { label: z.label, range, time: duration(sec), pct: paceZoneTotal ? (sec / paceZoneTotal) * 100 : 0 };
+});
+
+// ---------- VFC intra-sesión ----------
+const rr = track?.rr;
+
+// ---------- Misma ruta ----------
+const routeMatches = run && history ? sameRoute(run, [...history.filter((a) => a.id !== run!.id), run]) : [];
+const showRoute = routeMatches.length >= 2;
+const routeSpeed = (a: Activity) => speedValue(kind, a.distanceKm, a.movingS);
+const routeSpec: ChartSpec | undefined =
+  routeMatches.length >= 3
+    ? {
+        type: 'line',
+        categories: routeMatches.map((a) => `${shortDate(a.date)} ${a.date.slice(2, 4)}`),
+        series: [
+          {
+            name: cycling ? 'Velocidad' : 'Ritmo',
+            data: routeMatches.map((a) => {
+              const v = routeSpeed(a);
+              return v === undefined ? null : Math.round(cycling ? v * 10 : v) / (cycling ? 10 : 1);
+            }),
+            color: 1,
+          },
+        ],
+        format: cycling ? 'kmh' : 'pace',
+        reversed: !cycling,
+        height: 200,
+      }
+    : undefined;
+
 /** Intensidad creciente de un mismo color para las zonas (escala ordinal) */
 const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
 
@@ -327,7 +471,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
               <h2 class="text-base font-semibold">A lo largo de la actividad</h2>
               {charts.length > 1 && (
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Pasa el cursor: las gráficas marcan el mismo punto
+                  Pasa el cursor: las gráficas marcan el mismo punto. Arrastra sobre una para ampliar un tramo en todas
                 </p>
               )}
             </div>
@@ -365,6 +509,14 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                       <th scope="col" class="py-1 pr-3 text-left font-medium">
                         {cycling ? 'km/h' : 'Ritmo'}
                       </th>
+                      {showSplitGap && (
+                        <th scope="col" class="py-1 pr-3 text-left font-medium whitespace-nowrap">
+                          GAP
+                        </th>
+                      )}
+                      <th scope="col" class="hidden py-1 pr-3 text-right font-medium whitespace-nowrap sm:table-cell">
+                        vs media
+                      </th>
                       <th scope="col" class="w-full py-1">
                         <span class="sr-only">Comparación</span>
                       </th>
@@ -387,6 +539,14 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                         >
                           {fmtSpeed(r.v)}
                         </td>
+                        {showSplitGap && (
+                          <td class="py-1.5 pr-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                            {splitGap(r) === undefined ? '—' : pace(splitGap(r))}
+                          </td>
+                        )}
+                        <td class="hidden py-1.5 pr-3 text-right whitespace-nowrap text-gray-500 sm:table-cell dark:text-gray-400">
+                          {r.distanceM >= 999 ? vsMean(r.v) : ''}
+                        </td>
                         <td class="py-1.5">
                           <span
                             class="block h-2 rounded-full"
@@ -403,7 +563,9 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                 </table>
               </section>
               <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Barra más larga = km más rápido (resaltado en azul).
+                Barra más larga = km más rápido (resaltado en azul). «vs media»: diferencia con la media de los km
+                completos ({cycling ? 'km/h' : 's/km; + es más lento'})
+                {showSplitGap ? '. GAP: ritmo ajustado por pendiente (Minetti)' : ''}.
               </p>
             </section>
           )}
@@ -433,12 +595,81 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
               </section>
             )}
 
-            {(dynamics.length > 0 || others.length > 0) && (
+            {paceZoneS && paceZoneTotal > 0 && (
+              <section class:list={[card, 'p-4']}>
+                <h2 class="text-base font-semibold">Zonas de ritmo (ajustado por pendiente)</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Ritmos de Daniels con tu VDOT de esa fecha ({km(zoneVdot)}, mejores marcas de los 180 días previos):
+                  un cambio de forma no reescribe actividades antiguas.
+                </p>
+                <ul class="mt-3 space-y-2.5 text-sm">
+                  {paceZoneRows.map((z, i) => (
+                    <li class="grid grid-cols-[7.5rem_1fr_3rem_4.5rem] items-center gap-3">
+                      <span class="font-semibold">{z.label}</span>
+                      <span class="min-w-0">
+                        <span class="block h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                          <span
+                            class="block h-full rounded-full"
+                            style={`width:${z.pct}%;background:var(--viz-1);opacity:${ZONE_OPACITY[i]}`}
+                          />
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{z.range} /km</span>
+                      </span>
+                      <span class="text-right font-semibold tabular-nums">{Math.round(z.pct)} %</span>
+                      <span class="text-right text-gray-500 tabular-nums dark:text-gray-400">{z.time}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {rr && (
+              <section class:list={[card, 'p-4']}>
+                <h2 class="text-base font-semibold">Variabilidad de la FC durante la sesión</h2>
+                <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt class="text-gray-500 dark:text-gray-400">RMSSD</dt>
+                    <dd class="font-semibold tabular-nums">{km(rr.rmssd)} ms</dd>
+                  </div>
+                  <div>
+                    <dt class="text-gray-500 dark:text-gray-400">ln RMSSD</dt>
+                    <dd class="font-semibold tabular-nums">{km(rr.lnRmssd, 2)}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-gray-500 dark:text-gray-400">SDNN</dt>
+                    <dd class="font-semibold tabular-nums">{km(rr.sdnn)} ms</dd>
+                  </div>
+                  <div>
+                    <dt class="text-gray-500 dark:text-gray-400">pNN50</dt>
+                    <dd class="font-semibold tabular-nums">{km(rr.pnn50)} %</dd>
+                  </div>
+                  <div>
+                    <dt class="text-gray-500 dark:text-gray-400">Latidos útiles</dt>
+                    <dd class="font-semibold tabular-nums">{int(rr.count)}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-gray-500 dark:text-gray-400">Descartados</dt>
+                    <dd class="font-semibold tabular-nums">{km(rr.artifactPct)} %</dd>
+                  </div>
+                </dl>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Intervalos RR del archivo FIT, sin artefactos. En ejercicio la VFC cae mucho: compárala solo con
+                  sesiones parecidas, no con la nocturna. Evidencia limitada.
+                </p>
+              </section>
+            )}
+
+            {(dynamics.length > 0 || power.length > 0 || others.length > 0) && (
               <section
-                class:list={[card, 'grid gap-6 p-4', dynamics.length > 0 && others.length > 0 && 'sm:grid-cols-2']}
+                class:list={[
+                  card,
+                  'grid gap-6 p-4',
+                  [dynamics, power, others].filter((g) => g.length > 0).length > 1 && 'sm:grid-cols-2',
+                ]}
               >
                 {[
                   { title: 'Dinámica de carrera', rows: dynamics },
+                  { title: 'Potencia', rows: power },
                   { title: 'Otros datos', rows: others },
                 ]
                   .filter((g) => g.rows.length > 0)
@@ -459,6 +690,80 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
             )}
           </div>
         </div>
+
+        {showRoute && (
+          <section class:list={[card, 'min-w-0 p-4']} aria-labelledby="misma-ruta">
+            <h2 id="misma-ruta" class="text-base font-semibold">
+              En la misma ruta · {routeMatches.length} veces
+            </h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Mismo deporte, salida a menos de 250 m y distancia parecida (±5 %).
+            </p>
+            {routeSpec && (
+              <div
+                class="mt-3 w-full min-w-0"
+                data-chart={JSON.stringify(routeSpec)}
+                role="img"
+                aria-label={`${cycling ? 'Velocidad' : 'Ritmo'} en cada vez que hiciste esta ruta`}
+                style="min-height:200px"
+              />
+            )}
+            <section class="mt-3 overflow-x-auto" tabindex="0" aria-labelledby="tabla-ruta">
+              <table class="w-full text-sm">
+                <caption id="tabla-ruta" class="sr-only">
+                  Actividades en la misma ruta
+                </caption>
+                <thead class="text-xs text-gray-500 dark:text-gray-400">
+                  <tr>
+                    <th scope="col" class="py-1 pr-3 text-left font-medium">
+                      Fecha
+                    </th>
+                    <th scope="col" class="py-1 pr-3 text-right font-medium">
+                      Tiempo
+                    </th>
+                    <th scope="col" class="py-1 pr-3 text-right font-medium">
+                      {cycling ? 'km/h' : 'Ritmo'}
+                    </th>
+                    <th scope="col" class="py-1 pr-3 text-right font-medium">
+                      FC
+                    </th>
+                    <th scope="col" class="hidden py-1 text-right font-medium sm:table-cell">
+                      Eficiencia
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="tabular-nums">
+                  {routeMatches.toReversed().map((a) => (
+                    <tr
+                      class:list={['border-t border-gray-100 dark:border-gray-700', a.id === run.id && 'font-semibold']}
+                    >
+                      <td class="py-1.5 pr-3 whitespace-nowrap">
+                        {a.id === run.id ? (
+                          <span>
+                            {shortDate(a.date)} {a.date.slice(0, 4)} (esta)
+                          </span>
+                        ) : (
+                          <a href={`/actividades/${a.id}`} class="text-blue-700 hover:underline dark:text-blue-400">
+                            {shortDate(a.date)} {a.date.slice(0, 4)}
+                          </a>
+                        )}
+                      </td>
+                      <td class="py-1.5 pr-3 text-right">{duration(a.movingS)}</td>
+                      <td class="py-1.5 pr-3 text-right whitespace-nowrap">{fmtSpeed(routeSpeed(a))}</td>
+                      <td class="py-1.5 pr-3 text-right">{int(a.avgHr)}</td>
+                      <td class="hidden py-1.5 text-right sm:table-cell">
+                        {efficiencyFactor(a) === undefined ? '—' : km(efficiencyFactor(a), 2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Eficiencia: metros por minuto ÷ FC media (más alto = más rápido con el mismo esfuerzo).
+            </p>
+          </section>
+        )}
       </div>
     )
   )}

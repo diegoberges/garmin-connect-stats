@@ -84,3 +84,18 @@
   --color-gray-900: var(--color-zinc-900);
   --color-gray-950: var(--color-zinc-950);
 }
+
+/* Botones de zoom de ApexCharts en modo oscuro (por defecto vienen pensados para fondo claro) */
+.dark .apexcharts-toolbar {
+  background: transparent;
+}
+.dark .apexcharts-toolbar .apexcharts-selected,
+.dark .apexcharts-toolbar > div:hover {
+  background: var(--color-zinc-700);
+}
+.dark .apexcharts-toolbar svg {
+  fill: var(--color-zinc-400);
+}
+.dark .apexcharts-toolbar .apexcharts-selected svg {
+  fill: var(--color-blue-400);
+}

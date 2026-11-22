@@ -12,6 +12,7 @@ import {
   getActivities,
   getDailyHealth,
   getHrReference,
+  getWeights,
   getFitnessAge,
   getVo2Max,
   type Activity,
@@ -38,6 +39,7 @@ import { vo2Percentile } from '../lib/vo2-norms';
 import { alertHistory, resolveThresholds } from '../lib/sleep-alert';
 import { WARMUP_DAYS, dailyLoad, estimateHrParams, pmc } from '../lib/load';
 import { READINESS_WEIGHTS, readiness, readinessLabel } from '../lib/readiness';
+import { weightChange, weightTrend } from '../lib/weight';
 
 /** 90 días: 60 para las líneas base + 30 visibles; también cubre 12 semanas de minutos de intensidad. */
 const FETCH_DAYS = 90;
@@ -52,17 +54,19 @@ let vo2: Vo2Point[] = [];
 let fitness: FitnessAge | undefined;
 let acts: Activity[] | undefined;
 let hrRef: { restingHr: number; maxHr: number } | undefined;
+let weights: { date: string; kg: number }[] = [];
 let error: unknown;
 if (client) {
   try {
     const from = addDays(today, -(FETCH_DAYS - 1));
-    [all, vo2, fitness, acts, hrRef] = await Promise.all([
+    [all, vo2, fitness, acts, hrRef, weights] = await Promise.all([
       getDailyHealth(client, from, today),
       getVo2Max(client, from, today).catch(() => []),
       getFitnessAge(client).catch(() => undefined),
       // Para la forma (TSB) de la disposición: si falla, se calcula sin ella
       getActivities(client, addDays(from, -WARMUP_DAYS), today).catch(() => undefined),
       getHrReference(client).catch(() => undefined),
+      getWeights(client, from, today).catch(() => []),
     ]);
   } catch (err) {
     error = err;
@@ -245,6 +249,20 @@ const stepsSpec: ChartSpec = {
 // Diferencia sobre los valores ya redondeados, para que cuadre con lo que se muestra
 const ageDiff = fitness?.fitnessAge !== undefined && age !== undefined ? age - fitness.fitnessAge : undefined;
 const leverFmt = (x: number) => (Number.isInteger(x) ? int(x) : km(x));
+
+// ---------- Peso (media de 7 días) ----------
+const wTrend = weightTrend(weights);
+const wChange = weightChange(wTrend);
+const weightSpec: ChartSpec = {
+  type: 'line',
+  categories: wTrend.map((w) => shortDate(w.date)),
+  series: [
+    { name: 'Media 7 días', data: wTrend.map((w) => Math.round(w.avg7 * 10) / 10), color: 1 },
+    { name: 'Cada pesaje', data: wTrend.map((w) => Math.round(w.kg * 10) / 10), color: 1, faint: true },
+  ],
+  format: 'dec1',
+  height: 220,
+};
 
 // ---------- Contexto ----------
 const bbSpec: ChartSpec = {
@@ -666,6 +684,17 @@ const TONE = {
             spec={stepsSpec}
             table={{ headers: ['Día', 'Pasos'], rows: view.map((d) => [shortDate(d.date), int(d.steps)]) }}
           />
+          {wTrend.length >= 2 && (
+            <ChartCard
+              title="Peso (kg)"
+              subtitle={`Media de 7 días, que amortigua la hidratación y la hora del pesaje${wChange !== undefined ? ` · ${wChange >= 0 ? '+' : '−'}${km(Math.abs(wChange))} kg en ${FETCH_DAYS} días` : ''}`}
+              spec={weightSpec}
+              table={{
+                headers: ['Día', 'Pesaje', 'Media 7 d'],
+                rows: wTrend.map((w) => [shortDate(w.date), km(w.kg), km(w.avg7)]),
+              }}
+            />
+          )}
         </div>
       </section>
 

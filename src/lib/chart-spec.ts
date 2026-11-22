@@ -34,4 +34,8 @@ export interface ChartSpec {
   group?: string;
   /** Oculta las etiquetas del eje x (en gráficas apiladas solo la de abajo las muestra). */
   hideXLabels?: boolean;
+  /** Zoom por selección en el eje x (arrastrando), con botón para restablecer; se sincroniza en el grupo. */
+  zoom?: boolean;
+  /** Con zoom: muestra los botones (lupa y restablecer). En un grupo basta con mostrarlos en una gráfica. */
+  zoomControls?: boolean;
 }

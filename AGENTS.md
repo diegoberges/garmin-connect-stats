@@ -157,6 +157,9 @@ src/
     progression.ts            # VO2máx estimado por sesión, pronósticos en el tiempo, VDOT de carrera vs forma
     consistency.ts            # número de Eddington, rachas y calendario anual
     data-quality.ts           # avisos de calidad de datos (duplicadas, sin FC, GPS, FC imposible)
+    activity-analysis.ts      # zonas de ritmo de Daniels por fecha y actividades en la misma ruta
+    rr.ts                     # VFC intra-sesión con los intervalos RR del FIT
+    weight.ts                 # peso con media de 7 días
     vo2-norms.ts              # percentiles de VO2máx (FRIEND 2015)
     activity-kinds.ts         # familia de cada tipo (a pie, ciclismo, natación, otros)
     stats.ts, dates.ts, format.ts, settings.ts, flash.ts, chart-spec.ts
@@ -268,6 +271,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - VO2máx con margen ±5 % y percentil por sexo y edad (FRIEND 2015; el sexo se guarda en el perfil).
   - Minutos de intensidad semanales (moderados + vigorosos ×2) frente a los 150 de la OMS.
   - Pasos frente a una meta por edad.
+  - Peso con la media de 7 días (si hay pesajes en Garmin; sin captura real para comprobar unidades).
 - **Contexto** (evidencia limitada): Body Battery, estrés (se muestra como "activación fisiológica") y fases del sueño.
 
 - **Disposición** (en la tarjeta Hoy): 0–100, 50 = tu día normal. z de VFC (35 %), FC en reposo (25 %),
@@ -315,9 +319,15 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   La tabla se pagina de 20 en 20 (`?pagina=`).
 
 - `/actividades/[id]`:
-  - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave;
-  - ritmo, FC y altitud con el cursor sincronizado;
-  - parciales por km, zonas de FC y dinámica de carrera.
+  - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave, con la carga
+    TRIMP de la sesión, el RPE y la sensación (si se anotaron) y la potencia (solo con sensor);
+  - ritmo (y GAP), FC, altitud, cadencia y respiración con el cursor y el **zoom** sincronizados
+    (arrastrar en una amplía todas; los botones solo en la primera);
+  - parciales por km con GAP (si hay desnivel) y diferencia con la media de los km completos;
+  - zonas de FC (las de Garmin en esa fecha) y **zonas de ritmo** con el GAP y los ritmos de Daniels del
+    VDOT de los 180 días previos a la actividad (así quedan versionadas por fecha);
+  - VFC intra-sesión (RMSSD, SDNN, pNN50) si el FIT trae intervalos RR;
+  - actividades en la misma ruta (salida a < 250 m y distancia ±5 %) con su ritmo y eficiencia.
 - `/competiciones`: `eventType=race` de todo el historial, por años; mejor marca de 5K, 10K, media y
   maratón con trofeo; etiquetas por distancia (maratón > media > 10K > 5K).
   - Tiempos y ritmos sobre el **tiempo total** (`elapsedDuration`, con pausas), como Strava.
@@ -361,6 +371,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - El ritmo va con el eje invertido (más rápido arriba) y escalas redondas.
   - Toda gráfica de `ChartCard` ofrece "Ver datos" (tabla accesible).
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
+  - `zoom: true` activa el zoom por selección en x (se sincroniza en el `group`); `zoomControls: false`
+    oculta los botones en las demás gráficas del grupo.
   - Las barras de ritmo no tienen sentido (no empiezan en cero): para parciales, usa línea con puntos.
 - **Tarjetas de estado**: borde izquierdo de color con estado en texto (nunca solo color) y
   variaciones con flecha + texto.

@@ -78,3 +78,24 @@ export async function getDailyHealth(client: GarminClient, from: string, to: str
 
   return [...byDate.values()];
 }
+
+/** Peso diario (kg). Garmin lo da en gramos; si llega un valor que ya parece kg, se respeta. */
+export async function getWeights(
+  client: GarminClient,
+  from: string,
+  to: string,
+): Promise<{ date: string; kg: number }[]> {
+  const res = (await unwrap(
+    client.GET('/weight-service/weight/range/{startDate}/{endDate}', {
+      params: { path: { startDate: from, endDate: to } },
+    }),
+  )) as { dailyWeightSummaries?: { summaryDate?: string; latestWeight?: { weight?: number } | null }[] } | undefined;
+  return (res?.dailyWeightSummaries ?? [])
+    .map((d) => {
+      const w = num(d.latestWeight?.weight);
+      if (!d.summaryDate || w === undefined || w <= 0) return undefined;
+      return { date: d.summaryDate, kg: w > 500 ? w / 1000 : w };
+    })
+    .filter((x): x is { date: string; kg: number } => x !== undefined)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
