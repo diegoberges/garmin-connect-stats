@@ -129,8 +129,6 @@ export interface UserProfile {
   fullName?: string;
   imageUrl?: string;
   timeZone?: string;
-  age?: number;
-  fitnessAge?: number;
   /** La llamada al perfil sirve de prueba de conexión: undefined = OK, texto = motivo del fallo. */
   connectionError?: string;
 }
