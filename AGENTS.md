@@ -285,13 +285,27 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 
 ## Convenciones de interfaz
 
+- **Web moderna**: antes de tocar HTML, CSS o JS del navegador, consulta la skill **Modern Web Guidance**
+  (plugin `modern-web-guidance@googlechrome`), con `search`/`retrieve`, y sigue la guía que aplique.
+  Para buscar patrones antiguos en todo el código: `pnpx modern-web-guidance@latest legacy-scan src`.
+- **Navegadores soportados**: lo que sea **Baseline ampliamente disponible** se usa sin alternativas. Lo
+  **recién disponible** o con soporte limitado solo con detección y degradación elegante: la página tiene
+  que seguir funcionando sin ello. Nada de polyfills pesados; si hace falta una alternativa, que sea
+  corta (unas 20 líneas) y sin dependencias nuevas.
+
 - **Formato es-ES** (`format.ts`): coma decimal, unidades métricas, zona horaria Europe/Madrid y semanas de lunes a domingo.
 - **Navegación**:
   - menú de perfil a la izquierda, con foto, nombre, key, sexo y estado de la conexión;
   - Salud, Rendimiento y Actividades a la derecha. Actividades es un desplegable con Actividades,
     Competiciones y Comparador.
-- **Modo oscuro**: clase `.dark` en `<html>` y preferencia en `localStorage`. En oscuro, la paleta `gray-*`
-  se redirige a `zinc` (en `global.css`); en claro, `gray` normal y fondos blancos.
+- **Modo oscuro** (`lib/theme.ts`, `scripts/theme.ts` y el script en línea de `Base.astro`):
+  - Sin preferencia guardada se sigue al sistema. La preferencia va en `localStorage` (`theme`).
+  - `<meta name="color-scheme">` lleva `light dark` (sistema), `light` o `dark`. De él sale `color-scheme`
+    en `:root`, que hace que los controles nativos y las barras de desplazamiento sigan al tema.
+  - La clase `.dark` en `<html>` se calcula del mismo valor: de ella dependen Tailwind, Flowbite y las gráficas.
+  - El botón pasa al tema contrario del que se ve; si coincide con el del sistema, **borra** la preferencia
+    (no la guarda), para que siempre se pueda volver a seguir al sistema. Su texto dice qué hará.
+  - En oscuro, la paleta `gray-*` se redirige a `zinc` (en `global.css`); en claro, `gray` normal y fondos blancos.
 - **Gráficas**:
   - Siempre con un `ChartSpec` serializado en `data-chart`. Nunca uses ApexCharts directamente en una página.
   - Colores desde los tokens `--viz-*` (paleta validada en claro y oscuro), máximo 4 series de color.

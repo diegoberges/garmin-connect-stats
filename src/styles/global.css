@@ -20,6 +20,17 @@
   &:has(> head > meta[name="color-scheme"][content="light"]) {
     color-scheme: light;
   }
+  /* Sin JS no hay clase .dark y la página sale en claro: que los controles nativos también */
+  @media (scripting: none) {
+    color-scheme: light;
+  }
+
+  /* Barras de desplazamiento y controles nativos con la paleta de la app (el pulgar con contraste ≥ 3:1
+     frente a la pista). No se anima: en WebKit parpadea. */
+  --scrollbar-thumb: var(--color-gray-500);
+  --scrollbar-track: var(--color-gray-100);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  accent-color: var(--color-blue-700);
 
   /* Tokens de gráficas (paleta validada: ver skill dataviz). Oscuro con pasos propios, no invertido. */
   --viz-surface: #ffffff;
@@ -34,6 +45,10 @@
   --viz-seq-light: #86b6ef; /* azul claro (rango / banda) */
 }
 .dark {
+  --scrollbar-thumb: var(--color-zinc-500);
+  --scrollbar-track: var(--color-zinc-900);
+  accent-color: var(--color-blue-500);
+
   --viz-surface: #27272a; /* zinc-800 de las tarjetas */
   --viz-text: #c3c2b7;
   --viz-muted: #898781;
