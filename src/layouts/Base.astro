@@ -48,11 +48,20 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <title>{title} · Garmin Stats</title>
+    <meta name="color-scheme" content="light dark">
     <script is:inline>
-      // Aplica el tema antes de pintar para evitar parpadeo
-      const t = localStorage.getItem('theme');
-      if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
+      // Aplica el tema guardado antes de pintar (evita el parpadeo); sin valor guardado se sigue al sistema
+      {
+        const meta = document.querySelector('meta[name="color-scheme"]');
+        try {
+          const s = localStorage.getItem('theme');
+          if (s === 'light' || s === 'dark') meta.content = s;
+        } catch {
+          // Datos del sitio bloqueados: se sigue al sistema
+        }
+        const m = meta.content;
+        const dark = m === 'dark' || (m !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
       }
     </script>
     <Analytics />
@@ -143,10 +152,7 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
 
     <script>
       import 'flowbite';
-      document.getElementById('theme-toggle')?.addEventListener('click', () => {
-        const dark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', dark ? 'dark' : 'light');
-      });
+      import '../scripts/theme';
     </script>
   </body>
 </html>

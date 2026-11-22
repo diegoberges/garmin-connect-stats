@@ -9,6 +9,19 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* Controles nativos (barras de desplazamiento, select, inputs) en el tema que se ve. La base sigue al
+   sistema; el <meta name="color-scheme"> que fija el botón de tema lo sobrescribe (sin JS, sistema). */
+:root {
+  color-scheme: light dark;
+
+  &:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+  }
+  &:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+  }
+}
+
 /* Tokens de gráficas (paleta validada: ver skill dataviz). Oscuro con pasos propios, no invertido. */
 :root {
   --viz-surface: #ffffff;

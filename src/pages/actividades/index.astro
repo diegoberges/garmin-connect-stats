@@ -64,7 +64,7 @@ const page = Math.min(Math.max(1, Math.floor(Number(Astro.url.searchParams.get('
 const pageItems = activities.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
 const t = totals(activities);
-const chrono = [...activities].reverse();
+const chrono = activities.toReversed();
 const weekly = weeklyTotals(activities, weeks, today);
 const weekCats = weekly.map((w) => shortDate(w.week));
 const distanceBased = kind !== undefined && hasDistance(kind) && t.km > 0;

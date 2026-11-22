@@ -27,7 +27,7 @@ const sd = (xs: number[]) => {
 };
 export function median(xs: number[]): number | undefined {
   if (!xs.length) return undefined;
-  const s = [...xs].sort((a, b) => a - b);
+  const s = xs.toSorted((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
@@ -108,7 +108,7 @@ export interface Signal {
 export type DayState = 'normal' | 'attention' | 'alert' | 'calibrating';
 
 /** Último elemento con valor (la noche de hoy puede no haberse sincronizado aún). */
-const lastWith = <T>(xs: T[], has: (x: T) => boolean) => [...xs].reverse().find(has);
+const lastWith = <T>(xs: T[], has: (x: T) => boolean) => xs.findLast(has);
 
 type Fmt = { ms: (v: number) => string; hm: (s: number) => string };
 

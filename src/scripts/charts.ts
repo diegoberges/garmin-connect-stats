@@ -21,7 +21,7 @@ function renderAll() {
   for (const el of document.querySelectorAll<HTMLElement>('[data-chart]')) {
     charts.get(el)?.destroy();
     const spec = JSON.parse(el.dataset.chart!) as ChartSpec;
-    el.innerHTML = '';
+    el.replaceChildren();
     const chart = new ApexCharts(el, buildOptions(spec, envFor(el)));
     chart.render();
     charts.set(el, chart);
