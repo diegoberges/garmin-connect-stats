@@ -10,6 +10,9 @@ nada depende de un usuario concreto y todo se separa por el hash de la key.
 
 Idioma: **toda la interfaz, los textos, los comentarios y los commits van en español**.
 
+Licencia: **todos los derechos reservados** (`LICENSE`). El repositorio es público solo para consultarlo;
+no cambies la licencia ni añadas una de código abierto.
+
 ---
 
 ## Stack
@@ -57,9 +60,9 @@ choca con TypeScript 6 del proyecto. No lo instales como dependencia.
 **CI** (`.github/workflows/ci.yml`): en cada PR y en cada push a `main`, GitHub Actions instala con
 `pnpm install --frozen-lockfile` y ejecuta `biome ci`, `pnpm check`, `pnpm test` y `pnpm build`. Si algo
 falla, el PR queda en rojo: no se fusiona hasta que pase.
-El repo es privado sin GitHub Pro, así que GitHub **no puede bloquear** la fusión (ni protección de rama ni
-rulesets). La norma es de proceso: **antes de `gh pr merge`, comprueba `gh pr checks <n>` y fusiona solo si
-"Formato, lint, tipos, tests y build" está en verde.**
+`main` está **protegida**: no se puede fusionar ningún PR (ni hacer push directo) si la comprobación
+"Formato, lint, tipos, tests y build" no está en verde; tampoco se permiten force push ni borrar la rama,
+y la regla aplica también a los administradores.
 
 **Estilo de código**: lo marca **Biome** (`biome.json`): 2 espacios, comillas simples, punto y coma, comas
 finales y 120 columnas.
@@ -311,7 +314,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 5. **Subir y desplegar solo cuando el usuario lo pida**:
    - commit en español con la línea `Co-Authored-By` indicada;
    - PR con `gh`, con resumen y pruebas en español, terminado con la línea de Claude Code;
-   - espera a la CI (`gh pr checks <n>`) y **no fusiones si no está en verde**;
+   - espera a la CI (`gh pr checks <n>`); GitHub no deja fusionar hasta que esté en verde;
    - `gh pr merge --merge --delete-branch`;
    - Vercel despliega `main` solo: espera al estado del commit con
      `gh api repos/<owner>/<repo>/commits/<sha>/status`.
