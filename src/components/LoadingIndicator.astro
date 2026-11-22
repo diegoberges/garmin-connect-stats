@@ -43,6 +43,7 @@
     if (/^\/actividades\/\d+/.test(p)) return 'Descargando la actividad y su recorrido…';
     if (p.startsWith('/actividades')) return 'Cargando tus actividades…';
     if (p.startsWith('/competiciones')) return 'Buscando tus competiciones en todo tu historial…';
+    if (p.startsWith('/calidad')) return 'Revisando tu historial completo de actividades…';
     if (p.startsWith('/comparador'))
       return 'Descargando tu historial completo de actividades… la primera vez puede tardar.';
     return 'Cargando…';

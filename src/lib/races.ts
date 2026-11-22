@@ -19,14 +19,17 @@ export function raceCategory(a: Pick<Activity, 'distanceKm' | 'typeKey'>): RaceC
   return RANGES.find(([, lo, hi]) => a.distanceKm >= lo && a.distanceKm <= hi)?.[0] ?? 'Otra';
 }
 
+/** Tiempo de una competición: el total con pausas (como Strava); si falta, el del temporizador. */
+export const raceTime = (a: Pick<Activity, 'elapsedS' | 'durationS'>) => a.elapsedS ?? a.durationS;
+
 /** Id de la mejor competición (menor tiempo) en cada categoría estándar. */
 export function bestRaceIds(races: Activity[]): Set<number> {
   const best = new Map<RaceCategory, Activity>();
   for (const r of races) {
     const c = raceCategory(r);
-    if (c === 'Otra' || !r.durationS) continue;
+    if (c === 'Otra' || !raceTime(r)) continue;
     const cur = best.get(c);
-    if (!cur || r.durationS < cur.durationS) best.set(c, r);
+    if (!cur || raceTime(r) < raceTime(cur)) best.set(c, r);
   }
   return new Set([...best.values()].map((r) => r.id));
 }

@@ -18,6 +18,7 @@ export function mapActivity(a: ApiActivity): Activity {
     distanceKm,
     durationS: num(a.duration) ?? 0,
     movingS,
+    elapsedS: num(a.elapsedDuration),
     paceSPerKm: distanceKm > 0.05 && movingS > 0 ? movingS / distanceKm : undefined,
     avgHr: num(a.averageHR),
     maxHr: num(a.maxHR),

@@ -14,11 +14,15 @@ import {
   clientFor,
   getActivities,
   getActivityTrack,
-  getAllRuns,
+  getAllActivities,
   getHrReference,
+  getVo2Max,
   type Activity,
   type ActivityTrack,
+  type Vo2Point,
 } from '../lib/garmin';
+import { predictionTrend, vo2At, vo2Trend } from '../lib/progression';
+import { eddington, streaks } from '../lib/consistency';
 import { criticalSpeed, efTrend, paceAtHr, predictTime, vdot } from '../lib/efficiency';
 import { addDays, isoDate, weekStart } from '../lib/dates';
 import { pctChange, runsBetween, totals, weeklyTotals } from '../lib/stats';
@@ -71,20 +75,25 @@ const loadFrom = addDays(from, -WARMUP_DAYS);
 
 let all: Activity[] = [];
 let history: Activity[] | undefined;
+/** Historial completo de todas las actividades (para rachas); `history` son solo las carreras. */
+let everything: Activity[] | undefined;
+let garminVo2: Vo2Point[] = [];
 let hrRef: { restingHr: number; maxHr: number } | undefined;
 let longTracks: { run: Activity; track?: ActivityTrack }[] = [];
 let error: unknown;
 if (client) {
   try {
-    [all, history, hrRef] = await Promise.all([
+    [all, everything, hrRef, garminVo2] = await Promise.all([
       getActivities(client, loadFrom, today),
       // Si el histórico falla, la tabla se muestra solo con el periodo
-      getAllRuns(client, today).catch((err) => {
-        console.error('[garmin] histórico de carreras', err);
+      getAllActivities(client, today).catch((err) => {
+        console.error('[garmin] histórico de actividades', err);
         return undefined;
       }),
       getHrReference(client).catch(() => undefined),
+      getVo2Max(client, from, today).catch(() => []),
     ]);
+    history = everything?.filter((a) => /run/.test(a.typeKey));
   } catch (err) {
     error = err;
   }
@@ -344,6 +353,60 @@ const paceRefSpec: ChartSpec | undefined = refHr
 const decouplings = longTracks
   .map(({ run, track }) => ({ run, d: track?.decoupling }))
   .filter((x): x is { run: Activity; d: NonNullable<ActivityTrack['decoupling']> } => Boolean(x.d));
+
+// VO2máx estimado por sesión (ritmo y FC) frente al de Garmin, en el periodo
+const vo2Est = vo2Trend([...(history ?? []), ...runs], hr.maxHr).filter((p) => p.date >= from);
+const vo2Dates = [...new Set(vo2Est.map((p) => p.date))];
+const garminByDate = garminVo2.toSorted((a, b) => a.date.localeCompare(b.date));
+const garminAt = (d: string) => garminByDate.findLast((g) => g.date <= d)?.value;
+const vo2Spec: ChartSpec = {
+  type: 'line',
+  categories: vo2Dates.map(shortDate),
+  series: [
+    {
+      name: 'Estimado (media 28 días)',
+      data: vo2Dates.map((d) => {
+        const v = vo2At(vo2Est, d);
+        return v === undefined ? null : Math.round(v * 10) / 10;
+      }),
+      color: 1,
+    },
+    {
+      name: 'Cada carrera',
+      data: vo2Dates.map((d) => {
+        const v = vo2Est.findLast((p) => p.date === d)?.value;
+        return v === undefined ? null : Math.round(v * 10) / 10;
+      }),
+      color: 1,
+      faint: true,
+    },
+    ...(garminByDate.length
+      ? [{ name: 'Garmin', data: vo2Dates.map((d) => garminAt(d) ?? null), color: 3 as ColorSlot }]
+      : []),
+  ],
+  format: 'dec1',
+  height: 240,
+};
+
+// Pronóstico de 10K y media semana a semana (mejor marca ≥ 5 km de los 90 días previos)
+const predTrend = predictionTrend([...(history ?? []), ...runs], weeks, today);
+const hasPredTrend = predTrend.filter((p) => p.vdot !== undefined).length >= 2;
+const predSpec: ChartSpec = {
+  type: 'line',
+  categories: predTrend.map((p) => shortDate(p.week)),
+  series: [
+    { name: '10K', data: predTrend.map((p) => (p.t10k ? Math.round(p.t10k / 10) : null)), color: 1 },
+    { name: 'Media maratón', data: predTrend.map((p) => (p.tHalf ? Math.round(p.tHalf / 21.0975) : null)), color: 2 },
+  ],
+  format: 'pace',
+  reversed: true,
+  height: 240,
+};
+
+// Constancia: Eddington de carrera y rachas, sobre todo el historial (o el periodo si falla)
+const allActs = everything ?? all;
+const edd = eddington(allActs);
+const streak = streaks(allActs, today);
 
 // Curva de marcas (ritmo por distancia) y predicción
 const curveDistances = BEST_EFFORT_DISTANCES.filter((d) => periodByDist.has(d) || allTime.has(d));
@@ -1096,6 +1159,100 @@ const ZONE_TONE: Record<string, string> = {
               ]),
             }}
           />
+        )}
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          {vo2Dates.length >= 2 && (
+            <ChartCard
+              title="VO2máx estimado"
+              subtitle="Por carrera, con el ritmo y la FC (Daniels + Swain), solo en asfalto o cinta y sin las de FC muy baja o muy alta. Ruidoso: fíjate en la media. Garmin, como referencia."
+              spec={vo2Spec}
+              table={{
+                headers: ['Día', 'Carrera', 'Media 28 d', 'Garmin'],
+                rows: vo2Dates.map((d) => [
+                  shortDate(d),
+                  km(vo2Est.findLast((p) => p.date === d)?.value),
+                  km(vo2At(vo2Est, d)),
+                  km(garminAt(d)),
+                ]),
+              }}
+            />
+          )}
+          {hasPredTrend && (
+            <ChartCard
+              title="Pronóstico a lo largo del tiempo"
+              subtitle="Ritmo previsto en 10K y media maratón (VDOT de tu mejor marca de 5 km o más de los 90 días anteriores a cada semana). Más rápido arriba."
+              spec={predSpec}
+              table={{
+                headers: ['Semana', 'VDOT', '10K', 'Media'],
+                rows: predTrend.map((p) => [
+                  shortDate(p.week),
+                  km(p.vdot),
+                  p.t10k ? duration(p.t10k) : '—',
+                  p.tHalf ? duration(p.tHalf) : '—',
+                ]),
+              }}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* ---------- Constancia ---------- */}
+      <section class="space-y-4" aria-labelledby="constancia">
+        <h2 id="constancia" class={sectionTitle}>
+          Constancia
+        </h2>
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div class:list={[card, 'p-4']}>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Número de Eddington (carrera)</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums">{edd.value}</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {edd.value} días con al menos {edd.value} km. Para llegar a {edd.value + 1}: {edd.toNext}{' '}
+              {edd.toNext === 1 ? 'día más' : 'días más'} de {edd.value + 1} km o más.
+            </p>
+          </div>
+          <div class:list={[card, 'p-4']}>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Racha de días con actividad</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums">
+              {streak.currentDays.length} {streak.currentDays.length === 1 ? 'día' : 'días'}
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {streak.currentDays.from ? `Desde el ${shortDate(streak.currentDays.from)}. ` : ''}La más larga:{' '}
+              {streak.longestDays.length} días
+              {streak.longestDays.from
+                ? ` (${shortDate(streak.longestDays.from)} ${streak.longestDays.from.slice(0, 4)})`
+                : ''}
+              .
+            </p>
+          </div>
+          <div class:list={[card, 'p-4']}>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Semanas seguidas corriendo</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums">
+              {streak.currentWeeks.length} {streak.currentWeeks.length === 1 ? 'semana' : 'semanas'}
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              La más larga: {streak.longestWeeks.length} semanas
+              {streak.longestWeeks.from
+                ? ` (desde el ${shortDate(streak.longestWeeks.from)} ${streak.longestWeeks.from.slice(0, 4)})`
+                : ''}
+              .
+            </p>
+          </div>
+          <div class:list={[card, 'p-4']}>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Calendario anual</p>
+            <p class="mt-1 text-sm">
+              Tus días de actividad y tus competiciones, año a año, en{' '}
+              <a href="/competiciones#calendario" class="text-blue-700 underline dark:text-blue-400">
+                Competiciones
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+        {!everything && (
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            No se ha podido cargar el historial completo: las rachas y el Eddington cubren solo el periodo cargado.
+          </p>
         )}
       </section>
     </div>

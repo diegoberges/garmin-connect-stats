@@ -40,6 +40,8 @@ export interface Activity {
   distanceKm: number;
   durationS: number;
   movingS: number;
+  /** Tiempo total, con las pausas (el que cuenta en una competición, como en Strava). */
+  elapsedS?: number;
   /** segundos por km (sobre tiempo en movimiento) */
   paceSPerKm?: number;
   avgHr?: number;
