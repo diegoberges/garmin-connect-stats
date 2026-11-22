@@ -1,6 +1,6 @@
 /** Agregaciones puras sobre los tipos de dominio (sin llamadas a la API). */
 import { addDays, weekStart } from './dates';
-import type { DayHealth, RunActivity } from './garmin/types';
+import type { DayHealth, Activity } from './garmin/types';
 
 export interface WeekTotal {
   week: string; // lunes YYYY-MM-DD
@@ -18,18 +18,21 @@ export interface RunTotals {
   /** FC media ponderada por tiempo */
   avgHr?: number;
   elevationGainM: number;
+  calories: number;
 }
 
-export function totals(runs: RunActivity[]): RunTotals {
+export function totals(runs: Activity[]): RunTotals {
   let km = 0;
   let movingS = 0;
   let elevationGainM = 0;
+  let calories = 0;
   let hrWeighted = 0;
   let hrTime = 0;
   for (const r of runs) {
     km += r.distanceKm;
     movingS += r.movingS;
     elevationGainM += r.elevationGainM ?? 0;
+    calories += r.calories ?? 0;
     if (r.avgHr) {
       hrWeighted += r.avgHr * r.movingS;
       hrTime += r.movingS;
@@ -42,11 +45,12 @@ export function totals(runs: RunActivity[]): RunTotals {
     paceSPerKm: km > 0 ? movingS / km : undefined,
     avgHr: hrTime > 0 ? hrWeighted / hrTime : undefined,
     elevationGainM,
+    calories,
   };
 }
 
 /** Totales por semana (lunes a domingo) para las `weeks` semanas que terminan en la de `today`. */
-export function weeklyTotals(runs: RunActivity[], weeks: number, today: string): WeekTotal[] {
+export function weeklyTotals(runs: Activity[], weeks: number, today: string): WeekTotal[] {
   const current = weekStart(today);
   const out: WeekTotal[] = [];
   for (let i = weeks - 1; i >= 0; i--) out.push({ week: addDays(current, -7 * i), km: 0, runs: 0, movingS: 0 });
@@ -61,7 +65,7 @@ export function weeklyTotals(runs: RunActivity[], weeks: number, today: string):
   return out;
 }
 
-export function runsBetween(runs: RunActivity[], from: string, to: string): RunActivity[] {
+export function runsBetween(runs: Activity[], from: string, to: string): Activity[] {
   return runs.filter((r) => r.date >= from && r.date <= to);
 }
 

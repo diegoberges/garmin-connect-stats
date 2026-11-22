@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { addDays, chunkRange, weekStart } from './dates';
 import { pace, duration } from './format';
 import { pctChange, totals, weeklyTotals } from './stats';
-import type { RunActivity } from './garmin/types';
+import type { Activity } from './garmin/types';
 
-const run = (date: string, km: number, movingS: number, avgHr?: number): RunActivity => ({
+const run = (date: string, km: number, movingS: number, avgHr?: number): Activity => ({
   id: 1,
   name: 'x',
   typeKey: 'running',

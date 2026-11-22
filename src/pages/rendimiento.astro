@@ -5,7 +5,7 @@ import ErrorState from '../components/ErrorState.astro';
 import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
 import RangeSelector from '../components/RangeSelector.astro';
-import { clientFor, getRuns, getVo2Max, type RunActivity, type Vo2Point } from '../lib/garmin';
+import { clientFor, getRuns, getVo2Max, type Activity, type Vo2Point } from '../lib/garmin';
 import { addDays, isoDate, weekStart } from '../lib/dates';
 import { pctChange, runsBetween, totals, weeklyTotals, type WeekTotal } from '../lib/stats';
 import { duration, hoursMinutes, int, km, pace, shortDate } from '../lib/format';
@@ -26,7 +26,7 @@ const thisWeek = weekStart(today);
 const lastWeek = addDays(thisWeek, -7);
 const from = addDays(thisWeek, -7 * (weeks - 1)); // ≥ 4 semanas: siempre incluye la semana pasada
 
-let runs: RunActivity[] = [];
+let runs: Activity[] = [];
 let vo2: Vo2Point[] = [];
 let weekly: WeekTotal[] = [];
 let error: unknown;

@@ -4,24 +4,35 @@ import ConnectPrompt from '../../components/ConnectPrompt.astro';
 import ErrorState from '../../components/ErrorState.astro';
 import StatCard from '../../components/StatCard.astro';
 import ChartCard from '../../components/ChartCard.astro';
-import { clientFor, getHrZones, getRun, type HrZones, type RunActivity } from '../../lib/garmin';
-import { dayLabel, duration, int, km, pace, runType, trainingEffect } from '../../lib/format';
+import { clientFor, getActivity, getHrZones, type HrZones, type Activity } from '../../lib/garmin';
+import { hasDistance, kindOf, speedLabel, speedUnit, speedValue } from '../../lib/activity-kinds';
+import { activityLabel, dayLabel, duration, int, km, pace, speed, trainingEffect } from '../../lib/format';
 import type { ChartSpec } from '../../lib/chart-spec';
 
 const id = Number(Astro.params.id);
 const client = clientFor(Astro.locals);
 
-let run: RunActivity | undefined;
+let run: Activity | undefined;
 let zones: HrZones | undefined;
 let error: unknown;
 if (client && Number.isInteger(id) && id > 0) {
   try {
-    [run, zones] = await Promise.all([getRun(client, id), getHrZones(client).catch(() => undefined)]);
+    run = await getActivity(client, id);
+    if (run) {
+      const k = kindOf(run.typeKey);
+      const sport = k === 'cycling' ? 'CYCLING' : k === 'swim' ? 'SWIMMING' : 'RUNNING';
+      zones = await getHrZones(client, sport).catch(() => undefined);
+    }
   } catch (err) {
     error = err;
   }
 }
 if (client && !error && !run) return new Response('Actividad no encontrada', { status: 404 });
+
+const kind = run ? kindOf(run.typeKey) : 'other';
+const swim = kind === 'swim';
+const avgSpeed = run ? speedValue(kind, run.distanceKm, run.movingS) : undefined;
+const showDistance = run !== undefined && hasDistance(kind) && run.distanceKm > 0;
 
 const zoneTotal = run ? run.hrZonesS.reduce((a, b) => a + b, 0) : 0;
 const zoneLabels = [1, 2, 3, 4, 5].map((z, i) => {
@@ -51,17 +62,21 @@ const zonesSpec: ChartSpec = {
           <div>
             <h1 class="text-2xl font-bold">{run.name}</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {dayLabel(run.date)} · {run.startLocal.slice(11, 16)} · {runType(run.typeKey)}
+              {dayLabel(run.date)} · {run.startLocal.slice(11, 16)} · {activityLabel(run.typeKey)}
             </p>
           </div>
 
           <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard label="Distancia" value={km(run.distanceKm, 2)} unit="km" />
+            {showDistance && (
+              <StatCard label="Distancia" value={swim ? int(run.distanceKm * 1000) : km(run.distanceKm, 2)} unit={swim ? 'm' : 'km'} />
+            )}
             <StatCard label="Tiempo en movimiento" value={duration(run.movingS)} hint={`Total ${duration(run.durationS)}`} />
-            <StatCard label="Ritmo medio" value={pace(run.paceSPerKm)} unit="/km" />
+            {avgSpeed !== undefined && (
+              <StatCard label={speedLabel(kind)} value={kind === 'cycling' ? speed(avgSpeed) : pace(avgSpeed)} unit={speedUnit(kind)} />
+            )}
             <StatCard label="FC media / máx" value={`${int(run.avgHr)} / ${int(run.maxHr)}`} unit="ppm" />
-            <StatCard label="Desnivel +" value={int(run.elevationGainM)} unit="m" />
-            <StatCard label="Cadencia" value={int(run.cadenceSpm)} unit="pasos/min" />
+            {run.elevationGainM ? <StatCard label="Desnivel +" value={int(run.elevationGainM)} unit="m" /> : null}
+            {run.cadenceSpm ? <StatCard label="Cadencia" value={int(run.cadenceSpm)} unit="pasos/min" /> : null}
             <StatCard
               label="Efecto entreno"
               value={run.aerobicTE !== undefined ? km(run.aerobicTE) : '—'}

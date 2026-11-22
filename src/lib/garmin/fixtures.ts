@@ -25,8 +25,10 @@ export function createFixtureClient() {
   return createClient<paths>({
     baseUrl: 'https://personal.connectapi.garmin.com',
     fetch: async (req: Request) => {
-      const { pathname } = new URL(req.url);
-      const file = ROUTES.find(([re]) => re.test(pathname))?.[1];
+      const { pathname, searchParams } = new URL(req.url);
+      let file = ROUTES.find(([re]) => re.test(pathname))?.[1];
+      // Búsqueda sin filtro de tipo → la captura con todos los tipos
+      if (file === 'activities-running' && !searchParams.has('activityType')) file = 'activities-30d';
       if (!file) return new Response('"sin captura"', { status: 404, headers: { 'Content-Type': 'application/json' } });
       return new Response(readFileSync(`.data/raw/${file}.json`), { headers: { 'Content-Type': 'application/json' } });
     },

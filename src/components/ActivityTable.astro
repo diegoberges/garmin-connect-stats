@@ -1,0 +1,77 @@
+---
+/** Listado de actividades; cada fila se formatea según su familia (ritmo, velocidad o nada). */
+import type { Activity } from '../lib/garmin/types';
+import { hasDistance, kindOf, speedUnit, speedValue } from '../lib/activity-kinds';
+import { activityLabel, dayLabel, duration, int, km, pace, speed } from '../lib/format';
+
+interface Props {
+  activities: Activity[];
+  /** Muestra la etiqueta del tipo junto al nombre (útil cuando se mezclan tipos). */
+  showType?: boolean;
+}
+const { activities, showType = false } = Astro.props;
+const kinds = activities.map((a) => kindOf(a.typeKey));
+const anyDistance = activities.some((a, i) => hasDistance(kinds[i]) && a.distanceKm > 0);
+const anySpeed = activities.some((a, i) => speedValue(kinds[i], a.distanceKm, a.movingS) !== undefined);
+const anyElevation = activities.some((a) => a.elevationGainM);
+const anyCalories = activities.some((a) => a.calories);
+
+function speedText(a: Activity, i: number): string {
+  const k = kinds[i];
+  const v = speedValue(k, a.distanceKm, a.movingS);
+  if (v === undefined) return '—';
+  return k === 'cycling' ? `${speed(v)} ${speedUnit(k)}` : `${pace(v)} ${speedUnit(k)}`;
+}
+const distanceText = (a: Activity, i: number) =>
+  !hasDistance(kinds[i]) || a.distanceKm <= 0
+    ? '—'
+    : kinds[i] === 'swim'
+      ? `${int(a.distanceKm * 1000)} m`
+      : `${km(a.distanceKm, 2)} km`;
+---
+
+<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+      <tr>
+        <th class="px-4 py-3">Fecha</th>
+        <th class="px-4 py-3">Actividad</th>
+        {anyDistance && <th class="px-4 py-3 text-right">Distancia</th>}
+        <th class="px-4 py-3 text-right">Tiempo</th>
+        {anySpeed && <th class="px-4 py-3 text-right">Ritmo / vel.</th>}
+        <th class="px-4 py-3 text-right">FC media</th>
+        <th class="px-4 py-3 text-right">FC máx</th>
+        {anyElevation && <th class="px-4 py-3 text-right">Desnivel +</th>}
+        {anyCalories && <th class="px-4 py-3 text-right">kcal</th>}
+      </tr>
+    </thead>
+    <tbody class="tabular-nums">
+      {
+        activities.map((a, i) => (
+          <tr class="border-b border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
+            <td class="px-4 py-3 whitespace-nowrap">{dayLabel(a.date)}</td>
+            <td class="px-4 py-3">
+              <a href={`/actividades/${a.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
+                {a.name}
+              </a>
+              {showType && (
+                <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                  {activityLabel(a.typeKey)}
+                </span>
+              )}
+            </td>
+            {anyDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
+            <td class="px-4 py-3 text-right">{duration(a.movingS)}</td>
+            {anySpeed && <td class="px-4 py-3 text-right whitespace-nowrap">{speedText(a, i)}</td>}
+            <td class="px-4 py-3 text-right">{int(a.avgHr)}</td>
+            <td class="px-4 py-3 text-right">{int(a.maxHr)}</td>
+            {anyElevation && (
+              <td class="px-4 py-3 text-right whitespace-nowrap">{a.elevationGainM ? `${int(a.elevationGainM)} m` : '—'}</td>
+            )}
+            {anyCalories && <td class="px-4 py-3 text-right">{int(a.calories)}</td>}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

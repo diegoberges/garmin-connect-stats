@@ -4,31 +4,23 @@ import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
 import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
-import RangeSelector from '../components/RangeSelector.astro';
 import { clientFor, getDailyHealth, type DayHealth } from '../lib/garmin';
 import { addDays, isoDate } from '../lib/dates';
 import { avgOf, pctChange } from '../lib/stats';
 import { hoursMinutes, hrvStatus, int, shortDate } from '../lib/format';
 import type { ChartSpec } from '../lib/chart-spec';
 
-const DAY_OPTIONS = [
-  { value: 7, label: '7 días' },
-  { value: 30, label: '30 días' },
-  { value: 90, label: '90 días' },
-];
-const requested = Number(Astro.url.searchParams.get('dias'));
-const days = DAY_OPTIONS.some((o) => o.value === requested) ? requested : 30;
+/** Ventana fija: vistazo de la última semana y tendencias del último mes. */
+const days = 30;
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
 
-// Siempre al menos 14 días para comparar los últimos 7 con los 7 anteriores
-const fetchDays = Math.max(days, 14);
 let all: DayHealth[] = [];
 let error: unknown;
 if (client) {
   try {
-    all = await getDailyHealth(client, addDays(today, -(fetchDays - 1)), today);
+    all = await getDailyHealth(client, addDays(today, -(days - 1)), today);
   } catch (err) {
     error = err;
   }
@@ -39,9 +31,23 @@ const last7 = all.slice(-7);
 const prev7 = all.slice(-14, -7);
 const vsPrev = 'vs 7 días previos';
 
+const last = [...health].reverse().find((d) => d.hrvStatus);
+
+/** Mismas métricas en los dos bloques: la semana compara con la anterior; el mes da la media del periodo. */
+type Key = 'restingHr' | 'hrvLastNight' | 'sleepS' | 'sleepScore' | 'steps' | 'stressAvg';
+const METRICS: { key: Key; label: string; unit?: string; time?: boolean; higherIsBetter?: boolean; hint: string }[] = [
+  { key: 'restingHr', label: 'FC en reposo', unit: 'ppm', higherIsBetter: false, hint: 'media del periodo' },
+  { key: 'hrvLastNight', label: 'HRV', unit: 'ms', hint: `Estado: ${hrvStatus(last?.hrvStatus)}` },
+  { key: 'sleepS', label: 'Sueño', time: true, hint: 'media por noche' },
+  { key: 'sleepScore', label: 'Puntuación sueño', hint: 'media' },
+  { key: 'steps', label: 'Pasos', hint: 'media diaria' },
+  { key: 'stressAvg', label: 'Estrés', higherIsBetter: false, hint: 'media (0–100)' },
+];
+const show = (m: (typeof METRICS)[number], days: DayHealth[]) =>
+  m.time ? hoursMinutes(avgOf(days, m.key)) : int(avgOf(days, m.key));
+
 const cats = health.map((d) => shortDate(d.date));
 const v = (x?: number) => x ?? null;
-const last = [...health].reverse().find((d) => d.hrvStatus);
 
 const restingSpec: ChartSpec = { type: 'line', categories: cats, series: [{ name: 'FC en reposo', data: health.map((d) => v(d.restingHr)), color: 2 }], format: 'bpm' };
 const hrvSpec: ChartSpec = {
@@ -88,10 +94,7 @@ const rows = (pick: (d: DayHealth) => string) => health.map((d) => [shortDate(d.
 ---
 
 <Base title="Salud">
-  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-bold">Salud diaria</h1>
-    {client && <RangeSelector options={DAY_OPTIONS} current={days} />}
-  </div>
+  <h1 class="mb-6 text-2xl font-bold">Salud diaria</h1>
 
   {
     !client ? (
@@ -100,28 +103,27 @@ const rows = (pick: (d: DayHealth) => string) => health.map((d) => [shortDate(d.
       <ErrorState error={error} />
     ) : (
       <div class="space-y-6">
-        {days > 7 && (
         <div>
           <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Últimos 7 días</h2>
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="FC en reposo" value={int(avgOf(last7, 'restingHr'))} unit="ppm" delta={pctChange(avgOf(last7, 'restingHr'), avgOf(prev7, 'restingHr'))} deltaLabel={vsPrev} higherIsBetter={false} />
-            <StatCard label="HRV" value={int(avgOf(last7, 'hrvLastNight'))} unit="ms" delta={pctChange(avgOf(last7, 'hrvLastNight'), avgOf(prev7, 'hrvLastNight'))} deltaLabel={vsPrev} />
-            <StatCard label="Sueño" value={hoursMinutes(avgOf(last7, 'sleepS'))} delta={pctChange(avgOf(last7, 'sleepS'), avgOf(prev7, 'sleepS'))} deltaLabel={vsPrev} />
-            <StatCard label="Body Battery máx" value={int(avgOf(last7, 'bodyBatteryMax'))} hint="media del máximo diario" />
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {METRICS.map((m) => (
+              <StatCard
+                label={m.label}
+                value={show(m, last7)}
+                unit={m.unit}
+                delta={pctChange(avgOf(last7, m.key), avgOf(prev7, m.key))}
+                deltaLabel={vsPrev}
+                higherIsBetter={m.higherIsBetter ?? true}
+              />
+            ))}
           </div>
         </div>
-        )}
 
         <div>
-        <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Periodo · {days} días</h2>
-        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <StatCard label="FC en reposo" value={int(avgOf(health, 'restingHr'))} unit="ppm" hint="media del periodo" />
-          <StatCard label="HRV" value={int(avgOf(health, 'hrvLastNight'))} unit="ms" hint={`Estado: ${hrvStatus(last?.hrvStatus)}`} />
-          <StatCard label="Sueño" value={hoursMinutes(avgOf(health, 'sleepS'))} hint="media por noche" />
-          <StatCard label="Puntuación sueño" value={int(avgOf(health, 'sleepScore'))} hint="media" />
-          <StatCard label="Pasos" value={int(avgOf(health, 'steps'))} hint="media diaria" />
-          <StatCard label="Estrés" value={int(avgOf(health, 'stressAvg'))} hint="media (0–100)" />
-        </div>
+          <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Últimos {days} días</h2>
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {METRICS.map((m) => <StatCard label={m.label} value={show(m, health)} unit={m.unit} hint={m.hint} />)}
+          </div>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">

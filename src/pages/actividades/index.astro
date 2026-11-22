@@ -5,12 +5,14 @@ import ErrorState from '../../components/ErrorState.astro';
 import StatCard from '../../components/StatCard.astro';
 import ChartCard from '../../components/ChartCard.astro';
 import RangeSelector from '../../components/RangeSelector.astro';
-import RunTable from '../../components/RunTable.astro';
-import { clientFor, getRuns, getVo2Max, type RunActivity, type Vo2Point } from '../../lib/garmin';
+import ActivityTable from '../../components/ActivityTable.astro';
+import Pagination from '../../components/Pagination.astro';
+import { clientFor, getActivities, type Activity } from '../../lib/garmin';
 import { addDays, isoDate, weekStart } from '../../lib/dates';
-import { totals, weeklyTotals, type WeekTotal } from '../../lib/stats';
-import { duration, hoursMinutes, int, km, pace, shortDate } from '../../lib/format';
-import type { ChartSpec } from '../../lib/chart-spec';
+import { totals, weeklyTotals } from '../../lib/stats';
+import { hasDistance, kindOf, speedLabel, speedUnit, speedValue, type ActivityKind } from '../../lib/activity-kinds';
+import { activityLabel, duration, hoursMinutes, int, km, pace, shortDate, speed } from '../../lib/format';
+import type { ChartSpec, ColorSlot } from '../../lib/chart-spec';
 
 const WEEK_OPTIONS = [
   { value: 4, label: '4 sem' },
@@ -18,61 +20,169 @@ const WEEK_OPTIONS = [
   { value: 26, label: '6 meses' },
   { value: 52, label: '1 año' },
 ];
+const ALL = 'todas';
 const requested = Number(Astro.url.searchParams.get('semanas'));
 const weeks = WEEK_OPTIONS.some((o) => o.value === requested) ? requested : 12;
+const tipoParam = Astro.url.searchParams.get('tipo') ?? ALL;
+const tipo = /^[a-z0-9_]+$/i.test(tipoParam) ? tipoParam : ALL;
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
 const from = addDays(weekStart(today), -7 * (weeks - 1));
 
-let runs: RunActivity[] = [];
-let vo2: Vo2Point[] = [];
-let weekly: WeekTotal[] = [];
+let all: Activity[] = [];
 let error: unknown;
 if (client) {
   try {
-    [runs, vo2] = await Promise.all([getRuns(client, from, today), getVo2Max(client, from, today).catch(() => [])]);
-    weekly = weeklyTotals(runs, weeks, today);
+    all = await getActivities(client, from, today);
   } catch (err) {
     error = err;
   }
 }
 
-const t = totals(runs);
-const chrono = [...runs].reverse();
-const lastVo2 = vo2.at(-1);
+// Tipos registrados en el periodo, de más a menos sesiones
+const counts = new Map<string, number>();
+for (const a of all) counts.set(a.typeKey, (counts.get(a.typeKey) ?? 0) + 1);
+const types = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
-const weeklySpec: ChartSpec = {
-  type: 'bar',
-  categories: weekly.map((w) => shortDate(w.week)),
-  series: [{ name: 'Kilómetros', data: weekly.map((w) => Math.round(w.km * 10) / 10), color: 1 }],
-  format: 'km',
+const isAll = tipo === ALL;
+const activities = isAll ? all : all.filter((a) => a.typeKey === tipo);
+const kind: ActivityKind | undefined = isAll ? undefined : kindOf(tipo);
+const title = isAll ? 'Actividades' : activityLabel(tipo);
+const typeHref = (t: string) => {
+  const params = new URLSearchParams(Astro.url.search);
+  params.delete('pagina');
+  if (t === ALL) params.delete('tipo');
+  else params.set('tipo', t);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '/actividades';
 };
-const paceSpec: ChartSpec = {
-  type: 'line',
-  categories: chrono.map((r) => shortDate(r.date)),
-  series: [{ name: 'Ritmo medio', data: chrono.map((r) => (r.paceSPerKm ? Math.round(r.paceSPerKm) : null)), color: 1 }],
-  format: 'pace',
-  reversed: true,
-};
+
+const PAGE_SIZE = 20;
+const pages = Math.max(1, Math.ceil(activities.length / PAGE_SIZE));
+const page = Math.min(Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina'))) || 1), pages);
+const pageItems = activities.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+const t = totals(activities);
+const chrono = [...activities].reverse();
+const weekly = weeklyTotals(activities, weeks, today);
+const weekCats = weekly.map((w) => shortDate(w.week));
+const distanceBased = kind !== undefined && hasDistance(kind) && t.km > 0;
+const swim = kind === 'swim';
+const avgSpeed = kind ? speedValue(kind, t.km, t.movingS) : undefined;
+
+// Volumen semanal: km para deportes con distancia; si no (o con todos los tipos), tiempo apilado por tipo.
+let weeklySpec: ChartSpec;
+if (distanceBased) {
+  weeklySpec = {
+    type: 'bar',
+    categories: weekCats,
+    series: [{ name: 'Kilómetros', data: weekly.map((w) => Math.round(w.km * 10) / 10), color: 1 }],
+    format: 'km',
+  };
+} else {
+  // Como mucho 3 tipos con nombre + "Otras", para no pasar de 4 colores
+  const top = types.slice(0, types.length > 4 ? 3 : 4).map(([k]) => k);
+  const groups = isAll ? [...top, ...(types.length > top.length ? ['__otras'] : [])] : [tipo];
+  const weekIndex = new Map(weekly.map((w, i) => [w.week, i]));
+  weeklySpec = {
+    type: 'bar',
+    stacked: groups.length > 1,
+    categories: weekCats,
+    series: groups.map((g, i) => {
+      const data = weekly.map(() => 0);
+      for (const a of activities) {
+        const inGroup = g === '__otras' ? !top.includes(a.typeKey) : a.typeKey === g;
+        const idx = weekIndex.get(weekStart(a.date));
+        if (inGroup && idx !== undefined) data[idx] += a.movingS;
+      }
+      return { name: g === '__otras' ? 'Otras' : activityLabel(g), data, color: (i + 1) as ColorSlot };
+    }),
+    format: 'hm',
+  };
+}
+
+// Solo sesiones con ritmo/velocidad calculable (p. ej. fuera las que no registran distancia)
+const withSpeed = kind
+  ? chrono.flatMap((a) => {
+      const v = speedValue(kind, a.distanceKm, a.movingS);
+      return v === undefined ? [] : [{ a, v }];
+    })
+  : [];
+const hasSessionSpeed = withSpeed.length > 0;
+const speedSpec: ChartSpec | undefined =
+  kind && hasSessionSpeed
+    ? {
+        type: 'line',
+        categories: withSpeed.map(({ a }) => shortDate(a.date)),
+        series: [
+          {
+            name: speedLabel(kind),
+            data: withSpeed.map(({ v }) => (kind === 'cycling' ? Math.round(v * 10) / 10 : Math.round(v))),
+            color: 1,
+          },
+        ],
+        format: kind === 'cycling' ? 'kmh' : swim ? 'pace100' : 'pace',
+        reversed: kind !== 'cycling',
+      }
+    : undefined;
 const hrSpec: ChartSpec = {
   type: 'line',
-  categories: chrono.map((r) => shortDate(r.date)),
-  series: [{ name: 'FC media', data: chrono.map((r) => r.avgHr ?? null), color: 2 }],
+  categories: chrono.map((a) => shortDate(a.date)),
+  series: [{ name: 'FC media', data: chrono.map((a) => a.avgHr ?? null), color: 2 }],
   format: 'bpm',
 };
-const vo2Spec: ChartSpec = {
-  type: 'line',
-  categories: vo2.map((v) => shortDate(v.date)),
-  series: [{ name: 'VO2máx', data: vo2.map((v) => v.value), color: 3 }],
-  format: 'int',
-  height: 200,
-};
+const hasHr = activities.some((a) => a.avgHr);
+const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' ? speed(v) : pace(v));
 ---
 
-<Base title="Actividades">
+<Base title={title}>
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-bold">Actividades</h1>
+    {
+      client && !error ? (
+        <div>
+        <h1>
+          <button
+            id="type-toggle"
+            data-dropdown-toggle="type-menu"
+            data-dropdown-placement="bottom-start"
+            type="button"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-2xl font-bold hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 focus:outline-none dark:hover:bg-gray-800 dark:focus:ring-gray-700"
+            aria-label={`Tipo de actividad: ${title}`}
+          >
+            {title}
+            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4" />
+            </svg>
+          </button>
+        </h1>
+        <div
+            id="type-menu"
+            class="z-50 hidden max-h-96 w-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          >
+            <ul class="py-1 text-sm" aria-label="Tipo de actividad">
+              {[[ALL, all.length] as const, ...types].map(([key, n]) => (
+                <li>
+                  <a
+                    href={typeHref(key)}
+                    aria-current={key === tipo ? 'page' : undefined}
+                    class:list={[
+                      'flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
+                      key === tipo && 'font-semibold text-blue-700 dark:text-blue-400',
+                    ]}
+                  >
+                    <span class="truncate">{key === ALL ? 'Todas las actividades' : activityLabel(key)}</span>
+                    <span class="text-xs text-gray-500 tabular-nums dark:text-gray-400">{n}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : (
+        <h1 class="text-2xl font-bold">Actividades</h1>
+      )
+    }
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
 
@@ -81,37 +191,54 @@ const vo2Spec: ChartSpec = {
       <ConnectPrompt />
     ) : error ? (
       <ErrorState error={error} />
+    ) : activities.length === 0 ? (
+      <p class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+        No hay actividades de este tipo en el periodo. Prueba con otro tipo o amplía el rango.
+      </p>
     ) : (
       <div class="space-y-6">
         <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <StatCard label="Distancia" value={km(t.km)} unit="km" />
           <StatCard label="Sesiones" value={int(t.runs)} />
           <StatCard label="Tiempo" value={hoursMinutes(t.movingS)} />
-          <StatCard label="Ritmo medio" value={pace(t.paceSPerKm)} unit="/km" />
-          <StatCard label="FC media" value={int(t.avgHr)} unit="ppm" />
-          <StatCard label="VO2máx" value={lastVo2 ? km(lastVo2.value) : '—'} hint={lastVo2 ? `a ${shortDate(lastVo2.date)}` : undefined} />
+          {distanceBased && (
+            <StatCard label="Distancia" value={swim ? int(t.km * 1000) : km(t.km)} unit={swim ? 'm' : 'km'} />
+          )}
+          {kind && avgSpeed !== undefined && <StatCard label={speedLabel(kind)} value={speedText(avgSpeed)} unit={speedUnit(kind)} />}
+          {hasHr && <StatCard label="FC media" value={int(t.avgHr)} unit="ppm" />}
+          {t.calories > 0 && <StatCard label="Calorías" value={int(t.calories)} unit="kcal" />}
+          {distanceBased && t.elevationGainM > 0 && <StatCard label="Desnivel +" value={int(t.elevationGainM)} unit="m" />}
+          {isAll && <StatCard label="Tipos" value={int(types.length)} />}
         </div>
 
         <ChartCard
-          title="Kilómetros por semana"
-          subtitle="Semanas de lunes a domingo"
+          title={distanceBased ? 'Kilómetros por semana' : 'Tiempo por semana'}
+          subtitle={isAll ? 'Semanas de lunes a domingo · por tipo de actividad' : 'Semanas de lunes a domingo'}
           spec={weeklySpec}
           table={{
-            headers: ['Semana', 'Km', 'Sesiones', 'Tiempo'],
-            rows: weekly.map((w) => [shortDate(w.week), km(w.km), int(w.runs), duration(w.movingS)]),
+            headers: ['Semana', 'Sesiones', 'Tiempo', ...(distanceBased ? ['Km'] : [])],
+            rows: weekly.map((w) => [shortDate(w.week), int(w.runs), duration(w.movingS), ...(distanceBased ? [km(w.km)] : [])]),
           }}
         />
 
-        <div class="grid gap-6 lg:grid-cols-2">
-          <ChartCard title="Ritmo por sesión" subtitle="min/km · más rápido arriba" spec={paceSpec} />
-          <ChartCard title="FC media por sesión" subtitle="ppm" spec={hrSpec} />
-        </div>
+        {
+          !isAll && (speedSpec || hasHr) && (
+            <div class:list={['grid gap-6', speedSpec && hasHr && 'lg:grid-cols-2']}>
+              {speedSpec && kind && (
+                <ChartCard
+                  title={`${kind === 'cycling' ? 'Velocidad' : 'Ritmo'} por sesión`}
+                  subtitle={kind === 'cycling' ? 'km/h' : `${swim ? 'min/100 m' : 'min/km'} · más rápido arriba`}
+                  spec={speedSpec}
+                />
+              )}
+              {hasHr && <ChartCard title="FC media por sesión" subtitle="ppm" spec={hrSpec} />}
+            </div>
+          )
+        }
 
-        {vo2.length > 1 && <ChartCard title="VO2máx estimado" spec={vo2Spec} />}
-
-        <section>
-          <h2 class="mb-3 text-base font-semibold">Actividades ({runs.length})</h2>
-          {runs.length ? <RunTable runs={runs} /> : <p class="text-sm text-gray-500">No hay carreras en este periodo.</p>}
+        <section id="sesiones" class="scroll-mt-4">
+          <h2 class="mb-3 text-base font-semibold">Sesiones ({activities.length})</h2>
+          <ActivityTable activities={pageItems} showType={isAll} />
+          <Pagination page={page} pages={pages} total={activities.length} pageSize={PAGE_SIZE} anchor="sesiones" />
         </section>
       </div>
     )

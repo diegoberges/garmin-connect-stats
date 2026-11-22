@@ -1,16 +1,16 @@
 import { unwrap, type GarminClient } from './client';
-import type { ApiActivity, ApiHrZones, ApiVo2, HrZones, RunActivity, Vo2Point } from './types';
+import type { ApiActivity, ApiHrZones, ApiVo2, HrZones, Activity, Vo2Point } from './types';
 
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const PAGE = 100;
 
-export function mapActivity(a: ApiActivity): RunActivity {
+export function mapActivity(a: ApiActivity): Activity {
   const distanceKm = (num(a.distance) ?? 0) / 1000;
   const movingS = num(a.movingDuration) ?? num(a.duration) ?? 0;
   const startLocal = a.startTimeLocal ?? '';
   return {
     id: num(a.activityId) ?? 0,
-    name: a.activityName ?? 'Carrera',
+    name: a.activityName ?? 'Actividad',
     typeKey: a.activityType?.typeKey ?? 'running',
     startLocal,
     date: startLocal.slice(0, 10),
@@ -33,13 +33,22 @@ export function mapActivity(a: ApiActivity): RunActivity {
   };
 }
 
-/** Carreras (incluye trail/cinta: el filtro `running` es el tipo padre) entre dos fechas, paginando. */
-export async function getRuns(client: GarminClient, startDate: string, endDate: string): Promise<RunActivity[]> {
-  const all: RunActivity[] = [];
+/** Carreras (incluye trail/cinta: el filtro `running` es el tipo padre) entre dos fechas. */
+export const getRuns = (client: GarminClient, startDate: string, endDate: string) =>
+  getActivities(client, startDate, endDate, 'running');
+
+/** Actividades entre dos fechas (todas, o solo un tipo/tipo padre de Garmin), paginando, más recientes primero. */
+export async function getActivities(
+  client: GarminClient,
+  startDate: string,
+  endDate: string,
+  activityType?: string,
+): Promise<Activity[]> {
+  const all: Activity[] = [];
   for (let start = 0; ; start += PAGE) {
     const page = await unwrap(
       client.GET('/activitylist-service/activities/search/activities', {
-        params: { query: { activityType: 'running', startDate, endDate, start, limit: PAGE } },
+        params: { query: { ...(activityType ? { activityType } : {}), startDate, endDate, start, limit: PAGE } },
       }),
     );
     const list = (Array.isArray(page) ? page : []) as ApiActivity[];
@@ -50,21 +59,25 @@ export async function getRuns(client: GarminClient, startDate: string, endDate: 
 }
 
 /** El listado ya trae todo lo que usamos; el detalle no aporta zonas ni splits por km. */
-export async function getRun(client: GarminClient, id: number): Promise<RunActivity | undefined> {
+export async function getActivity(client: GarminClient, id: number): Promise<Activity | undefined> {
   const detail = await unwrap(
     client.GET('/activity-service/activity/{activityId}', { params: { path: { activityId: id } } }),
   );
   const date = detail.summaryDTO?.startTimeLocal?.slice(0, 10);
   if (!date) return undefined;
   // Las zonas de FC solo vienen en el listado: buscamos la actividad en su día.
-  const sameDay = await getRuns(client, date, date);
+  const sameDay = await getActivities(client, date, date);
   return sameDay.find((r) => r.id === id);
 }
 
-export async function getHrZones(client: GarminClient): Promise<HrZones | undefined> {
+/** Zonas de FC del deporte indicado (Garmin las define por deporte), con las genéricas como respaldo. */
+export async function getHrZones(
+  client: GarminClient,
+  sport: 'RUNNING' | 'CYCLING' | 'SWIMMING' = 'RUNNING',
+): Promise<HrZones | undefined> {
   const data = (await unwrap(client.GET('/biometric-service/heartRateZones/v2', {}))) as ApiHrZones;
   const list = Array.isArray(data) ? data : [];
-  const z = list.find((x) => x.sport === 'RUNNING') ?? list.find((x) => x.sport === 'DEFAULT') ?? list[0];
+  const z = list.find((x) => x.sport === sport) ?? list.find((x) => x.sport === 'DEFAULT') ?? list[0];
   if (!z) return undefined;
   return {
     floors: [z.zone1Floor, z.zone2Floor, z.zone3Floor, z.zone4Floor, z.zone5Floor].map((v) => num(v) ?? 0),

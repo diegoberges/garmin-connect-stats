@@ -11,10 +11,13 @@ const slot = (s: ColorSlot) => css(`--viz-${s}`);
 function fmt(format: ValueFormat, v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—';
   switch (format) {
-    case 'pace': {
+    case 'pace':
+    case 'pace100': {
       const t = Math.round(v);
-      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')} /km`;
+      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')} ${format === 'pace' ? '/km' : '/100 m'}`;
     }
+    case 'kmh':
+      return `${v.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km/h`;
     case 'hm': {
       const m = Math.round(v / 60);
       if (m < 60) return `${m} min`;
@@ -46,6 +49,19 @@ function timeScale(spec: ChartSpec): { max: number; tickAmount: number } | undef
   return { max: ticks * step, tickAmount: ticks };
 }
 
+/** Escala de ritmo en pasos redondos (15 s, 30 s, 1 min…) con ≤ 6 marcas. */
+function paceScale(spec: ChartSpec): { min: number; max: number; tickAmount: number } | undefined {
+  if (spec.format !== 'pace' && spec.format !== 'pace100') return undefined;
+  const xs = spec.series.flatMap((s) => s.data.filter((d): d is number => typeof d === 'number'));
+  if (!xs.length) return undefined;
+  const lo = Math.min(...xs);
+  const hi = Math.max(...xs);
+  const step = [15, 30, 60, 120, 300].find((st) => (hi - lo) / st <= 5) ?? 600;
+  const min = Math.floor(lo / step) * step;
+  const max = Math.max(Math.ceil(hi / step) * step, min + step);
+  return { min, max, tickAmount: (max - min) / step };
+}
+
 function options(spec: ChartSpec): ApexCharts.ApexOptions {
   const text = css('--viz-text');
   const muted = css('--viz-muted');
@@ -56,6 +72,7 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
   const dense = spec.categories.length > 16;
   const narrow = window.innerWidth < 640;
   const time = timeScale(spec);
+  const paceAxis = paceScale(spec);
 
   const series =
     spec.type === 'rangeBar'
@@ -107,11 +124,11 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
     },
     yaxis: {
       reversed: spec.reversed,
-      min: time ? 0 : spec.yMin,
-      max: time ? time.max : spec.yMax,
-      tickAmount: time?.tickAmount,
-      forceNiceScale: !time,
-      labels: { style: { colors: muted }, formatter: (v: number) => fmt(spec.format, v).replace(' /km', '') },
+      min: time ? 0 : (paceAxis?.min ?? spec.yMin),
+      max: time ? time.max : (paceAxis?.max ?? spec.yMax),
+      tickAmount: time?.tickAmount ?? paceAxis?.tickAmount,
+      forceNiceScale: !time && !paceAxis,
+      labels: { style: { colors: muted }, formatter: (v: number) => fmt(spec.format, v).replace(/ \/(km|100 m)$/, '') },
     },
     legend: {
       show: spec.series.length > 1,
