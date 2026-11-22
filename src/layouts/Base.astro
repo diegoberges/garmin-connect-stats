@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import Analytics from '@vercel/analytics/astro';
+import ProfileMenu from '../components/ProfileMenu.astro';
 
 interface Props {
   title: string;
@@ -12,10 +13,8 @@ const nav = [
   { href: '/', label: 'Resumen' },
   { href: '/running', label: 'Carrera' },
   { href: '/salud', label: 'Salud' },
-  { href: '/ajustes', label: 'Ajustes' },
 ];
 const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
-const connected = Boolean(Astro.locals.settings.garminApiKey);
 ---
 
 <html lang="es">
@@ -35,13 +34,9 @@ const connected = Boolean(Astro.locals.settings.garminApiKey);
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
     <nav class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <a href="/" class="flex items-center gap-2 text-lg font-semibold">
-          <span class="inline-block h-2.5 w-2.5 rounded-full {connected ? 'bg-green-500' : 'bg-gray-400'}"
-            title={connected ? 'Garmin conectado' : 'Garmin sin conectar'}></span>
-          Garmin Stats
-        </a>
-        <div class="flex items-center gap-1 overflow-x-auto">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
+        <ProfileMenu />
+        <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
           {
             nav.map((item) => (
               <a

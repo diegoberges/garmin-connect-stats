@@ -6,12 +6,12 @@
 import type { APIRoute } from 'astro';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createGarminClient } from '../../lib/garmin/client';
-import { isoDate } from '../../lib/garmin/diagnostics';
+import { isoDate } from '../../lib/dates';
 
 export const GET: APIRoute = async ({ locals }) => {
   if (!import.meta.env.DEV) return new Response('Not found', { status: 404 });
   const apiKey = locals.settings.garminApiKey;
-  if (!apiKey) return new Response('Configura la key en /ajustes primero', { status: 400 });
+  if (!apiKey) return new Response('Configura la key en el menú de perfil primero', { status: 400 });
 
   const day = 86_400_000;
   const today = isoDate();

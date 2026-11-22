@@ -13,7 +13,7 @@ npm run dev        # http://localhost:4321
 
 1. Crea tu Personal API Key en [Garmin Connect → Personal API Key](https://connect.garmin.com/app/settings/personalApiToken)
    (se muestra una sola vez).
-2. Abre **Ajustes** en la app y pégala. Se valida contra Garmin y se guarda cifrada (AES-256-GCM) en una
+2. Abre el **menú de perfil** (arriba a la izquierda) y pégala. Se valida contra Garmin y se guarda cifrada (AES-256-GCM) en una
    cookie httpOnly: el navegador no puede leerla.
 
 ### Secreto de cifrado
@@ -26,7 +26,7 @@ El proyecto usa `@astrojs/vercel` (SSR en funciones serverless); Vercel detecta 
 1. Importa el repo en Vercel (framework: Astro, comandos por defecto).
 2. En *Settings → Environment Variables* añade **`APP_SECRET`** (obligatorio en producción), p. ej. generado con
    `openssl rand -base64 32`. Si lo cambias, habrá que volver a pegar la key de Garmin.
-3. Despliega y pega tu Personal API Key en **Ajustes**.
+3. Despliega y pega tu Personal API Key en el **menú de perfil**.
 
 Notas: las cachés de token y respuestas son en memoria por instancia (se pierden en arranques en frío, sin
 impacto funcional). `/dev/capture` y el modo `GARMIN_FIXTURES` no existen en producción.
