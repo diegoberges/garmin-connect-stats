@@ -10,4 +10,5 @@ export function clientFor(locals: App.Locals): GarminClient | undefined {
 
 export * from './running';
 export * from './wellness';
+export * from './profile';
 export type * from './types';

@@ -86,3 +86,15 @@ export interface Vo2Point {
   date: string;
   value: number;
 }
+
+/** Perfil para el menú de usuario. Nombre y foto no están en /userprofile: salen del dueño de la última actividad. */
+export interface UserProfile {
+  displayName?: string;
+  fullName?: string;
+  imageUrl?: string;
+  timeZone?: string;
+  age?: number;
+  fitnessAge?: number;
+  /** La llamada al perfil sirve de prueba de conexión: undefined = OK, texto = motivo del fallo. */
+  connectionError?: string;
+}

@@ -18,5 +18,5 @@ if (!auth) console.error('[garmin]', error);
 <div class="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-800 dark:border-red-900 dark:bg-gray-800 dark:text-red-400" role="alert">
   <p class="font-semibold">No se han podido cargar los datos</p>
   <p class="mt-1 break-words">{message}</p>
-  <a href="/ajustes" class="mt-3 inline-block font-medium underline">{auth ? 'Actualizar la key en Ajustes' : 'Comprobar la conexión'}</a>
+  <a href="#perfil" data-open-profile class="mt-3 inline-block font-medium underline">{auth ? 'Actualizar la key' : 'Comprobar la conexión'}</a>
 </div>
