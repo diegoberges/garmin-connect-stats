@@ -1,0 +1,158 @@
+---
+/**
+ * Alerta "Fatiga por sueño" en la cabecera de todas las páginas (regla en lib/sleep-alert.ts).
+ * Se carga como isla de servidor (`server:defer` en Base.astro): consulta salud y carga sin retrasar la
+ * página. Si algo falla, no se muestra: la alerta nunca debe romper una página.
+ */
+import { clientFor, getActivities, getDailyHealth } from '../lib/garmin';
+import { addDays, isoDate } from '../lib/dates';
+import { currentAlert, resolveThresholds, type SleepFatigueAlert } from '../lib/sleep-alert';
+import { acwr, acwrZone, dailyLoad, pmc, WARMUP_DAYS } from '../lib/load';
+import { dayLabel, hoursMinutes, int, km } from '../lib/format';
+
+/** 7 días de la regla + 60 de línea base de VFC + 1 por si la noche de hoy no se ha sincronizado. */
+const HEALTH_DAYS = 7 + 60 + 1;
+
+const client = clientFor(Astro.locals);
+const today = isoDate();
+const t = resolveThresholds(Astro.locals.settings.alert);
+
+let alert: SleepFatigueAlert | undefined;
+let ratio: number | undefined;
+let form: number | undefined;
+let calibrating = false;
+if (client) {
+  try {
+    const days = await getDailyHealth(client, addDays(today, -HEALTH_DAYS), today);
+    alert = currentAlert(days, today, t).alert;
+    if (alert) {
+      // Contexto de carga (si falla, la alerta se muestra igual sin él)
+      const loadFrom = addDays(today, -WARMUP_DAYS);
+      const acts = await getActivities(client, loadFrom, today).catch(() => undefined);
+      const now = acts ? pmc(dailyLoad(acts, loadFrom, today)).at(-1) : undefined;
+      // Con menos de 42 días de historial la forma física está a medio construir: ni ratio ni forma
+      if (now?.formPct !== undefined) {
+        ratio = acwr(now);
+        form = now.form;
+      } else if (now) {
+        calibrating = true;
+      }
+    }
+  } catch (err) {
+    console.error('[alerta de sueño]', err);
+  }
+}
+
+const high = alert?.level === 'high';
+const lowLoad = ratio !== undefined && ratio < 0.8;
+const hours = (h: number) => String(h).replace('.', ',');
+function signed(v: number): string {
+  let sign = '±';
+  if (Math.round(v) > 0) sign = '+';
+  else if (Math.round(v) < 0) sign = '−';
+  return `${sign}${int(Math.abs(v))}`;
+}
+---
+
+{alert && (
+  <div class="mx-auto max-w-6xl px-4 pt-4">
+    <section
+      aria-labelledby="alerta-sueno-titulo"
+      class:list={[
+        'rounded-lg border border-l-4 bg-white p-4 dark:bg-gray-800',
+        high
+          ? 'border-gray-200 border-l-red-600 dark:border-gray-700 dark:border-l-red-500'
+          : 'border-gray-200 border-l-amber-500 dark:border-gray-700 dark:border-l-amber-400',
+      ]}
+    >
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 id="alerta-sueno-titulo" class="font-semibold">
+          Fatiga por sueño{' '}
+          <span
+            class:list={[
+              'ml-1 rounded-sm px-1.5 py-0.5 align-middle text-xs font-semibold',
+              high
+                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                : 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
+            ]}
+          >
+            {high ? 'Nivel alto' : 'Aviso'}
+          </span>
+        </h2>
+        {alert.date !== today && (
+          <span class="text-xs text-gray-500 dark:text-gray-400">
+            Noche del {dayLabel(alert.date)} (la de hoy aún no se ha sincronizado)
+          </span>
+        )}
+      </div>
+      <p class="mt-1 text-sm">
+        {lowLoad
+          ? 'Carga baja pero sueño insuficiente: la fatiga no viene del entrenamiento.'
+          : 'Llevas varias noches durmiendo poco: la fatiga se acumula aunque el entrenamiento no lo explique.'}
+        {high && ' Tu cuerpo ya lo refleja: prioriza recuperar con descanso o una sesión suave.'}
+      </p>
+      <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
+        <div>
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Anoche</dt>
+          <dd class="font-semibold tabular-nums">{hoursMinutes(alert.lastNightS)}</dd>
+          {(alert.deepS !== undefined || alert.remS !== undefined) && (
+            <dd class="text-xs text-gray-500 tabular-nums dark:text-gray-400">
+              profundo {hoursMinutes(alert.deepS)} · REM {hoursMinutes(alert.remS)}
+            </dd>
+          )}
+        </div>
+        <div>
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Noches cortas (7 días)</dt>
+          <dd class="font-semibold tabular-nums">
+            {alert.shortNights} de {alert.nightsWithData}
+          </dd>
+          <dd class="text-xs text-gray-500 dark:text-gray-400">
+            menos de {hours(t.shortNightH)} h{alert.nightsWithData < 7 && ` · ${7 - alert.nightsWithData} sin dato`}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Deuda de sueño (7 días)</dt>
+          <dd class="font-semibold tabular-nums">{hoursMinutes(alert.debtS)}</dd>
+          <dd class="text-xs text-gray-500 dark:text-gray-400">
+            {t.sleepTargetH !== undefined ? `objetivo ${hours(t.sleepTargetH)} h` : 'frente a la necesidad de Garmin'}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Ratio agudo:crónico</dt>
+          <dd class="font-semibold tabular-nums">{ratio === undefined ? '—' : km(ratio, 2)}</dd>
+          {calibrating && <dd class="text-xs text-gray-500 dark:text-gray-400">Calibrando (42 días)</dd>}
+          {ratio !== undefined && <dd class="text-xs text-gray-500 dark:text-gray-400">{acwrZone(ratio).label}</dd>}
+        </div>
+        <div>
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Forma (TSB)</dt>
+          <dd class="font-semibold tabular-nums">{form === undefined ? '—' : signed(form)}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-gray-500 dark:text-gray-400">VFC y FC en reposo</dt>
+          {alert.hrv || alert.rhr ? (
+            <>
+              {alert.hrv && (
+                <dd class="text-sm">
+                  VFC {int(alert.hrv.avg7)} ms, por debajo de {int(alert.hrv.limit)}
+                </dd>
+              )}
+              {alert.rhr && (
+                <dd class="text-sm">
+                  FC reposo {int(alert.rhr.avg7)} ppm ({signed(alert.rhr.avg7 - alert.rhr.base)})
+                </dd>
+              )}
+            </>
+          ) : (
+            <dd class="text-sm">Aún normales</dd>
+          )}
+        </div>
+      </dl>
+      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        Regla orientativa con umbrales configurables en tu perfil ·{' '}
+        <a href="/salud#alertas" class="text-blue-700 underline dark:text-blue-400">
+          Ver el histórico
+        </a>
+      </p>
+    </section>
+  </div>
+)}

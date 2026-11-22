@@ -81,6 +81,21 @@ export const FORM_ZONES: { zone: FormZone; min: number; label: string; text: str
 ];
 export const formZone = (pct: number) => FORM_ZONES.find((z) => pct >= z.min)!;
 
+/**
+ * Ratio agudo:crónico (ACWR) = fatiga (7 d) / forma física (42 d). Bandas orientativas (Gabbett):
+ * < 0,8 carga baja, 0,8–1,3 óptima, 1,3–1,5 elevada, > 1,5 riesgo de lesión.
+ */
+export type AcwrZone = 'low' | 'optimal' | 'elevated' | 'risk';
+export const ACWR_ZONES: { zone: AcwrZone; max: number; label: string }[] = [
+  { zone: 'low', max: 0.8, label: 'Carga baja' },
+  { zone: 'optimal', max: 1.3, label: 'Óptima' },
+  { zone: 'elevated', max: 1.5, label: 'Elevada' },
+  { zone: 'risk', max: Infinity, label: 'Riesgo' },
+];
+/** ACWR de un punto (undefined mientras la forma física sea casi nula). */
+export const acwr = (p: Pick<PmcPoint, 'fitness' | 'fatigue'>) => (p.fitness >= 1 ? p.fatigue / p.fitness : undefined);
+export const acwrZone = (ratio: number) => ACWR_ZONES.find((z) => ratio < z.max)!;
+
 export interface WeekLoad {
   week: string;
   total: number;

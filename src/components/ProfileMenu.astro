@@ -5,9 +5,32 @@
  */
 import { maskKey, secretConfigured } from '../lib/settings';
 import { clientFor, getProfile, type UserProfile } from '../lib/garmin';
+import { DEFAULT_THRESHOLDS, THRESHOLD_LIMITS, type AlertThresholds } from '../lib/sleep-alert';
 
 const key = Astro.locals.settings.garminApiKey;
 const sex = Astro.locals.settings.sex;
+const savedAlert = Astro.locals.settings.alert ?? {};
+/** Campos de la alerta de sueño: vacío = valor por defecto (que se muestra como sugerencia). */
+interface AlertField {
+  key: keyof AlertThresholds;
+  label: string;
+  unit: string;
+  /** Sugerencia si no hay valor por defecto numérico. */
+  fallback?: string;
+}
+const ALERT_FIELDS: AlertField[] = [
+  { key: 'lastNightH', label: 'Avisar si anoche dormiste menos de', unit: 'h' },
+  { key: 'shortNightH', label: 'Noche corta: menos de', unit: 'h' },
+  { key: 'minShortNights', label: 'Noches cortas en 7 días, al menos', unit: '' },
+  { key: 'sleepTargetH', label: 'Objetivo de sueño para la deuda', unit: 'h', fallback: 'Garmin' },
+  { key: 'hrvSd', label: 'Escalar si la VFC baja más de', unit: 'DE' },
+  { key: 'rhrBpm', label: 'Escalar si la FC en reposo sube', unit: 'ppm' },
+];
+const alertFields = ALERT_FIELDS.map((f) => ({
+  ...f,
+  placeholder: f.fallback ?? String(DEFAULT_THRESHOLDS[f.key] ?? '').replace('.', ','),
+}));
+const hasCustomAlert = Object.keys(savedAlert).length > 0;
 const client = clientFor(Astro.locals);
 const flash = Astro.locals.flash;
 const profile: UserProfile = client ? await getProfile(client).catch(() => ({})) : {};
@@ -201,6 +224,64 @@ const redirectTo = Astro.url.pathname + Astro.url.search;
             Guardar
           </button>
         </form>
+      </section>
+
+      <!-- Umbrales de la alerta de fatiga por sueño -->
+      <section class="border-t border-gray-200 pt-4 dark:border-gray-700">
+        <h2 class="text-sm font-semibold">Alerta de fatiga por sueño</h2>
+        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+          Umbrales orientativos. Deja un campo vacío para usar el valor por defecto (el que se ve en gris).
+        </p>
+        <form
+          method="post"
+          action="/api/ajustes"
+          class="mt-2 grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 text-xs"
+          data-loading="Guardando los umbrales…"
+        >
+          <input type="hidden" name="action" value="save-alert">
+          <input type="hidden" name="redirect" value={redirectTo}>
+          {alertFields.map((f) => (
+            <>
+              <label for={`alert-${f.key}`} class="text-gray-600 dark:text-gray-400">
+                {f.label}
+              </label>
+              <span class="flex items-center gap-1">
+                <input
+                  id={`alert-${f.key}`}
+                  name={f.key}
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  value={savedAlert[f.key]?.toString().replace('.', ',') ?? ''}
+                  placeholder={f.placeholder}
+                  aria-describedby={`alert-${f.key}-range`}
+                  class="w-16 rounded-lg border border-gray-300 bg-gray-50 p-1.5 text-right text-base text-gray-900 tabular-nums sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                >
+                <span class="w-7 text-gray-500 dark:text-gray-400">{f.unit}</span>
+                <span id={`alert-${f.key}-range`} class="sr-only">
+                  {`Entre ${String(THRESHOLD_LIMITS[f.key].min).replace('.', ',')} y ${String(THRESHOLD_LIMITS[f.key].max).replace('.', ',')}`}
+                </span>
+              </span>
+            </>
+          ))}
+          <div class="col-span-2 mt-1 flex justify-end">
+            <button
+              type="submit"
+              class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
+        {hasCustomAlert && (
+          <form method="post" action="/api/ajustes" class="mt-1" data-loading="Restableciendo los umbrales…">
+            <input type="hidden" name="action" value="reset-alert" />
+            <input type="hidden" name="redirect" value={redirectTo} />
+            <button type="submit" class="text-xs text-gray-600 hover:underline dark:text-gray-400">
+              Restablecer los valores por defecto
+            </button>
+          </form>
+        )}
       </section>
 
       <!-- Estado de la conexión: basta con que Garmin devuelva el perfil -->

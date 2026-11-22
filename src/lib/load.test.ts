@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { bestEfforts, dailyLoad, edwardsTrimp, formZone, pmc, sessionLoad, weeklyChange, weeklyLoad } from './load';
+import {
+  acwr,
+  acwrZone,
+  bestEfforts,
+  dailyLoad,
+  edwardsTrimp,
+  formZone,
+  pmc,
+  sessionLoad,
+  weeklyChange,
+  weeklyLoad,
+} from './load';
 import type { Activity } from './garmin/types';
 
 const act = (date: string, over: Partial<Activity> = {}): Activity => ({
@@ -96,5 +107,16 @@ describe('bestEfforts', () => {
       [1000, 290, 2],
       [5000, 1600, 1],
     ]);
+  });
+});
+
+describe('ratio agudo:crónico', () => {
+  it('fatiga / forma física, con bandas del informe', () => {
+    expect(acwr({ fitness: 57, fatigue: 41 })).toBeCloseTo(0.72, 2);
+    expect(acwrZone(0.72).zone).toBe('low');
+    expect(acwrZone(0.8).zone).toBe('optimal');
+    expect(acwrZone(1.4).zone).toBe('elevated');
+    expect(acwrZone(1.6).zone).toBe('risk');
+    expect(acwr({ fitness: 0.2, fatigue: 3 })).toBeUndefined();
   });
 });

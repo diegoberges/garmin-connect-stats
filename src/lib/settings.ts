@@ -5,11 +5,14 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { AstroCookies } from 'astro';
+import type { AlertThresholds } from './sleep-alert';
 
 export interface UserSettings {
   garminApiKey?: string;
   /** Para comparar el VO2máx con tablas de referencia por sexo y edad. */
   sex?: 'male' | 'female';
+  /** Umbrales propios de la alerta de fatiga por sueño (los que falten, por defecto). */
+  alert?: Partial<AlertThresholds>;
 }
 
 export const SETTINGS_COOKIE = 'gcs_settings';
