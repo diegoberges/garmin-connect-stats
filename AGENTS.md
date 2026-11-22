@@ -76,6 +76,26 @@ finales y 120 columnas.
 - Para saltarse una regla, `// biome-ignore lint/<grupo>/<regla>: motivo` con el motivo explicado.
 - Excluidos: `schema.d.ts` (generado), la spec OpenAPI y el lockfile.
 
+**SonarCloud** (calidad y seguridad del código): conectado como **app de GitHub con análisis automático**;
+no hay workflow ni `sonar-project.properties` en el repo. Analiza cada push a `main` y cada PR y publica la
+comprobación "SonarCloud Code Analysis" (no es obligatoria para fusionar; la obligatoria es la CI).
+
+- Panel: https://sonarcloud.io/dashboard?id=diegoberges_garmin-connect-stats (proyecto público).
+- Consulta rápida por API (pública, sin token), por ejemplo los problemas abiertos de un tipo:
+
+  ```bash
+  curl -s "https://sonarcloud.io/api/issues/search?componentKeys=diegoberges_garmin-connect-stats&resolved=false&types=VULNERABILITY"
+  curl -s "https://sonarcloud.io/api/measures/component?component=diegoberges_garmin-connect-stats&metricKeys=bugs,vulnerabilities,code_smells,coverage"
+  ```
+
+- **No introduzcas problemas nuevos** en un PR: revisa la comprobación de SonarCloud antes de fusionar.
+- Reglas que más salen y conviene respetar en código nuevo:
+  - complejidad cognitiva ≤ 15 por función (`S3776`): divide funciones largas en auxiliares;
+  - nada de ternarios anidados (`S3358`): usa `if`/`else` o una función;
+  - GitHub Actions fijadas por **SHA completo** del commit, no por etiqueta (`S7637`);
+  - sin URLs `http://` (`S5332`), aunque sean de relleno;
+  - no repitas uniones de tipos: dale nombre con un `type` (`S4621`).
+
 ### Servidor de desarrollo
 
 Arráncalo en segundo plano:

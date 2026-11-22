@@ -99,7 +99,7 @@ export async function unwrap<T>(call: Promise<{ data?: T; error?: unknown; respo
   }
   const detail = (typeof error === 'string' ? error : JSON.stringify(error ?? '')).slice(0, 200);
   throw new GarminApiError(
-    `Garmin respondió ${response.status} en ${new URL(response.url || 'http://x').pathname}${detail ? `: ${detail}` : ''}`,
+    `Garmin respondió ${response.status} en ${new URL(response.url || 'https://x').pathname}${detail ? `: ${detail}` : ''}`,
     response.status,
   );
 }
