@@ -1,0 +1,213 @@
+---
+/**
+ * Competiciones: actividades marcadas con el tipo de evento "Competición" (race) en Garmin Connect,
+ * de cualquier deporte y de todo el historial, con la mejor marca en cada distancia estándar.
+ */
+import Base from '../layouts/Base.astro';
+import ConnectPrompt from '../components/ConnectPrompt.astro';
+import ErrorState from '../components/ErrorState.astro';
+import Trophy from '../components/Trophy.astro';
+import { clientFor, getRaces, type Activity } from '../lib/garmin';
+import { isoDate } from '../lib/dates';
+import { bestRaceIds, raceCategory, type RaceCategory } from '../lib/races';
+import { activityLabel, duration, int, km, pace, shortDate } from '../lib/format';
+
+const client = clientFor(Astro.locals);
+const today = isoDate();
+
+let races: Activity[] | undefined;
+let error: unknown;
+if (client) {
+  try {
+    races = await getRaces(client, today);
+  } catch (err) {
+    error = err;
+  }
+}
+
+const bestRaces = bestRaceIds(races ?? []);
+const raceYears = [...new Set((races ?? []).map((r) => r.date.slice(0, 4)))];
+// De la más importante a la menos: maratón → media → 10K → 5K
+const CATEGORIES: Exclude<RaceCategory, 'Otra'>[] = ['Maratón', 'Media', '10K', '5K'];
+const bestByCat = CATEGORIES.map((cat) => ({
+  cat,
+  race: (races ?? []).find((r) => bestRaces.has(r.id) && raceCategory(r) === cat),
+  count: (races ?? []).filter((r) => raceCategory(r) === cat).length,
+}));
+
+/** Clase de la etiqueta por distancia: de menos (5K) a más destacada (maratón) */
+const CAT_CLASS: Record<Exclude<RaceCategory, 'Otra'>, string> = { '5K': 'cat-5k', '10K': 'cat-10k', Media: 'cat-half', Maratón: 'cat-marathon' };
+
+const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
+---
+
+<Base title="Competiciones">
+  <div class="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+    <h1 class="text-2xl font-bold">Competiciones{races ? <span class="ml-2 text-base font-normal text-gray-500 dark:text-gray-400">{races.length}</span> : ''}</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400">Actividades marcadas como competición en Garmin Connect</p>
+  </div>
+
+  {
+    !client ? (
+      <ConnectPrompt />
+    ) : error ? (
+      <ErrorState error={error} />
+    ) : (
+      <div class="space-y-6">
+        {races && races.length > 0 && (
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {bestByCat.map(({ cat, race, count }) => (
+              <div class:list={[card, 'p-4']}>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}
+                </p>
+                {race ? (
+                  <>
+                    <p class="mt-1 text-2xl font-semibold tabular-nums">{duration(race.durationS)}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {pace(race.durationS / race.distanceKm)} /km ·{' '}
+                      <a href={`/actividades/${race.id}`} class="text-blue-700 hover:underline dark:text-blue-400" title={race.name}>
+                        {shortDate(race.date)} {race.date.slice(0, 4)}
+                      </a>
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{count} {count === 1 ? 'competición' : 'competiciones'}</p>
+                  </>
+                ) : (
+                  <p class="mt-1 text-2xl font-semibold text-gray-400">—</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!races ? (
+          <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>No se han podido cargar las competiciones.</p>
+        ) : races.length === 0 ? (
+          <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>
+            No tienes actividades marcadas como competición. En Garmin Connect, edita la actividad y elige el tipo de evento «Competición».
+          </p>
+        ) : (
+          <div class:list={[card, 'overflow-x-auto']}>
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+                <tr>
+                  <th class="px-3 py-3 sm:px-4">Fecha</th>
+                  <th class="px-4 py-3">Competición</th>
+                  <th class="px-4 py-3">Distancia</th>
+                  <th class="px-4 py-3 text-right">Tiempo</th>
+                  <th class="hidden px-4 py-3 text-right sm:table-cell">Ritmo</th>
+                  <th class="hidden px-4 py-3 text-right sm:table-cell">FC media</th>
+                  <th class="hidden px-4 py-3 text-right sm:table-cell">Desnivel +</th>
+                </tr>
+              </thead>
+              {raceYears.map((year) => (
+                <tbody class="tabular-nums">
+                  <tr class="bg-gray-50/60 dark:bg-gray-900/40">
+                    <th colspan="7" class="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      {year} · {races.filter((r) => r.date.startsWith(year)).length}
+                    </th>
+                  </tr>
+                  {races
+                    .filter((r) => r.date.startsWith(year))
+                    .map((r) => {
+                      const cat = raceCategory(r);
+                      return (
+                        <tr class="border-t border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
+                          <td class="px-4 py-2.5 whitespace-nowrap">{shortDate(r.date)}</td>
+                          <td class="px-4 py-2.5">
+                            <a href={`/actividades/${r.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
+                              {r.name}
+                            </a>
+                            {!/^running$/.test(r.typeKey) && (
+                              <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                {activityLabel(r.typeKey)}
+                              </span>
+                            )}
+                          </td>
+                          <td class="px-4 py-2.5 whitespace-nowrap">
+                            {r.distanceKm > 0 ? `${km(r.distanceKm, 2)} km` : '—'}
+                            {cat !== 'Otra' && <span class:list={['race-badge', CAT_CLASS[cat]]}>{cat}</span>}
+                          </td>
+                          <td class="px-3 py-2.5 text-right sm:px-4">
+                            <span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                              {bestRaces.has(r.id) && (
+                                <span class="trophy-tip relative inline-flex cursor-help" tabindex="0">
+                                  <Trophy class="h-4 w-4" />
+                                  <span role="tooltip" class="trophy-tip-text">Mejor {cat}</span>
+                                </span>
+                              )}
+                              <span class="font-semibold">{duration(r.durationS)}</span>
+                            </span>
+                          </td>
+                          <td class="hidden px-4 py-2.5 text-right whitespace-nowrap sm:table-cell">
+                            {r.distanceKm > 0.5 ? `${pace(r.durationS / r.distanceKm)} /km` : '—'}
+                          </td>
+                          <td class="hidden px-4 py-2.5 text-right sm:table-cell">{int(r.avgHr)}</td>
+                          <td class="hidden px-4 py-2.5 text-right whitespace-nowrap sm:table-cell">{r.elevationGainM ? `${int(r.elevationGainM)} m` : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              ))}
+            </table>
+          </div>
+        )}
+      </div>
+    )
+  }
+</Base>
+
+<style>
+  /* Etiquetas de distancia: intensidad creciente de 5K a maratón */
+  .race-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    vertical-align: 1px;
+    white-space: nowrap;
+  }
+  .cat-5k { background: #dcfce7; color: #166534; }
+  .cat-10k { background: #dbeafe; color: #1e40af; }
+  .cat-half { background: #ffedd5; color: #9a3412; }
+  .cat-marathon { background: #dc2626; color: #fff; }
+  :global(.dark) .cat-5k { background: rgb(22 101 52 / 0.35); color: #86efac; }
+  :global(.dark) .cat-10k { background: rgb(30 64 175 / 0.4); color: #93c5fd; }
+  :global(.dark) .cat-half { background: rgb(154 52 18 / 0.45); color: #fdba74; }
+  :global(.dark) .cat-marathon { background: #dc2626; color: #fff; }
+
+  /* Trofeo: color fijo (ámbar) y aviso propio al pasar el ratón o al enfocar/tocar */
+  .trophy-tip {
+    color: #f59e0b;
+  }
+  :global(.dark) .trophy-tip {
+    color: #fbbf24;
+  }
+  .trophy-tip-text {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #111827;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 10;
+  }
+  .trophy-tip:hover .trophy-tip-text,
+  .trophy-tip:focus .trophy-tip-text {
+    opacity: 1;
+  }
+  .trophy-tip:focus {
+    outline: none;
+  }
+</style>

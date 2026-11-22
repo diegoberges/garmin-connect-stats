@@ -1,15 +1,34 @@
 ---
+/**
+ * Rendimiento: ¿mi entrenamiento me está haciendo mejor? Carga y su balance (forma física / fatiga / forma),
+ * cómo reparto la intensidad, volumen de carrera, mejores marcas y VO2máx.
+ * Criterios y fuentes: reports/Métricas de salud y rendimiento.md (fase 2).
+ */
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
 import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
 import RangeSelector from '../components/RangeSelector.astro';
-import { clientFor, getRuns, getVo2Max, type Activity, type Vo2Point } from '../lib/garmin';
+import { clientFor, getActivities, getAllRuns, type Activity } from '../lib/garmin';
 import { addDays, isoDate, weekStart } from '../lib/dates';
-import { pctChange, runsBetween, totals, weeklyTotals, type WeekTotal } from '../lib/stats';
-import { duration, hoursMinutes, int, km, pace, shortDate } from '../lib/format';
-import type { ChartSpec } from '../lib/chart-spec';
+import { pctChange, runsBetween, totals, weeklyTotals } from '../lib/stats';
+import {
+  FATIGUE_DAYS,
+  FITNESS_DAYS,
+  FORM_ZONES,
+  WARMUP_DAYS,
+  WEEKLY_SPIKE_PCT,
+  bestEfforts,
+  dailyLoad,
+  formZone,
+  pmc,
+  weeklyChange,
+  weeklyLoad,
+} from '../lib/load';
+import { BEST_EFFORT_DISTANCES } from '../lib/garmin/types';
+import { activityLabel, duration, hoursMinutes, int, km, pace, shortDate } from '../lib/format';
+import type { ChartSpec, ColorSlot } from '../lib/chart-spec';
 
 const WEEK_OPTIONS = [
   { value: 4, label: '4 sem' },
@@ -24,58 +43,160 @@ const client = clientFor(Astro.locals);
 const today = isoDate();
 const thisWeek = weekStart(today);
 const lastWeek = addDays(thisWeek, -7);
-const from = addDays(thisWeek, -7 * (weeks - 1)); // ≥ 4 semanas: siempre incluye la semana pasada
+const from = addDays(thisWeek, -7 * (weeks - 1));
+// Historial extra para que la media de 42 días arranque estabilizada y para comparar con 4 semanas previas
+const loadFrom = addDays(from, -WARMUP_DAYS);
 
-let runs: Activity[] = [];
-let vo2: Vo2Point[] = [];
-let weekly: WeekTotal[] = [];
+let all: Activity[] = [];
+let history: Activity[] | undefined;
 let error: unknown;
 if (client) {
   try {
-    [runs, vo2] = await Promise.all([getRuns(client, from, today), getVo2Max(client, from, today).catch(() => [])]);
-    weekly = weeklyTotals(runs, weeks, today);
+    [all, history] = await Promise.all([
+      getActivities(client, loadFrom, today),
+      // Si el histórico falla, la tabla se muestra solo con el periodo
+      getAllRuns(client, today).catch((err) => {
+        console.error('[garmin] histórico de carreras', err);
+        return undefined;
+      }),
+    ]);
   } catch (err) {
     error = err;
   }
 }
 
-// Semana actual (lun→hoy) frente al mismo tramo de la semana pasada, para comparar en igualdad.
+// ---------- Carga ----------
+const model = pmc(dailyLoad(all, loadFrom, today));
+const visible = model.filter((p) => p.date >= from);
+const nowP = model.at(-1);
+const weekAgo = model.at(-8);
+const fitnessChange = nowP && weekAgo ? nowP.fitness - weekAgo.fitness : undefined;
+const hasForm = visible.some((p) => p.formPct !== undefined);
+// Sin gráfica de forma, la de forma física/fatiga muestra su propio eje x
+const zone = nowP?.formPct !== undefined ? formZone(nowP.formPct) : undefined;
+
+const allWeeks = weeklyLoad(all, weeks + 5, today);
+const shownWeeks = allWeeks.slice(-weeks);
+const change = weeklyChange(allWeeks);
+const spike = change?.pct !== undefined && change.pct >= WEEKLY_SPIKE_PCT;
+const strength4 = allWeeks.slice(-5, -1).reduce((a, w) => a + w.strengthDays, 0) / 4;
+
+const pmcCats = visible.map((p) => shortDate(p.date));
+const fitnessSpec: ChartSpec = {
+  type: 'line',
+  categories: pmcCats,
+  series: [
+    { name: `Forma física (${FITNESS_DAYS} d)`, data: visible.map((p) => Math.round(p.fitness)), color: 1 },
+    { name: `Fatiga (${FATIGUE_DAYS} d)`, data: visible.map((p) => Math.round(p.fatigue)), color: 2 },
+  ],
+  format: 'int',
+  height: 220,
+  group: 'pmc',
+  hideXLabels: visible.some((p) => p.formPct !== undefined),
+};
+const formSpec: ChartSpec = {
+  type: 'line',
+  categories: pmcCats,
+  band: { name: 'Zona productiva (−10 a −30 %)', data: visible.map(() => [-30, -10]) },
+  series: [{ name: 'Forma', data: visible.map((p) => (p.formPct === undefined ? null : Math.round(p.formPct))), color: 3 }],
+  format: 'pct',
+  height: 170,
+  group: 'pmc',
+};
+
+// Carga semanal por tipo: 3 tipos con más carga + "Otras" (máx. 4 colores)
+const typeTotals = new Map<string, number>();
+for (const w of shownWeeks) for (const [t, l] of Object.entries(w.byType)) typeTotals.set(t, (typeTotals.get(t) ?? 0) + l);
+const ranked = [...typeTotals.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+const topTypes = ranked.slice(0, ranked.length > 4 ? 3 : 4);
+const hasOthers = ranked.length > topTypes.length;
+const weekCats = shownWeeks.map((w) => shortDate(w.week));
+const loadSpec: ChartSpec = {
+  type: 'bar',
+  stacked: true,
+  categories: weekCats,
+  series: [
+    ...topTypes.map((t, i) => ({ name: activityLabel(t), data: shownWeeks.map((w) => Math.round(w.byType[t] ?? 0)), color: (i + 1) as ColorSlot })),
+    ...(hasOthers
+      ? [
+          {
+            name: 'Otras',
+            data: shownWeeks.map((w) => Math.round(Object.entries(w.byType).filter(([t]) => !topTypes.includes(t)).reduce((a, [, l]) => a + l, 0))),
+            color: 4 as ColorSlot,
+          },
+        ]
+      : []),
+  ],
+  format: 'int',
+};
+
+// Distribución de intensidad (modelo de 3 zonas a partir de las 5 de FC: Z1–Z2 baja, Z3 moderada, Z4–Z5 alta)
+const pctOf = (w: { low: number; mid: number; high: number }, k: 'low' | 'mid' | 'high') => {
+  const t = w.low + w.mid + w.high;
+  return t > 0 ? Math.round((w[k] / t) * 100) : null;
+};
+const intensitySpec: ChartSpec = {
+  type: 'bar',
+  stacked: true,
+  categories: weekCats,
+  series: [
+    { name: 'Baja (Z1–Z2)', data: shownWeeks.map((w) => pctOf(w, 'low')), color: 1 },
+    { name: 'Moderada (Z3)', data: shownWeeks.map((w) => pctOf(w, 'mid')), color: 4 },
+    { name: 'Alta (Z4–Z5)', data: shownWeeks.map((w) => pctOf(w, 'high')), color: 2 },
+  ],
+  format: 'pct',
+  yMin: 0,
+  yMax: 100,
+  reference: { value: 80, label: '80 % suave' },
+};
+const period = shownWeeks.reduce((a, w) => ({ low: a.low + w.low, mid: a.mid + w.mid, high: a.high + w.high }), { low: 0, mid: 0, high: 0 });
+const periodLow = pctOf(period, 'low');
+
+// ---------- Carrera ----------
+const isRun = (a: Activity) => /run/.test(a.typeKey);
+const runs = all.filter(isRun);
+const runsInPeriod = runs.filter((r) => r.date >= from);
 const elapsed = Math.round((Date.parse(today) - Date.parse(thisWeek)) / 86_400_000);
 const cur = totals(runsBetween(runs, thisWeek, today));
 const prev = totals(runsBetween(runs, lastWeek, addDays(lastWeek, elapsed)));
 const vsLabel = 'vs mismo tramo semana pasada';
-
-const t = totals(runs);
-const chrono = [...runs].reverse();
-const lastVo2 = vo2.at(-1);
-
-const weeklySpec: ChartSpec = {
+const t = totals(runsInPeriod);
+const kmWeekly = weeklyTotals(runsInPeriod, weeks, today);
+const kmSpec: ChartSpec = {
   type: 'bar',
-  categories: weekly.map((w) => shortDate(w.week)),
-  series: [{ name: 'Kilómetros', data: weekly.map((w) => Math.round(w.km * 10) / 10), color: 1 }],
+  categories: kmWeekly.map((w) => shortDate(w.week)),
+  series: [{ name: 'Kilómetros', data: kmWeekly.map((w) => Math.round(w.km * 10) / 10), color: 1 }],
   format: 'km',
+  height: 220,
 };
-const paceSpec: ChartSpec = {
-  type: 'line',
-  categories: chrono.map((r) => shortDate(r.date)),
-  series: [{ name: 'Ritmo medio', data: chrono.map((r) => (r.paceSPerKm ? Math.round(r.paceSPerKm) : null)), color: 1 }],
-  format: 'pace',
-  reversed: true,
+
+// Mejores marcas de los últimos 12 meses (desde hoy, sin depender del selector) frente a todo el historial
+const yearAgo = addDays(today, -365);
+const lastYearRuns = [...(history ?? []), ...runs].filter((r) => r.date >= yearAgo);
+const records = bestEfforts(lastYearRuns);
+const allTime = new Map((history ? bestEfforts([...history, ...runs]) : []).map((r) => [r.distance, r]));
+const firstRun = history?.at(-1)?.date;
+const DIST_LABEL: Record<number, string> = { 1000: '1 km', 1609: '1 milla', 5000: '5 km', 10000: '10 km', 21098: 'Media maratón', 42195: 'Maratón' };
+const periodByDist = new Map(records.map((r) => [r.distance, r]));
+// Todas las distancias con marca en el periodo o en el histórico, en orden de distancia
+const recordRows = BEST_EFFORT_DISTANCES.filter((d) => periodByDist.has(d) || allTime.has(d)).map((distance) => ({
+  distance,
+  period: periodByDist.get(distance),
+  best: allTime.get(distance),
+}));
+/** "4 nov 2024": las marcas históricas pueden ser de otros años */
+const yearDate = (d: string) => `${shortDate(d)} ${d.slice(0, 4)}`;
+
+
+const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
+const sectionTitle = 'text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
+const ZONE_TONE: Record<string, string> = {
+  transition: 'border-l-gray-400',
+  fresh: 'border-l-green-500',
+  neutral: 'border-l-blue-500',
+  optimal: 'border-l-blue-700',
+  risk: 'border-l-red-500',
 };
-const hrSpec: ChartSpec = {
-  type: 'line',
-  categories: chrono.map((r) => shortDate(r.date)),
-  series: [{ name: 'FC media', data: chrono.map((r) => r.avgHr ?? null), color: 2 }],
-  format: 'bpm',
-};
-const vo2Spec: ChartSpec = {
-  type: 'line',
-  categories: vo2.map((v) => shortDate(v.date)),
-  series: [{ name: 'VO2máx', data: vo2.map((v) => v.value), color: 3 }],
-  format: 'dec1',
-  height: 200,
-};
-const sectionTitle = 'mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
 ---
 
 <Base title="Rendimiento">
@@ -90,46 +211,237 @@ const sectionTitle = 'mb-3 text-sm font-semibold tracking-wide text-gray-500 upp
     ) : error ? (
       <ErrorState error={error} />
     ) : (
-      <div class="space-y-6">
-        <div>
-          <h2 class={sectionTitle}>Esta semana · desde el {shortDate(thisWeek)}</h2>
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="Distancia" value={km(cur.km)} unit="km" delta={pctChange(cur.km, prev.km)} deltaLabel={vsLabel} />
-            <StatCard label="Sesiones" value={int(cur.runs)} hint={`${int(prev.runs)} la semana pasada a estas alturas`} />
-            <StatCard label="Ritmo medio" value={pace(cur.paceSPerKm)} unit="/km" delta={pctChange(cur.paceSPerKm, prev.paceSPerKm)} deltaLabel={vsLabel} higherIsBetter={false} />
-            <StatCard label="Tiempo" value={hoursMinutes(cur.movingS)} delta={pctChange(cur.movingS, prev.movingS)} deltaLabel={vsLabel} />
+      <div class="space-y-8">
+        {/* ---------- Estado de forma ---------- */}
+        {nowP && !zone && (
+          <section class:list={[card, 'border-l-4 border-l-gray-400 p-5']} aria-labelledby="estado">
+            <h2 id="estado" class={sectionTitle}>Estado de forma · hoy</h2>
+            <p class="mt-2 text-xl font-bold">Calibrando</p>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              Hacen falta {FITNESS_DAYS} días de historial de actividades para estimar tu forma física y tu forma. Mientras tanto se muestran la carga y la fatiga.
+            </p>
+          </section>
+        )}
+        {nowP && zone && (
+          <section class:list={[card, 'border-l-4 p-5', ZONE_TONE[zone.zone]]} aria-labelledby="estado">
+            <div class="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+              <div>
+                <h2 id="estado" class={sectionTitle}>Estado de forma · hoy</h2>
+                <p class="mt-2 text-xl font-bold">{zone.label}</p>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{zone.text}</p>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  Forma = forma física (carga media de {FITNESS_DAYS} días) − fatiga (de {FATIGUE_DAYS} días), en % de tu forma física.
+                  Las zonas son orientativas, no umbrales validados.
+                </p>
+              </div>
+              <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Forma</dt>
+                  <dd class="text-2xl font-bold tabular-nums">{nowP.formPct! > 0 ? '+' : ''}{Math.round(nowP.formPct!)} %</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Forma física</dt>
+                  <dd class="text-2xl font-bold tabular-nums">{int(nowP.fitness)}</dd>
+                  {fitnessChange !== undefined && (
+                    <dd class="text-xs text-gray-500 tabular-nums dark:text-gray-400">
+                      {fitnessChange >= 0 ? '↑ +' : '↓ −'}{km(Math.abs(fitnessChange))} en 7 días
+                    </dd>
+                  )}
+                </div>
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Fatiga</dt>
+                  <dd class="text-2xl font-bold tabular-nums">{int(nowP.fatigue)}</dd>
+                </div>
+                {change && (
+                  <div class="col-span-2">
+                    <dt class="text-xs text-gray-500 dark:text-gray-400">Carga de la semana pasada</dt>
+                    <dd class="text-sm">
+                      <span class="font-semibold tabular-nums">{int(change.last.total)}</span>
+                      {change.pct !== undefined && (
+                        <span class:list={['ml-1 tabular-nums', spike ? 'font-medium text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400']}>
+                          ({change.pct >= 0 ? '+' : '−'}{Math.abs(Math.round(change.pct))} % vs media de 4 semanas{spike ? ' · subida brusca' : ''})
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Días de fuerza</dt>
+                  <dd class="text-sm"><span class="font-semibold tabular-nums">{km(strength4)}</span> <span class="text-gray-500 dark:text-gray-400">/ semana (4 sem)</span></dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+        )}
+
+        {/* ---------- Carga ---------- */}
+        <section class="space-y-4" aria-labelledby="carga">
+          <h2 id="carga" class={sectionTitle}>Carga de entrenamiento · todas las actividades</h2>
+          <section class:list={[card, 'min-w-0 p-4']}>
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 class="text-base font-semibold">Forma física, fatiga y forma</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Carga de entrenamiento de Garmin por sesión</p>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              La forma física sube despacio con la carga constante; la fatiga reacciona rápido. Si la forma cae por debajo de −30 %, la fatiga va por delante.
+            </p>
+            <div class="mt-3 w-full min-w-0" data-chart={JSON.stringify(fitnessSpec)} role="img" aria-label="Forma física y fatiga" style="min-height:220px" />
+            {hasForm && (
+              <>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Forma (% de la forma física)</p>
+                <div class="w-full min-w-0" data-chart={JSON.stringify(formSpec)} role="img" aria-label="Forma" style="min-height:170px" />
+              </>
+            )}
+            <details class="mt-2 text-sm">
+              <summary class="cursor-pointer text-gray-500 select-none hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Cómo leer las zonas</summary>
+              <ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                {FORM_ZONES.map((z, i) => (
+                  <li>
+                    <span class="font-semibold">{z.label}</span>
+                    {' '}({i === 0 ? `> +${z.min} %` : z.min === -Infinity ? `< ${FORM_ZONES[i - 1].min} %` : `${z.min} a ${FORM_ZONES[i - 1].min} %`}): {z.text}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </section>
+
+          <div class="grid gap-6 lg:grid-cols-2">
+            <ChartCard
+              title="Carga semanal por tipo"
+              subtitle={`Avisa si una semana sube más de un ${WEEKLY_SPIKE_PCT} % sobre la media de las 4 anteriores`}
+              spec={loadSpec}
+              table={{
+                headers: ['Semana', 'Carga', 'Días de fuerza'],
+                rows: shownWeeks.map((w) => [shortDate(w.week), int(w.total), int(w.strengthDays)]),
+              }}
+            />
+            <ChartCard
+              title="Distribución de intensidad"
+              subtitle={`${periodLow !== null ? `${periodLow} % del tiempo en baja intensidad en el periodo · ` : ''}los fondistas de élite hacen ~80 % suave`}
+              spec={intensitySpec}
+              table={{
+                headers: ['Semana', 'Baja', 'Moderada', 'Alta'],
+                rows: shownWeeks.map((w) => [shortDate(w.week), duration(w.low), duration(w.mid), duration(w.high)]),
+              }}
+            />
           </div>
-        </div>
+        </section>
 
-        <div>
-          <h2 class={sectionTitle}>Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}</h2>
-          <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            <StatCard label="Distancia" value={km(t.km)} unit="km" />
-            <StatCard label="Sesiones" value={int(t.runs)} />
-            <StatCard label="Tiempo" value={hoursMinutes(t.movingS)} />
-            <StatCard label="Ritmo medio" value={pace(t.paceSPerKm)} unit="/km" />
-            <StatCard label="FC media" value={int(t.avgHr)} unit="ppm" />
-            <StatCard label="VO2máx" value={lastVo2 ? km(lastVo2.value) : '—'} hint={lastVo2 ? `a ${shortDate(lastVo2.date)}` : undefined} />
+        {/* ---------- Carrera ---------- */}
+        <section class="space-y-4" aria-labelledby="carrera">
+          <h2 id="carrera" class={sectionTitle}>Carrera</h2>
+          <div>
+            <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Esta semana · desde el {shortDate(thisWeek)}</p>
+            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard label="Distancia" value={km(cur.km)} unit="km" delta={pctChange(cur.km, prev.km)} deltaLabel={vsLabel} />
+              <StatCard label="Sesiones" value={int(cur.runs)} hint={`${int(prev.runs)} la semana pasada a estas alturas`} />
+              <StatCard label="Ritmo medio" value={pace(cur.paceSPerKm)} unit="/km" delta={pctChange(cur.paceSPerKm, prev.paceSPerKm)} deltaLabel={vsLabel} higherIsBetter={false} />
+              <StatCard label="Tiempo" value={hoursMinutes(cur.movingS)} delta={pctChange(cur.movingS, prev.movingS)} deltaLabel={vsLabel} />
+            </div>
           </div>
-        </div>
+          <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
+            <dl class:list={[card, 'grid grid-cols-2 content-start gap-4 p-4']}>
+              <p class="col-span-2 text-sm text-gray-500 dark:text-gray-400">Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}</p>
+              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Distancia</dt><dd class="text-xl font-bold tabular-nums">{km(t.km)} <span class="text-sm font-normal text-gray-500">km</span></dd></div>
+              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Sesiones</dt><dd class="text-xl font-bold tabular-nums">{int(t.runs)}</dd></div>
+              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Tiempo</dt><dd class="text-xl font-bold tabular-nums">{hoursMinutes(t.movingS)}</dd></div>
+              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Ritmo medio</dt><dd class="text-xl font-bold tabular-nums">{pace(t.paceSPerKm)} <span class="text-sm font-normal text-gray-500">/km</span></dd></div>
+              <div><dt class="text-xs text-gray-500 dark:text-gray-400">FC media</dt><dd class="text-xl font-bold tabular-nums">{int(t.avgHr)} <span class="text-sm font-normal text-gray-500">ppm</span></dd></div>
+              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Desnivel +</dt><dd class="text-xl font-bold tabular-nums">{int(t.elevationGainM)} <span class="text-sm font-normal text-gray-500">m</span></dd></div>
+            </dl>
+            <ChartCard
+              title="Kilómetros por semana"
+              subtitle="Carrera, trail y cinta · semanas de lunes a domingo"
+              spec={kmSpec}
+              table={{ headers: ['Semana', 'Km', 'Sesiones', 'Tiempo'], rows: kmWeekly.map((w) => [shortDate(w.week), km(w.km), int(w.runs), duration(w.movingS)]) }}
+            />
+          </div>
 
-        <ChartCard
-          title="Kilómetros por semana"
-          subtitle="Semanas de lunes a domingo"
-          spec={weeklySpec}
-          table={{
-            headers: ['Semana', 'Km', 'Sesiones', 'Tiempo'],
-            rows: weekly.map((w) => [shortDate(w.week), km(w.km), int(w.runs), duration(w.movingS)]),
-          }}
-        />
+          <section class:list={[card, 'min-w-0 p-4']}>
+            <h3 class="text-base font-semibold">Mejores marcas</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Mejor tramo dentro de cualquier carrera en los últimos 12 meses (desde el {shortDate(yearAgo)} {yearAgo.slice(0, 4)}) frente a tu mejor marca
+              {firstRun ? ` desde ${yearDate(firstRun)}` : ' histórica'}.
+            </p>
+            {recordRows.length ? (
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="text-xs text-gray-500 dark:text-gray-400">
+                    <tr>
+                      <th class="py-1 pr-3 text-left font-medium">Distancia</th>
+                      <th class="py-1 pr-3 text-right font-medium">Últimos 12 meses</th>
+                      <th class="py-1 pr-3 text-right font-medium">Histórica</th>
+                      <th class="py-1 text-right font-medium">Diferencia</th>
+                    </tr>
+                  </thead>
+                  <tbody class="tabular-nums">
+                    {recordRows.map(({ distance, period, best }) => (
+                      <tr class="border-t border-gray-100 dark:border-gray-700">
+                        <td class="py-2 pr-3 font-medium whitespace-nowrap">{DIST_LABEL[distance]}</td>
+                        <td class="py-2 pr-3 text-right whitespace-nowrap">
+                          {period ? (
+                            <>
+                              <span class="font-semibold">{duration(period.timeS)}</span>
+                              <span class="block text-xs text-gray-500 dark:text-gray-400">
+                                {pace(period.timeS / (distance / 1000))} /km ·{' '}
+                                <a href={`/actividades/${period.activityId}`} class="text-blue-700 hover:underline dark:text-blue-400" title={period.activityName}>
+                                  {shortDate(period.date)}
+                                </a>
+                              </span>
+                            </>
+                          ) : (
+                            <span class="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td class="py-2 pr-3 text-right whitespace-nowrap">
+                          {best ? (
+                            <>
+                              <span class="font-semibold">{duration(best.timeS)}</span>
+                              <span class="block text-xs text-gray-500 dark:text-gray-400">
+                                {pace(best.timeS / (distance / 1000))} /km ·{' '}
+                                <a href={`/actividades/${best.activityId}`} class="text-blue-700 hover:underline dark:text-blue-400" title={best.activityName}>
+                                  {yearDate(best.date)}
+                                </a>
+                              </span>
+                            </>
+                          ) : (
+                            <span class="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td class="py-2 text-right whitespace-nowrap">
+                          {period && best ? (
+                            period.timeS <= best.timeS ? (
+                              <span class="rounded-sm bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-300">
+                                Récord
+                              </span>
+                            ) : (
+                              <>
+                                <span class="font-medium">+{duration(period.timeS - best.timeS)}</span>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">+{km(((period.timeS - best.timeS) / best.timeS) * 100)} %</span>
+                              </>
+                            )
+                          ) : (
+                            <span class="text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Sin carreras con marcas registradas.</p>
+            )}
+            {!history && <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">No se ha podido cargar el histórico completo; se muestra solo el periodo.</p>}
+          </section>
 
-        <div class="grid gap-6 lg:grid-cols-2">
-          <ChartCard title="Ritmo por sesión" subtitle="min/km · más rápido arriba" spec={paceSpec} />
-          <ChartCard title="FC media por sesión" subtitle="ppm" spec={hrSpec} />
-        </div>
+        </section>
 
-        {vo2.length > 1 && <ChartCard title="VO2máx estimado" spec={vo2Spec} />}
       </div>
     )
   }
 </Base>
+
+<script>
+  import '../scripts/charts';
+</script>
