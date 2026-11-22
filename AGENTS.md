@@ -214,6 +214,10 @@ docs/garmin-personal-api.json # spec OpenAPI (la fuente de verdad de rutas y tip
   no la subas, no la compartas y no envíes su contenido a servicios externos.
 - No pongas datos personales en URLs ni en servicios externos. Las teselas del mapa sí van a
   OpenStreetMap/OpenTopoMap, que ven la zona del mapa (aceptado).
+- **Cabeceras de seguridad** (`lib/security-headers.ts`, aplicadas en `middleware.ts` a todas las respuestas):
+  sin iframes (`frame-ancestors 'none'` + `X-Frame-Options`), `nosniff`, `Referrer-Policy`,
+  `Permissions-Policy` y COOP. HSTS lo pone Vercel. Aún no hay CSP de scripts: haría falta un nonce por
+  petición para los scripts en línea.
 - Formularios: POST a `/api/ajustes`, redirección 303 a la página de origen (solo rutas internas,
   sin redirección abierta) y aviso de un solo uso en la cookie `gcs_flash`.
 
