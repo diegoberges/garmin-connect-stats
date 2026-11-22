@@ -110,96 +110,103 @@ export type DayState = 'normal' | 'attention' | 'alert' | 'calibrating';
 /** Último elemento con valor (la noche de hoy puede no haberse sincronizado aún). */
 const lastWith = <T>(xs: T[], has: (x: T) => boolean) => [...xs].reverse().find(has);
 
-/**
- * Estado de hoy a partir de cuántas señales se salen de su rango: 0–1 normal, 2 atención, ≥3 alerta.
- * La HRV por encima del rango se muestra pero no suma (puede ser buena o reflejar sobrecarga).
- */
-export function todayStatus(days: DayHealth[], fmt: { ms: (v: number) => string; hm: (s: number) => string }) {
-  const signals: Signal[] = [];
+type Fmt = { ms: (v: number) => string; hm: (s: number) => string };
 
+/** Signo de una diferencia, con "±" para el cero. */
+function signOf(v: number): string {
+  if (v > 0) return '+';
+  if (v < 0) return '−';
+  return '±';
+}
+
+function hrvSignal(days: DayHealth[], fmt: Fmt): Signal {
+  const base = { key: 'hrv', label: 'HRV (7 días)' } as const;
   const hrv = lastWith(hrvTrend(days), (p) => p.avg7 !== undefined);
-  if (!hrv)
-    signals.push({
-      key: 'hrv',
-      label: 'HRV (7 días)',
-      state: 'nodata',
-      value: '—',
-      detail: 'Sin datos de HRV nocturna',
-    });
-  else if (hrv.low === undefined)
-    signals.push({
-      key: 'hrv',
-      label: 'HRV (7 días)',
+  if (!hrv) return { ...base, state: 'nodata', value: '—', detail: 'Sin datos de HRV nocturna' };
+  const value = fmt.ms(hrv.avg7!);
+  if (hrv.low === undefined || hrv.high === undefined) {
+    return {
+      ...base,
       state: 'calibrating',
-      value: fmt.ms(hrv.avg7!),
+      value,
       detail: `Calibrando tu rango (${hrv.nights}/${HRV_MIN_NIGHTS} noches)`,
-    });
-  else {
-    const state: SignalState = hrv.avg7! < hrv.low ? 'warn' : hrv.avg7! > hrv.high! ? 'high' : 'ok';
-    const range = `rango ${fmt.ms(hrv.low)}–${fmt.ms(hrv.high!)}`;
-    signals.push({
-      key: 'hrv',
-      label: 'HRV (7 días)',
-      state,
-      value: fmt.ms(hrv.avg7!),
-      detail:
-        state === 'warn'
-          ? `Por debajo de tu ${range}`
-          : state === 'high'
-            ? `Por encima de tu ${range}`
-            : `Dentro de tu ${range}`,
-    });
+    };
   }
+  const range = `rango ${fmt.ms(hrv.low)}–${fmt.ms(hrv.high)}`;
+  if (hrv.avg7! < hrv.low) return { ...base, state: 'warn', value, detail: `Por debajo de tu ${range}` };
+  if (hrv.avg7! > hrv.high) return { ...base, state: 'high', value, detail: `Por encima de tu ${range}` };
+  return { ...base, state: 'ok', value, detail: `Dentro de tu ${range}` };
+}
 
+function restingHrSignal(days: DayHealth[]): Signal {
+  const base = { key: 'rhr', label: 'FC en reposo' } as const;
   const rhr = lastWith(
     deltaTrend(days, (d) => d.restingHr, RHR_WINDOW),
     (p) => p.delta !== undefined,
   );
-  if (!rhr)
-    signals.push({ key: 'rhr', label: 'FC en reposo', state: 'nodata', value: '—', detail: 'Sin línea base todavía' });
-  else {
-    const sign = rhr.delta! > 0 ? '+' : rhr.delta! < 0 ? '−' : '±';
-    signals.push({
-      key: 'rhr',
-      label: 'FC en reposo',
-      state: rhr.delta! >= RHR_ALERT_BPM ? 'warn' : 'ok',
-      value: `${Math.round(rhr.value!)} ppm`,
-      detail: `${sign}${Math.abs(Math.round(rhr.delta!))} ppm frente a tu habitual (${Math.round(rhr.base!)})`,
-    });
-  }
+  if (!rhr) return { ...base, state: 'nodata', value: '—', detail: 'Sin línea base todavía' };
+  const delta = rhr.delta!;
+  return {
+    ...base,
+    state: delta >= RHR_ALERT_BPM ? 'warn' : 'ok',
+    value: `${Math.round(rhr.value!)} ppm`,
+    detail: `${signOf(delta)}${Math.abs(Math.round(delta))} ppm frente a tu habitual (${Math.round(rhr.base!)})`,
+  };
+}
 
+function respirationSignal(days: DayHealth[]): Signal | undefined {
   const resp = lastWith(
     deltaTrend(days, (d) => d.sleepRespiration, RESP_WINDOW),
     (p) => p.delta !== undefined,
   );
-  if (resp) {
-    const d = Math.round(resp.delta! * 10) / 10;
-    signals.push({
-      key: 'resp',
-      label: 'Respiración nocturna',
-      state: resp.delta! >= RESP_ALERT_RPM ? 'warn' : 'ok',
-      value: `${Math.round(resp.value!)} rpm`,
-      detail: `${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d).toLocaleString('es-ES')} rpm frente a tu habitual`,
-    });
-  }
+  if (!resp) return undefined;
+  const d = Math.round(resp.delta! * 10) / 10;
+  return {
+    key: 'resp',
+    label: 'Respiración nocturna',
+    state: resp.delta! >= RESP_ALERT_RPM ? 'warn' : 'ok',
+    value: `${Math.round(resp.value!)} rpm`,
+    detail: `${signOf(d)}${Math.abs(d).toLocaleString('es-ES')} rpm frente a tu habitual`,
+  };
+}
 
+function sleepDebtSignal(days: DayHealth[], fmt: Fmt): Signal | undefined {
   const debt = sleepDebt(days);
-  if (debt.nights >= 3)
-    signals.push({
-      key: 'sleep',
-      label: 'Deuda de sueño (7 noches)',
-      state: debt.debtS >= SLEEP_DEBT_ALERT_S ? 'warn' : 'ok',
-      value: fmt.hm(debt.debtS),
-      detail:
-        debt.debtS < 600
-          ? 'Has cubierto tu necesidad de sueño'
-          : 'Lo que te faltó frente a la necesidad que calcula Garmin',
-    });
+  if (debt.nights < 3) return undefined;
+  return {
+    key: 'sleep',
+    label: 'Deuda de sueño (7 noches)',
+    state: debt.debtS >= SLEEP_DEBT_ALERT_S ? 'warn' : 'ok',
+    value: fmt.hm(debt.debtS),
+    detail:
+      debt.debtS < 600
+        ? 'Has cubierto tu necesidad de sueño'
+        : 'Lo que te faltó frente a la necesidad que calcula Garmin',
+  };
+}
 
-  const warns = signals.filter((s) => s.state === 'warn').length;
+/** 0–1 señales fuera de rango: normal; 2: atención; ≥3: alerta. Con menos de 2 señales útiles, calibrando. */
+function dayState(signals: Signal[]): DayState {
   const usable = signals.filter((s) => s.state === 'ok' || s.state === 'warn' || s.state === 'high').length;
-  const state: DayState = usable < 2 ? 'calibrating' : warns >= 3 ? 'alert' : warns === 2 ? 'attention' : 'normal';
-  return { state, warns, signals };
+  if (usable < 2) return 'calibrating';
+  const warns = signals.filter((s) => s.state === 'warn').length;
+  if (warns >= 3) return 'alert';
+  if (warns === 2) return 'attention';
+  return 'normal';
+}
+
+/**
+ * Estado de hoy a partir de cuántas señales se salen de su rango: 0–1 normal, 2 atención, ≥3 alerta.
+ * La HRV por encima del rango se muestra pero no suma (puede ser buena o reflejar sobrecarga).
+ */
+export function todayStatus(days: DayHealth[], fmt: Fmt) {
+  const signals = [
+    hrvSignal(days, fmt),
+    restingHrSignal(days),
+    respirationSignal(days),
+    sleepDebtSignal(days, fmt),
+  ].filter((x): x is Signal => x !== undefined);
+  return { state: dayState(signals), warns: signals.filter((x) => x.state === 'warn').length, signals };
 }
 
 export interface WeekIntensity {

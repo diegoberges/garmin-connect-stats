@@ -101,9 +101,8 @@ export function parseActivityFile(bytes: Uint8Array): ActivityTrack | undefined 
 
 const isZip = (b: Uint8Array) => b[0] === 0x50 && b[1] === 0x4b;
 
-/** Registros del FIT → muestras con tiempo activo (descontando pausas del cronómetro). */
-function toSamples(records: RecordMesg[], events: EventMesg[]): Sample[] {
-  // Intervalos en pausa: entre un 'stop' del temporizador y el siguiente 'start'
+/** Intervalos en pausa: entre un 'stop' del temporizador y el siguiente 'start'. */
+function timerPauses(events: EventMesg[]): [number, number][] {
   const pauses: [number, number][] = [];
   let stoppedAt: number | undefined;
   for (const e of events) {
@@ -115,25 +114,46 @@ function toSamples(records: RecordMesg[], events: EventMesg[]): Sample[] {
       stoppedAt = undefined;
     }
   }
-  const pausedBefore = (ts: number) => pauses.reduce((acc, [a, b]) => acc + (ts >= b ? b - a : ts > a ? ts - a : 0), 0);
+  return pauses;
+}
 
+/** Milisegundos en pausa antes del instante `ts`. */
+function pausedBefore(pauses: [number, number][], ts: number): number {
+  let total = 0;
+  for (const [from, to] of pauses) {
+    if (ts >= to) total += to - from;
+    else if (ts > from) total += ts - from;
+  }
+  return total;
+}
+
+/** Un registro del FIT como muestra, con `t` ya calculado. */
+function recordToSample(r: RecordMesg, t: number): Sample {
+  const lat = n(r.positionLat);
+  const lon = n(r.positionLong);
+  const hasPosition = lat !== undefined && lon !== undefined;
+  const cadence = n(r.cadence);
+  return {
+    t,
+    d: n(r.distance),
+    lat: hasPosition ? lat * SEMI_TO_DEG : undefined,
+    lon: hasPosition ? lon * SEMI_TO_DEG : undefined,
+    hr: n(r.heartRate),
+    alt: n(r.enhancedAltitude) ?? n(r.altitude),
+    cadence: cadence === undefined ? undefined : cadence + (n(r.fractionalCadence) ?? 0),
+  };
+}
+
+/** Registros del FIT → muestras con tiempo activo (descontando pausas del cronómetro). */
+function toSamples(records: RecordMesg[], events: EventMesg[]): Sample[] {
+  const pauses = timerPauses(events);
   const out: Sample[] = [];
   let t0: number | undefined;
   for (const r of records) {
     if (!(r.timestamp instanceof Date)) continue;
     const ts = r.timestamp.getTime();
     t0 ??= ts;
-    const lat = n(r.positionLat);
-    const lon = n(r.positionLong);
-    out.push({
-      t: (ts - t0 - pausedBefore(ts)) / 1000,
-      d: n(r.distance),
-      lat: lat !== undefined && lon !== undefined ? lat * SEMI_TO_DEG : undefined,
-      lon: lat !== undefined && lon !== undefined ? lon * SEMI_TO_DEG : undefined,
-      hr: n(r.heartRate),
-      alt: n(r.enhancedAltitude) ?? n(r.altitude),
-      cadence: n(r.cadence) !== undefined ? n(r.cadence)! + (n(r.fractionalCadence) ?? 0) : undefined,
-    });
+    out.push(recordToSample(r, (ts - t0 - pausedBefore(pauses, ts)) / 1000));
   }
   return out;
 }
@@ -189,6 +209,32 @@ function buildSeries(samples: Sample[]): Pick<ActivityTrack, 'series' | 'xUnit'>
 const round = (v: number | undefined, digits = 0) =>
   v === undefined ? undefined : Math.round(v * 10 ** digits) / 10 ** digits;
 
+/** Tramo de km en curso: lo que se acumula hasta cerrar el parcial. */
+interface OpenSplit {
+  startT: number;
+  startD: number;
+  hrs: number[];
+  gain: number;
+  loss: number;
+}
+
+const closeSplit = (seg: OpenSplit, index: number, distanceM: number, timeS: number): KmSplit => ({
+  index,
+  distanceM,
+  timeS,
+  avgHr: round(avg(seg.hrs)),
+  elevGainM: Math.round(seg.gain),
+  elevLossM: Math.round(seg.loss),
+});
+
+/** Instante (s) en que se alcanza la distancia `mark` entre dos muestras, por interpolación lineal. */
+function timeAt(a: Sample, b: Sample, mark: number): number {
+  const da = a.d!;
+  const db = b.d!;
+  const f = db === da ? 1 : (mark - da) / (db - da);
+  return a.t + f * (b.t - a.t);
+}
+
 /** Parciales por kilómetro (interpolando el instante exacto de cada km) y el más rápido. */
 function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastestSplitS'> {
   const withD = samples.filter((s) => s.d !== undefined);
@@ -196,56 +242,29 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
   if (total < 500) return { splits: [] };
 
   const splits: KmSplit[] = [];
-  let startT = withD[0].t;
-  let startD = 0; // la actividad empieza en el km 0 aunque el primer registro marque unos metros
-  let hrs: number[] = [];
-  let gain = 0;
-  let loss = 0;
+  // La actividad empieza en el km 0 aunque el primer registro marque unos metros
+  let seg: OpenSplit = { startT: withD[0].t, startD: 0, hrs: [], gain: 0, loss: 0 };
   let prevAlt: number | undefined;
   let mark = 1000;
 
   for (let i = 1; i < withD.length; i++) {
-    const a = withD[i - 1];
     const b = withD[i];
-    if (b.hr !== undefined) hrs.push(b.hr);
+    if (b.hr !== undefined) seg.hrs.push(b.hr);
     if (b.alt !== undefined) {
-      if (prevAlt !== undefined) {
-        const diff = b.alt - prevAlt;
-        if (diff > 0) gain += diff;
-        else loss -= diff;
-      }
+      const diff = prevAlt === undefined ? 0 : b.alt - prevAlt;
+      if (diff > 0) seg.gain += diff;
+      else seg.loss -= diff;
       prevAlt = b.alt;
     }
     while (b.d! >= mark) {
-      const f = b.d! === a.d! ? 1 : (mark - a.d!) / (b.d! - a.d!);
-      const tAt = a.t + f * (b.t - a.t);
-      splits.push({
-        index: splits.length + 1,
-        distanceM: mark - startD,
-        timeS: tAt - startT,
-        avgHr: round(avg(hrs)),
-        elevGainM: Math.round(gain),
-        elevLossM: Math.round(loss),
-      });
-      startT = tAt;
-      startD = mark;
-      hrs = [];
-      gain = 0;
-      loss = 0;
+      const tAt = timeAt(withD[i - 1], b, mark);
+      splits.push(closeSplit(seg, splits.length + 1, mark - seg.startD, tAt - seg.startT));
+      seg = { startT: tAt, startD: mark, hrs: [], gain: 0, loss: 0 };
       mark += 1000;
     }
   }
-  const rest = total - startD;
-  if (rest >= 50) {
-    splits.push({
-      index: splits.length + 1,
-      distanceM: rest,
-      timeS: withD.at(-1)!.t - startT,
-      avgHr: round(avg(hrs)),
-      elevGainM: Math.round(gain),
-      elevLossM: Math.round(loss),
-    });
-  }
+  const rest = total - seg.startD;
+  if (rest >= 50) splits.push(closeSplit(seg, splits.length + 1, rest, withD.at(-1)!.t - seg.startT));
   const full = splits.filter((s) => s.distanceM >= 999 && s.timeS > 0);
   return { splits, fastestSplitS: full.length ? Math.min(...full.map((s) => s.timeS)) : undefined };
 }
