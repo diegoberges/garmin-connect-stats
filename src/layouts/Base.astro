@@ -9,12 +9,34 @@ interface Props {
 const { title } = Astro.props;
 const path = Astro.url.pathname;
 
-const nav = [
+interface NavItem {
+  href: string;
+  label: string;
+  /** Si tiene hijos, se muestra como desplegable */
+  children?: { href: string; label: string; description: string }[];
+}
+const nav: NavItem[] = [
   { href: '/salud', label: 'Salud' },
   { href: '/rendimiento', label: 'Rendimiento' },
-  { href: '/actividades', label: 'Actividades' },
+  {
+    href: '/actividades',
+    label: 'Actividades',
+    children: [
+      { href: '/actividades', label: 'Actividades', description: 'Todas tus sesiones por tipo' },
+      { href: '/competiciones', label: 'Competiciones', description: 'Las marcadas como competición en Garmin' },
+    ],
+  },
 ];
 const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
+const itemActive = (item: NavItem) => (item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href));
+const linkClass = (active: boolean) => [
+  'rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap',
+  active
+    ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
+    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+];
+const dropdowns = nav.filter((i) => i.children);
+const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
 ---
 
 <html lang="es">
@@ -38,20 +60,26 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
         <ProfileMenu />
         <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
           {
-            nav.map((item) => (
-              <a
-                href={item.href}
-                class:list={[
-                  'rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap',
-                  isActive(item.href)
-                    ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
-                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
-                ]}
-                aria-current={isActive(item.href) ? 'page' : undefined}
-              >
-                {item.label}
-              </a>
-            ))
+            nav.map((item) =>
+              item.children ? (
+                <button
+                  type="button"
+                  data-dropdown-toggle={menuId(item)}
+                  data-dropdown-placement="bottom-end"
+                  class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
+                  aria-haspopup="menu"
+                >
+                  {item.children.find((c) => isActive(c.href))?.label ?? item.label}
+                  <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4" />
+                  </svg>
+                </button>
+              ) : (
+                <a href={item.href} class:list={linkClass(isActive(item.href))} aria-current={isActive(item.href) ? 'page' : undefined}>
+                  {item.label}
+                </a>
+              ),
+            )
           }
           <button
             id="theme-toggle"
@@ -68,6 +96,27 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
           </button>
         </div>
       </div>
+      {
+        dropdowns.map((item) => (
+          <div
+            id={menuId(item)}
+            class="z-50 hidden w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            role="menu"
+          >
+            {item.children!.map((c) => (
+              <a
+                href={c.href}
+                role="menuitem"
+                aria-current={isActive(c.href) ? 'page' : undefined}
+                class:list={['block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700', isActive(c.href) && 'bg-blue-50 dark:bg-gray-700']}
+              >
+                <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-blue-700 dark:text-white']}>{c.label}</span>
+                <span class="block text-xs text-gray-500 dark:text-gray-400">{c.description}</span>
+              </a>
+            ))}
+          </div>
+        ))
+      }
     </nav>
 
     <main class="mx-auto max-w-6xl px-4 py-6">

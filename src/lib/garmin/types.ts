@@ -53,7 +53,12 @@ export interface Activity {
   /** segundos en zonas 1..5 */
   hrZonesS: number[];
   calories?: number;
+  /** mejor tiempo (s) en cada distancia estándar dentro de la actividad, según Garmin */
+  bestEfforts: Partial<Record<BestEffortDistance, number>>;
 }
+
+export const BEST_EFFORT_DISTANCES = [1000, 1609, 5000, 10000, 21098, 42195] as const;
+export type BestEffortDistance = (typeof BEST_EFFORT_DISTANCES)[number];
 
 /** Métricas extra del detalle de una actividad (summaryDTO); todas opcionales según deporte y sensores. */
 export interface ActivityExtra {

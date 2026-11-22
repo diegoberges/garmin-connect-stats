@@ -1,4 +1,5 @@
 import { unwrap, type GarminClient } from './client';
+import { BEST_EFFORT_DISTANCES } from './types';
 import type { ActivityExtra, ApiActivity, ApiHrZones, ApiVo2, HrZones, Activity, Vo2Point } from './types';
 
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
@@ -30,6 +31,9 @@ export function mapActivity(a: ApiActivity): Activity {
       (z) => num(z) ?? 0,
     ),
     calories: num(a.calories),
+    bestEfforts: Object.fromEntries(
+      BEST_EFFORT_DISTANCES.map((m) => [m, num((a as Record<string, unknown>)[`fastestSplit_${m}`])]).filter(([, s]) => s !== undefined),
+    ),
   };
 }
 
@@ -37,18 +41,34 @@ export function mapActivity(a: ApiActivity): Activity {
 export const getRuns = (client: GarminClient, startDate: string, endDate: string) =>
   getActivities(client, startDate, endDate, 'running');
 
+/** Desde cuándo se buscan carreras para el histórico (Garmin Connect no tiene datos anteriores). */
+const HISTORY_START = '2000-01-01';
+const HISTORY_TTL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Todas las carreras del historial. Son varias páginas de 100, así que se guardan 6 h por usuario;
+ * para marcas recientes, el periodo visible se calcula aparte y siempre está al día.
+ */
+export const getAllRuns = (client: GarminClient, today: string) =>
+  client.memo(`all-runs`, HISTORY_TTL_MS, () => getRuns(client, HISTORY_START, today));
+
+/** Actividades marcadas como competición (tipo de evento "race" en Garmin Connect), de cualquier deporte. */
+export const getRaces = (client: GarminClient, today: string) =>
+  client.memo(`races`, HISTORY_TTL_MS, () => getActivities(client, HISTORY_START, today, undefined, 'race'));
+
 /** Actividades entre dos fechas (todas, o solo un tipo/tipo padre de Garmin), paginando, más recientes primero. */
 export async function getActivities(
   client: GarminClient,
   startDate: string,
   endDate: string,
   activityType?: string,
+  eventType?: string,
 ): Promise<Activity[]> {
   const all: Activity[] = [];
   for (let start = 0; ; start += PAGE) {
     const page = await unwrap(
       client.GET('/activitylist-service/activities/search/activities', {
-        params: { query: { ...(activityType ? { activityType } : {}), startDate, endDate, start, limit: PAGE } },
+        params: { query: { ...(activityType ? { activityType } : {}), ...(eventType ? { eventType } : {}), startDate, endDate, start, limit: PAGE } },
       }),
     );
     const list = (Array.isArray(page) ? page : []) as ApiActivity[];
