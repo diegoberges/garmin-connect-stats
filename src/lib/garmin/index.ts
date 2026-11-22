@@ -12,3 +12,4 @@ export * from './running';
 export * from './wellness';
 export * from './profile';
 export type * from './types';
+export * from './track';

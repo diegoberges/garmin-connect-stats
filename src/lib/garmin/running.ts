@@ -1,5 +1,5 @@
 import { unwrap, type GarminClient } from './client';
-import type { ApiActivity, ApiHrZones, ApiVo2, HrZones, Activity, Vo2Point } from './types';
+import type { ActivityExtra, ApiActivity, ApiHrZones, ApiVo2, HrZones, Activity, Vo2Point } from './types';
 
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const PAGE = 100;
@@ -59,15 +59,38 @@ export async function getActivities(
 }
 
 /** El listado ya trae todo lo que usamos; el detalle no aporta zonas ni splits por km. */
-export async function getActivity(client: GarminClient, id: number): Promise<Activity | undefined> {
+export async function getActivity(
+  client: GarminClient,
+  id: number,
+): Promise<(Activity & { extra: ActivityExtra }) | undefined> {
   const detail = await unwrap(
     client.GET('/activity-service/activity/{activityId}', { params: { path: { activityId: id } } }),
   );
-  const date = detail.summaryDTO?.startTimeLocal?.slice(0, 10);
-  if (!date) return undefined;
+  const s = detail.summaryDTO;
+  const date = s?.startTimeLocal?.slice(0, 10);
+  if (!s || !date) return undefined;
   // Las zonas de FC solo vienen en el listado: buscamos la actividad en su día.
   const sameDay = await getActivities(client, date, date);
-  return sameDay.find((r) => r.id === id);
+  const activity = sameDay.find((r) => r.id === id);
+  if (!activity) return undefined;
+  return {
+    ...activity,
+    extra: {
+      elevationLossM: num(s.elevationLoss),
+      minElevationM: num(s.minElevation),
+      maxElevationM: num(s.maxElevation),
+      maxSpeed: num(s.maxSpeed),
+      minHr: num(s.minHR),
+      temperatureC: num(s.averageTemperature),
+      steps: num(s.steps),
+      strideLengthCm: num(s.strideLength),
+      groundContactMs: num(s.groundContactTime),
+      verticalOscillationCm: num(s.verticalOscillation),
+      verticalRatio: num(s.verticalRatio),
+      respirationRate: num(s.avgRespirationRate),
+      maxCadence: num(s.maxRunCadence),
+    },
+  };
 }
 
 /** Zonas de FC del deporte indicado (Garmin las define por deporte), con las genéricas como respaldo. */

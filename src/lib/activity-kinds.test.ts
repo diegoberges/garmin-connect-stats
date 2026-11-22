@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kindOf, speedValue } from './activity-kinds';
+import { kindOf, mapStyleFor, speedValue } from './activity-kinds';
 import { activityLabel } from './format';
 
 describe('kindOf', () => {
@@ -29,5 +29,16 @@ describe('activityLabel', () => {
   it('traduce los conocidos y humaniza el resto', () => {
     expect(activityLabel('strength_training')).toBe('Fuerza');
     expect(activityLabel('whitewater_rafting_v2')).toBe('Whitewater rafting');
+  });
+});
+
+describe('mapStyleFor', () => {
+  it('topográfico en montaña, callejero en ciudad', () => {
+    expect(mapStyleFor('trail_running')).toBe('topo');
+    expect(mapStyleFor('hiking')).toBe('topo');
+    expect(mapStyleFor('mountain_biking')).toBe('topo');
+    expect(mapStyleFor('running')).toBe('street');
+    expect(mapStyleFor('walking')).toBe('street');
+    expect(mapStyleFor('road_biking')).toBe('street');
   });
 });

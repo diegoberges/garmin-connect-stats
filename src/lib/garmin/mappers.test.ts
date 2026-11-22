@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import createClient from 'openapi-fetch';
 import { describe, expect, it } from 'vitest';
 import type { paths } from './schema';
+import { memoFor } from './client';
 import { getHrZones, getRuns, getVo2Max, mapActivity } from './running';
 import { getDailyHealth } from './wellness';
 
@@ -14,7 +15,7 @@ const has = existsSync(`${RAW}/activities-running.json`);
 const raw = (name: string) => JSON.parse(readFileSync(`${RAW}/${name}.json`, 'utf8'));
 
 /** Cliente con la misma forma que el real, pero que sirve las capturas según la ruta. */
-const fixtureClient = createClient<paths>({
+const baseClient = createClient<paths>({
   baseUrl: 'https://personal.connectapi.garmin.com',
   fetch: async (req: Request) => {
     const { pathname } = new URL(req.url);
@@ -30,6 +31,7 @@ const fixtureClient = createClient<paths>({
     return new Response(readFileSync(`${RAW}/${file}.json`), { headers: { 'Content-Type': 'application/json' } });
   },
 });
+const fixtureClient = Object.assign(baseClient, { memo: memoFor('test') });
 
 describe.skipIf(!has)('mapeadores con datos reales', () => {
   it('mapea carreras con ritmo, FC y zonas coherentes', async () => {

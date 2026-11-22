@@ -2,17 +2,26 @@
 import Base from '../../layouts/Base.astro';
 import ConnectPrompt from '../../components/ConnectPrompt.astro';
 import ErrorState from '../../components/ErrorState.astro';
-import StatCard from '../../components/StatCard.astro';
-import ChartCard from '../../components/ChartCard.astro';
-import { clientFor, getActivity, getHrZones, type HrZones, type Activity } from '../../lib/garmin';
-import { hasDistance, kindOf, speedLabel, speedUnit, speedValue } from '../../lib/activity-kinds';
+import RouteMap from '../../components/RouteMap.astro';
+import {
+  clientFor,
+  getActivity,
+  getActivityTrack,
+  getHrZones,
+  type Activity,
+  type ActivityExtra,
+  type ActivityTrack,
+  type HrZones,
+} from '../../lib/garmin';
+import { hasDistance, kindOf, mapStyleFor, speedUnit, speedValue } from '../../lib/activity-kinds';
 import { activityLabel, dayLabel, duration, int, km, pace, speed, trainingEffect } from '../../lib/format';
 import type { ChartSpec } from '../../lib/chart-spec';
 
 const id = Number(Astro.params.id);
 const client = clientFor(Astro.locals);
 
-let run: Activity | undefined;
+let run: (Activity & { extra: ActivityExtra }) | undefined;
+let track: ActivityTrack | undefined;
 let zones: HrZones | undefined;
 let error: unknown;
 if (client && Number.isInteger(id) && id > 0) {
@@ -21,7 +30,14 @@ if (client && Number.isInteger(id) && id > 0) {
     if (run) {
       const k = kindOf(run.typeKey);
       const sport = k === 'cycling' ? 'CYCLING' : k === 'swim' ? 'SWIMMING' : 'RUNNING';
-      zones = await getHrZones(client, sport).catch(() => undefined);
+      // El recorrido sale del archivo FIT: si falla, la página se muestra sin él
+      [zones, track] = await Promise.all([
+        getHrZones(client, sport).catch(() => undefined),
+        getActivityTrack(client, id).catch((err) => {
+          console.error('[garmin] recorrido', id, err);
+          return undefined;
+        }),
+      ]);
     }
   } catch (err) {
     error = err;
@@ -29,24 +45,152 @@ if (client && Number.isInteger(id) && id > 0) {
 }
 if (client && !error && !run) return new Response('Actividad no encontrada', { status: 404 });
 
+// ---------- Derivados ----------
 const kind = run ? kindOf(run.typeKey) : 'other';
 const swim = kind === 'swim';
+const cycling = kind === 'cycling';
+const x = run?.extra;
+const fmtSpeed = (v?: number) => (v === undefined ? '—' : cycling ? speed(v) : pace(v));
+/** m/s → ritmo o velocidad en la unidad de la familia */
+const fromMs = (ms?: number) =>
+  ms === undefined || ms <= 0 ? undefined : cycling ? ms * 3.6 : swim ? 100 / ms : kind === 'foot' ? 1000 / ms : undefined;
 const avgSpeed = run ? speedValue(kind, run.distanceKm, run.movingS) : undefined;
 const showDistance = run !== undefined && hasDistance(kind) && run.distanceKm > 0;
+const hasMap = (track?.route.length ?? 0) > 1;
 
+// Cifras principales (grandes): dependen de si hay distancia
+const headline: { label: string; value: string; unit?: string }[] = run
+  ? showDistance
+    ? [
+        { label: 'Distancia', value: swim ? int(run.distanceKm * 1000) : km(run.distanceKm, 2), unit: swim ? 'm' : 'km' },
+        { label: 'Tiempo', value: duration(run.movingS) },
+        { label: cycling ? 'Velocidad' : 'Ritmo', value: fmtSpeed(avgSpeed), unit: speedUnit(kind) },
+      ]
+    : [
+        { label: 'Tiempo', value: duration(run.movingS) },
+        { label: 'FC media', value: int(run.avgHr), unit: 'ppm' },
+        { label: 'Calorías', value: int(run.calories), unit: 'kcal' },
+      ]
+  : [];
+
+// Secundarias del panel
+const secondary = [
+  run?.avgHr && showDistance ? ['FC media', `${int(run.avgHr)} ppm`] : null,
+  run?.maxHr ? ['FC máxima', `${int(run.maxHr)} ppm`] : null,
+  run?.elevationGainM ? ['Desnivel', `+${int(run.elevationGainM)} / −${int(x?.elevationLossM)} m`] : null,
+  run?.cadenceSpm ? ['Cadencia', `${int(run.cadenceSpm)} pasos/min`] : null,
+  run?.calories && showDistance ? ['Calorías', `${int(run.calories)} kcal`] : null,
+  run?.trainingLoad ? ['Carga', int(run.trainingLoad)] : null,
+  run && run.durationS - run.movingS > 30 ? ['Tiempo total', duration(run.durationS)] : null,
+].filter((r): r is [string, string] => r !== null);
+
+// Efecto del entrenamiento (escala de Garmin 0–5)
+const te = [
+  { label: 'Aeróbico', value: run?.aerobicTE },
+  { label: 'Anaeróbico', value: run?.anaerobicTE },
+].filter((t) => t.value !== undefined) as { label: string; value: number }[];
+
+// Dinámica de carrera y otros datos: solo lo que exista
+const dynamics = [
+  x?.strideLengthCm !== undefined ? ['Zancada', `${km(x.strideLengthCm / 100, 2)} m`] : null,
+  x?.groundContactMs !== undefined ? ['Contacto con el suelo', `${int(x.groundContactMs)} ms`] : null,
+  x?.verticalOscillationCm !== undefined ? ['Oscilación vertical', `${km(x.verticalOscillationCm)} cm`] : null,
+  x?.verticalRatio !== undefined ? ['Ratio vertical', `${km(x.verticalRatio)} %`] : null,
+  x?.maxCadence !== undefined ? ['Cadencia máx', `${int(x.maxCadence)} pasos/min`] : null,
+  x?.respirationRate !== undefined ? ['Respiración', `${int(x.respirationRate)} rpm`] : null,
+].filter((r): r is [string, string] => r !== null);
+const others = [
+  track?.fastestSplitS !== undefined && kind === 'foot' ? ['Mejor km', `${pace(track.fastestSplitS)} /km`] : null,
+  fromMs(x?.maxSpeed) !== undefined && kind !== 'other'
+    ? [cycling ? 'Velocidad máx' : 'Ritmo máx', `${fmtSpeed(fromMs(x?.maxSpeed))} ${speedUnit(kind)}`]
+    : null,
+  x?.minHr !== undefined ? ['FC mínima', `${int(x.minHr)} ppm`] : null,
+  x?.minElevationM !== undefined && x?.maxElevationM !== undefined && hasDistance(kind)
+    ? ['Altitud', `${int(x.minElevationM)}–${int(x.maxElevationM)} m`]
+    : null,
+  x?.temperatureC !== undefined ? ['Temperatura', `${int(x.temperatureC)} °C`] : null,
+  x?.steps !== undefined ? ['Pasos', int(x.steps)] : null,
+].filter((r): r is [string, string] => r !== null);
+
+// ---------- Series sincronizadas ----------
+const series = track?.series ?? [];
+const xCats = series.map((p) => (track?.xUnit === 'km' ? `${km(p.x)} km` : `${Math.round(p.x)} min`));
+const smooth = (vals: (number | undefined)[]) =>
+  vals.map((_, i) => {
+    const w = vals.slice(Math.max(0, i - 1), i + 2).filter((v): v is number => v !== undefined);
+    return w.length ? w.reduce((a, b) => a + b, 0) / w.length : undefined;
+  });
+// Paradas (< 0,5 m/s) fuera para que no disparen el eje de ritmo
+const speeds = smooth(series.map((p) => (p.speed !== undefined && p.speed >= 0.5 ? p.speed : undefined)));
+const paceSeries = speeds.map((ms) => {
+  const v = fromMs(ms);
+  return v === undefined ? null : cycling ? Math.round(v * 10) / 10 : Math.round(v);
+});
+const charts: { title: string; spec: ChartSpec }[] = [];
+if (kind !== 'other' && paceSeries.some((v) => v !== null)) {
+  charts.push({
+    title: cycling ? 'Velocidad (km/h)' : swim ? 'Ritmo (min/100 m)' : 'Ritmo (min/km)',
+    spec: {
+      type: 'line',
+      categories: xCats,
+      series: [{ name: cycling ? 'Velocidad' : 'Ritmo', data: paceSeries, color: 1 }],
+      format: cycling ? 'kmh' : swim ? 'pace100' : 'pace',
+      reversed: !cycling,
+      height: 150,
+    },
+  });
+}
+if (series.some((p) => p.hr !== undefined)) {
+  charts.push({
+    title: 'Frecuencia cardiaca (ppm)',
+    spec: { type: 'line', categories: xCats, series: [{ name: 'FC', data: series.map((p) => p.hr ?? null), color: 2 }], format: 'bpm', height: 150 },
+  });
+}
+if (hasDistance(kind) && series.filter((p) => p.alt !== undefined).length > 2) {
+  charts.push({
+    title: 'Altitud (m)',
+    spec: {
+      type: 'area',
+      categories: xCats,
+      series: [{ name: 'Altitud', data: series.map((p) => (p.alt === undefined ? null : Math.round(p.alt))), color: 3 }],
+      format: 'int',
+      height: 130,
+    },
+  });
+}
+charts.forEach((c, i) => {
+  c.spec.group = 'actividad';
+  c.spec.hideXLabels = i < charts.length - 1;
+});
+
+// ---------- Parciales ----------
+const splits = kind === 'foot' || cycling ? (track?.splits ?? []) : [];
+const splitRows = splits.map((sp) => ({ ...sp, v: speedValue(kind, sp.distanceM / 1000, sp.timeS) }));
+const vals = splitRows.map((r) => r.v).filter((v): v is number => v !== undefined);
+const best = vals.length ? (cycling ? Math.max(...vals) : Math.min(...vals)) : undefined;
+const worst = vals.length ? (cycling ? Math.min(...vals) : Math.max(...vals)) : undefined;
+/** Ancho de barra: el km más rápido al 100 %, el más lento al 35 % (vale para ritmo y para velocidad) */
+const barPct = (v?: number) =>
+  v === undefined || best === undefined || worst === undefined ? 0 : best === worst ? 100 : 35 + (65 * (worst - v)) / (worst - best);
+
+// ---------- Zonas ----------
 const zoneTotal = run ? run.hrZonesS.reduce((a, b) => a + b, 0) : 0;
-const zoneLabels = [1, 2, 3, 4, 5].map((z, i) => {
+const zoneRows = [1, 2, 3, 4, 5].map((z, i) => {
   const lo = zones?.floors[i];
   const hi = zones?.floors[i + 1] ?? zones?.maxHr;
-  return lo ? `Z${z} · ${lo}${hi ? `–${hi - 1}` : '+'}` : `Z${z}`;
+  const s = run?.hrZonesS[i] ?? 0;
+  return {
+    zone: `Z${z}`,
+    range: lo ? `${lo}${hi ? `–${hi - 1}` : '+'} ppm` : '',
+    time: duration(s),
+    pct: zoneTotal ? (s / zoneTotal) * 100 : 0,
+  };
 });
-const zonesSpec: ChartSpec = {
-  type: 'bar',
-  categories: zoneLabels,
-  series: [{ name: 'Tiempo en zona', data: run ? run.hrZonesS.map((s) => Math.round(s)) : [], color: 1 }],
-  format: 'hm',
-  height: 220,
-};
+/** Intensidad creciente de un mismo color para las zonas (escala ordinal) */
+const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
+
+const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
+const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400';
 ---
 
 <Base title={run?.name ?? 'Actividad'}>
@@ -59,45 +203,194 @@ const zonesSpec: ChartSpec = {
     ) : (
       run && (
         <div class="mt-3 space-y-6">
-          <div>
-            <h1 class="text-2xl font-bold">{run.name}</h1>
+          <header>
+            <span class="rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+              {activityLabel(run.typeKey)}
+            </span>
+            <h1 class="mt-2 text-2xl font-bold">{run.name}</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {dayLabel(run.date)} · {run.startLocal.slice(11, 16)} · {activityLabel(run.typeKey)}
+              {dayLabel(run.date)} · {run.startLocal.slice(11, 16)}
             </p>
+          </header>
+
+          <div class:list={['grid gap-6', hasMap && 'lg:grid-cols-5']}>
+            {hasMap && (
+              <div class="min-w-0 lg:col-span-3">
+                <RouteMap route={track!.route} style={mapStyleFor(run.typeKey)} />
+              </div>
+            )}
+            <section class:list={[card, 'flex flex-col p-5', hasMap && 'lg:col-span-2']}>
+              <dl class="grid grid-cols-3 gap-3">
+                {headline.map((h) => (
+                  <div class="min-w-0">
+                    <dt class={label}>{h.label}</dt>
+                    <dd class="mt-1 text-2xl font-bold tabular-nums">
+                      {h.value}
+                      {h.unit && <span class="ml-0.5 text-sm font-normal text-gray-500 dark:text-gray-400">{h.unit}</span>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              {secondary.length > 0 && (
+                <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t border-gray-200 pt-4 text-sm sm:grid-cols-2 dark:border-gray-700">
+                  {secondary.map(([l, v]) => (
+                    <div class="flex items-baseline justify-between gap-2">
+                      <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
+                      <dd class="font-semibold tabular-nums">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              {te.length > 0 && (
+                <div class="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <p class={label}>Efecto del entrenamiento</p>
+                    <p class="text-sm font-medium">{trainingEffect(run.trainingEffectLabel)}</p>
+                  </div>
+                  <div class="mt-3 space-y-2">
+                    {te.map((t, i) => (
+                      <div class="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-3 text-sm">
+                        <span class="text-gray-500 dark:text-gray-400">{t.label}</span>
+                        <span class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                          <span
+                            class="block h-full rounded-full"
+                            style={`width:${Math.min(100, (t.value / 5) * 100)}%;background:var(--viz-${i === 0 ? 1 : 2})`}
+                          />
+                        </span>
+                        <span class="text-right font-semibold tabular-nums">{km(t.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Escala de Garmin de 0 a 5.</p>
+                </div>
+              )}
+            </section>
           </div>
 
-          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {showDistance && (
-              <StatCard label="Distancia" value={swim ? int(run.distanceKm * 1000) : km(run.distanceKm, 2)} unit={swim ? 'm' : 'km'} />
-            )}
-            <StatCard label="Tiempo en movimiento" value={duration(run.movingS)} hint={`Total ${duration(run.durationS)}`} />
-            {avgSpeed !== undefined && (
-              <StatCard label={speedLabel(kind)} value={kind === 'cycling' ? speed(avgSpeed) : pace(avgSpeed)} unit={speedUnit(kind)} />
-            )}
-            <StatCard label="FC media / máx" value={`${int(run.avgHr)} / ${int(run.maxHr)}`} unit="ppm" />
-            {run.elevationGainM ? <StatCard label="Desnivel +" value={int(run.elevationGainM)} unit="m" /> : null}
-            {run.cadenceSpm ? <StatCard label="Cadencia" value={int(run.cadenceSpm)} unit="pasos/min" /> : null}
-            <StatCard
-              label="Efecto entreno"
-              value={run.aerobicTE !== undefined ? km(run.aerobicTE) : '—'}
-              hint={`${trainingEffect(run.trainingEffectLabel)} · anaeróbico ${run.anaerobicTE !== undefined ? km(run.anaerobicTE) : '—'}`}
-            />
-            <StatCard label="Carga" value={int(run.trainingLoad)} hint={run.calories ? `${int(run.calories)} kcal` : undefined} />
-          </div>
-
-          {zoneTotal > 0 && (
-            <ChartCard
-              title="Tiempo en zonas de FC"
-              subtitle={zones ? 'Rangos en ppm según tus zonas de Garmin' : undefined}
-              spec={zonesSpec}
-              table={{
-                headers: ['Zona', 'Tiempo', '%'],
-                rows: zoneLabels.map((z, i) => [z, duration(run!.hrZonesS[i]), `${Math.round((run!.hrZonesS[i] / zoneTotal) * 100)} %`]),
-              }}
-            />
+          {charts.length > 0 && (
+            <section class:list={[card, 'min-w-0 p-4']}>
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 class="text-base font-semibold">A lo largo de la actividad</h2>
+                {charts.length > 1 && (
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Pasa el cursor: las gráficas marcan el mismo punto</p>
+                )}
+              </div>
+              <div class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                {charts.map((c) => (
+                  <div class="py-2 first:pt-0">
+                    <p class="mb-1 text-sm text-gray-500 dark:text-gray-400">{c.title}</p>
+                    <div
+                      class="w-full min-w-0"
+                      data-chart={JSON.stringify(c.spec)}
+                      role="img"
+                      aria-label={c.title}
+                      style={`min-height:${c.spec.height}px`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
+
+          <div class:list={['grid items-start gap-6', splitRows.length > 1 && 'lg:grid-cols-2']}>
+            {splitRows.length > 1 && (
+              <section class:list={[card, 'min-w-0 p-4']}>
+                <h2 class="text-base font-semibold">Parciales por km</h2>
+                <div class="mt-3 overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead class="text-xs text-gray-500 dark:text-gray-400">
+                      <tr>
+                        <th class="py-1 pr-3 text-left font-medium">Km</th>
+                        <th class="py-1 pr-3 text-left font-medium">{cycling ? 'km/h' : 'Ritmo'}</th>
+                        <th class="w-full py-1">
+                          <span class="sr-only">Comparación</span>
+                        </th>
+                        <th class="py-1 pl-3 text-right font-medium">FC</th>
+                        <th class="py-1 pl-3 text-right font-medium whitespace-nowrap">Desn. +/−</th>
+                      </tr>
+                    </thead>
+                    <tbody class="tabular-nums">
+                      {splitRows.map((r) => (
+                        <tr class="border-t border-gray-100 dark:border-gray-700">
+                          <td class="py-1.5 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            {r.distanceM >= 999 ? r.index : km(r.distanceM / 1000, 2)}
+                          </td>
+                          <td class:list={['py-1.5 pr-3 font-semibold', r.v === best && 'text-blue-700 dark:text-blue-400']}>
+                            {fmtSpeed(r.v)}
+                          </td>
+                          <td class="py-1.5">
+                            <span
+                              class="block h-2 rounded-full"
+                              style={`width:${barPct(r.v)}%;background:var(--viz-1);opacity:${r.v === best ? 1 : 0.5}`}
+                            />
+                          </td>
+                          <td class="py-1.5 pl-3 text-right">{int(r.avgHr)}</td>
+                          <td class="py-1.5 pl-3 text-right whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            +{r.elevGainM} / −{r.elevLossM}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Barra más larga = km más rápido (resaltado en azul).</p>
+              </section>
+            )}
+
+            <div class="min-w-0 space-y-6">
+              {zoneTotal > 0 && (
+                <section class:list={[card, 'p-4']}>
+                  <h2 class="text-base font-semibold">Zonas de frecuencia cardiaca</h2>
+                  <ul class="mt-3 space-y-2.5 text-sm">
+                    {zoneRows.map((z, i) => (
+                      <li class="grid grid-cols-[2rem_1fr_3rem_4.5rem] items-center gap-3">
+                        <span class="font-semibold">{z.zone}</span>
+                        <span class="min-w-0">
+                          <span class="block h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                            <span class="block h-full rounded-full" style={`width:${z.pct}%;background:var(--viz-2);opacity:${ZONE_OPACITY[i]}`} />
+                          </span>
+                          {z.range && <span class="text-xs text-gray-500 dark:text-gray-400">{z.range}</span>}
+                        </span>
+                        <span class="text-right font-semibold tabular-nums">{Math.round(z.pct)} %</span>
+                        <span class="text-right text-gray-500 tabular-nums dark:text-gray-400">{z.time}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {(dynamics.length > 0 || others.length > 0) && (
+                <section class:list={[card, 'grid gap-6 p-4', dynamics.length > 0 && others.length > 0 && 'sm:grid-cols-2']}>
+                  {[
+                    { title: 'Dinámica de carrera', rows: dynamics },
+                    { title: 'Otros datos', rows: others },
+                  ]
+                    .filter((g) => g.rows.length > 0)
+                    .map((g) => (
+                      <div>
+                        <h2 class="text-base font-semibold">{g.title}</h2>
+                        <dl class="mt-3 space-y-2 text-sm">
+                          {g.rows.map(([l, v]) => (
+                            <div class="flex items-baseline justify-between gap-2">
+                              <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
+                              <dd class="font-semibold tabular-nums">{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                </section>
+              )}
+            </div>
+          </div>
         </div>
       )
     )
   }
 </Base>
+
+<script>
+  import '../../scripts/charts';
+</script>
