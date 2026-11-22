@@ -41,17 +41,18 @@ function render(el: HTMLElement) {
   charts.set(el, chart);
 }
 
-/** Pinta la cola cediendo el hilo cada 50 ms (el umbral de una tarea larga). */
-async function drain() {
-  if (draining) return;
-  draining = true;
-  let deadline = performance.now() + 50;
+/**
+ * Pinta la cola durante 50 ms como mucho (el umbral de una tarea larga); si queda algo, cede el hilo
+ * y sigue después desde donde lo dejó.
+ */
+function drainStep() {
+  const deadline = performance.now() + 50;
   for (const el of pending) {
     pending.delete(el);
     render(el);
-    if (performance.now() >= deadline) {
-      await yieldToMain();
-      deadline = performance.now() + 50;
+    if (pending.size && performance.now() >= deadline) {
+      void yieldToMain().then(drainStep);
+      return;
     }
   }
   draining = false;
@@ -59,7 +60,10 @@ async function drain() {
 
 function queue(el: HTMLElement) {
   pending.add(el);
-  void drain();
+  if (draining) return;
+  draining = true;
+  // En una microtarea: así entran antes en la cola todas las que llegan juntas (p. ej. las visibles al cargar)
+  queueMicrotask(drainStep);
 }
 
 // Cada gráfica se pinta al acercarse a la pantalla (con margen para que ya esté al llegar)
