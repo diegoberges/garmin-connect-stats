@@ -133,7 +133,7 @@ const redirectTo = Astro.url.pathname + Astro.url.search;
           <a class="text-blue-600 underline dark:text-blue-400" href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener">Garmin Connect → Personal API Key</a>{' '}
           y pégala aquí. Se guarda cifrada en una cookie que solo lee el servidor.
         </p>
-        <form method="post" action="/api/ajustes" class="mt-3 flex gap-2">
+        <form method="post" action="/api/ajustes" class="mt-3 flex gap-2" data-loading="Validando tu API key con Garmin…">
           <input type="hidden" name="action" value="save" />
           <input type="hidden" name="redirect" value={redirectTo} />
           <label for="garminApiKey" class="sr-only">Personal API Key</label>
@@ -155,7 +155,7 @@ const redirectTo = Astro.url.pathname + Astro.url.search;
         </form>
         {
           key && (
-            <form method="post" action="/api/ajustes" class="mt-2">
+            <form method="post" action="/api/ajustes" class="mt-2" data-loading="Eliminando la key…">
               <input type="hidden" name="action" value="remove" />
               <input type="hidden" name="redirect" value={redirectTo} />
               <button type="submit" class="text-xs text-red-600 hover:underline dark:text-red-400">
@@ -169,7 +169,7 @@ const redirectTo = Astro.url.pathname + Astro.url.search;
       <!-- Datos del perfil -->
       <section class="border-t border-gray-200 pt-4 dark:border-gray-700">
         <h2 class="text-sm font-semibold">Perfil</h2>
-        <form method="post" action="/api/ajustes" class="mt-2 flex items-end gap-2">
+        <form method="post" action="/api/ajustes" class="mt-2 flex items-end gap-2" data-loading="Guardando tu perfil…">
           <input type="hidden" name="action" value="save-sex" />
           <input type="hidden" name="redirect" value={redirectTo} />
           <label class="min-w-0 flex-1 text-xs text-gray-600 dark:text-gray-400">
