@@ -597,14 +597,25 @@ const ZONE_TONE: Record<string, string> = {
             {firstRun ? ` desde ${yearDate(firstRun)}` : ' histórica'}.
           </p>
           {recordRows.length ? (
-            <div class="mt-3 overflow-x-auto">
+            <section class="mt-3 overflow-x-auto" tabindex="0" aria-labelledby="tabla-marcas">
               <table class="w-full text-sm">
+                <caption id="tabla-marcas" class="sr-only">
+                  Mejores marcas: últimos 12 meses frente a la histórica
+                </caption>
                 <thead class="text-xs text-gray-500 dark:text-gray-400">
                   <tr>
-                    <th class="py-1 pr-3 text-left font-medium">Distancia</th>
-                    <th class="py-1 pr-3 text-right font-medium">Últimos 12 meses</th>
-                    <th class="py-1 pr-3 text-right font-medium">Histórica</th>
-                    <th class="py-1 text-right font-medium">Diferencia</th>
+                    <th scope="col" class="py-1 pr-3 text-left font-medium">
+                      Distancia
+                    </th>
+                    <th scope="col" class="py-1 pr-3 text-right font-medium">
+                      Últimos 12 meses
+                    </th>
+                    <th scope="col" class="py-1 pr-3 text-right font-medium">
+                      Histórica
+                    </th>
+                    <th scope="col" class="py-1 text-right font-medium">
+                      Diferencia
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="tabular-nums">
@@ -671,7 +682,7 @@ const ZONE_TONE: Record<string, string> = {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </section>
           ) : (
             <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Sin carreras con marcas registradas.
@@ -755,6 +766,7 @@ const ZONE_TONE: Record<string, string> = {
             </p>
             {decouplings.length ? (
               <table class="mt-3 w-full text-sm">
+                <caption class="sr-only">Desacoplamiento de las últimas tiradas largas</caption>
                 <tbody class="tabular-nums">
                   {decouplings.map(({ run, d }) => (
                     <tr class="border-t border-gray-100 dark:border-gray-700">
@@ -803,10 +815,13 @@ const ZONE_TONE: Record<string, string> = {
                   {duration(vdotBase.r.timeS)}).
                 </p>
                 <table class="mt-3 w-full text-sm">
+                  <caption class="sr-only">Predicción de carrera: tiempo y ritmo por distancia</caption>
                   <tbody class="tabular-nums">
                     {predictions.map(({ d, t }) => (
                       <tr class="border-t border-gray-100 dark:border-gray-700">
-                        <td class="py-2 font-medium">{PREDICT_LABEL[d]}</td>
+                        <th scope="row" class="py-2 text-left font-medium">
+                          {PREDICT_LABEL[d]}
+                        </th>
                         <td class="py-2 text-right font-semibold">{duration(t)}</td>
                         <td class="py-2 text-right text-gray-500 dark:text-gray-400">{pace(t / (d / 1000))} /km</td>
                       </tr>

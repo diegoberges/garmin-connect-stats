@@ -24,12 +24,13 @@ const { route, style = 'street' } = Astro.props;
       >
     </span>
   </div>
+  <!-- biome-ignore lint/a11y/useSemanticElements: es el contenedor de Leaflet, no un grupo de campos (fieldset); role="img" ocultaría sus botones de zoom -->
   <div
     data-route-map
     data-route={JSON.stringify(route)}
     data-style={style}
     class="route-map h-80 w-full sm:h-96"
-    role="img"
+    role="group"
     aria-label={style === 'topo' ? 'Mapa topográfico del recorrido' : 'Mapa del recorrido'}
   ></div>
 </section>

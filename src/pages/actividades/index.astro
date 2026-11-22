@@ -247,7 +247,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
 
       <section id="sesiones" class="scroll-mt-4">
         <h2 class="mb-3 text-base font-semibold">Sesiones ({activities.length})</h2>
-        <ActivityTable activities={pageItems} showType={isAll} />
+        <ActivityTable activities={pageItems} showType={isAll} caption={`Sesiones, página ${page} de ${pages}`} />
         <Pagination page={page} pages={pages} total={activities.length} pageSize={PAGE_SIZE} anchor="sesiones" />
       </section>
     </div>

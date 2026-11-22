@@ -352,17 +352,28 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
           {splitRows.length > 1 && (
             <section class:list={[card, 'min-w-0 p-4']}>
               <h2 class="text-base font-semibold">Parciales por km</h2>
-              <div class="mt-3 overflow-x-auto">
+              <section class="mt-3 overflow-x-auto" tabindex="0" aria-labelledby="tabla-parciales">
                 <table class="w-full text-sm">
+                  <caption id="tabla-parciales" class="sr-only">
+                    Parciales por km
+                  </caption>
                   <thead class="text-xs text-gray-500 dark:text-gray-400">
                     <tr>
-                      <th class="py-1 pr-3 text-left font-medium">Km</th>
-                      <th class="py-1 pr-3 text-left font-medium">{cycling ? 'km/h' : 'Ritmo'}</th>
-                      <th class="w-full py-1">
+                      <th scope="col" class="py-1 pr-3 text-left font-medium">
+                        Km
+                      </th>
+                      <th scope="col" class="py-1 pr-3 text-left font-medium">
+                        {cycling ? 'km/h' : 'Ritmo'}
+                      </th>
+                      <th scope="col" class="w-full py-1">
                         <span class="sr-only">Comparación</span>
                       </th>
-                      <th class="py-1 pl-3 text-right font-medium">FC</th>
-                      <th class="py-1 pl-3 text-right font-medium whitespace-nowrap">Desn. +/−</th>
+                      <th scope="col" class="py-1 pl-3 text-right font-medium">
+                        FC
+                      </th>
+                      <th scope="col" class="py-1 pl-3 text-right font-medium whitespace-nowrap">
+                        Desn. +/−
+                      </th>
                     </tr>
                   </thead>
                   <tbody class="tabular-nums">
@@ -390,7 +401,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </section>
               <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Barra más larga = km más rápido (resaltado en azul).
               </p>
