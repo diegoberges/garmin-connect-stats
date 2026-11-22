@@ -44,7 +44,7 @@ export function vo2Percentile(value: number, age: number, sex: Sex): Vo2Percenti
   const group = `${AGE_GROUPS[gi]}–${AGE_GROUPS[gi] + 9}`;
   const marks = PCTS.map((p, i) => ({ p, value: row[i] }));
   if (value < row[0]) return { percentile: 5, bound: 'below', group, marks };
-  if (value >= row[row.length - 1]) return { percentile: 95, bound: 'above', group, marks };
+  if (value >= row.at(-1)!) return { percentile: 95, bound: 'above', group, marks };
   const i = row.findIndex((v, k) => value >= v && value < row[k + 1]);
   const f = (value - row[i]) / (row[i + 1] - row[i]);
   return { percentile: Math.round(PCTS[i] + f * (PCTS[i + 1] - PCTS[i])), group, marks };

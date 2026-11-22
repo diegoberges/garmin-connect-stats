@@ -2,58 +2,71 @@
  * Formularios del menú de perfil: guarda o elimina la API key y los datos del perfil, deja un aviso
  * de un solo uso y vuelve a la página de origen con el menú abierto (#perfil). Solo POST.
  */
-import type { APIRoute } from 'astro';
-import { clearSettings, secretConfigured, writeSettings } from '../../lib/settings';
+import type { APIRoute, AstroCookies } from 'astro';
+import { clearSettings, secretConfigured, writeSettings, type UserSettings } from '../../lib/settings';
 import { forgetToken, getAccessToken, GarminAuthError } from '../../lib/garmin/auth';
 import { setFlash, type Flash } from '../../lib/flash';
 
 /** Solo rutas internas, para no convertir el formulario en una redirección abierta. */
 const safePath = (v: unknown) => (typeof v === 'string' && /^\/(?![/\\])/.test(v) ? v : '/');
 
+interface Ctx {
+  form: FormData;
+  cookies: AstroCookies;
+  settings: UserSettings;
+  secure: boolean;
+}
+
+/** Guarda los ajustes en la cookie, o la borra si ya no queda nada. */
+function persist({ cookies, settings, secure }: Ctx) {
+  if (Object.keys(settings).length) writeSettings(cookies, settings, secure);
+  else clearSettings(cookies);
+}
+
+/** Valida la key contra Garmin antes de guardarla. */
+async function saveKey(ctx: Ctx): Promise<Flash> {
+  const apiKey = String(ctx.form.get('garminApiKey') ?? '').trim();
+  if (!apiKey) return { type: 'error', text: 'Pega tu API key antes de guardar.' };
+  try {
+    await getAccessToken(apiKey, { force: true });
+    ctx.settings.garminApiKey = apiKey;
+    writeSettings(ctx.cookies, ctx.settings, ctx.secure);
+    return { type: 'success', text: 'Cuenta de Garmin conectada correctamente.' };
+  } catch (err) {
+    const known = err instanceof GarminAuthError || !secretConfigured();
+    return { type: 'error', text: known ? (err as Error).message : 'Error inesperado al validar la key.' };
+  }
+}
+
+function saveSex(ctx: Ctx): Flash {
+  const sex = ctx.form.get('sex');
+  if (sex === 'male' || sex === 'female') ctx.settings.sex = sex;
+  else delete ctx.settings.sex;
+  persist(ctx);
+  return { type: 'success', text: 'Perfil actualizado.' };
+}
+
+function removeKey(ctx: Ctx): Flash {
+  if (ctx.settings.garminApiKey) forgetToken(ctx.settings.garminApiKey);
+  delete ctx.settings.garminApiKey;
+  persist(ctx);
+  return { type: 'success', text: 'Key de Garmin eliminada.' };
+}
+
+// Map (no objeto literal): `action=constructor` u otras claves heredadas no deben encontrar nada
+const ACTIONS = new Map<string, (ctx: Ctx) => Flash | Promise<Flash>>([
+  ['save', saveKey],
+  ['save-sex', saveSex],
+  ['remove', removeKey],
+]);
+
 export const POST: APIRoute = async ({ request, cookies, locals, url, redirect }) => {
   const form = await request.formData();
-  const action = form.get('action');
   const secure = url.protocol === 'https:';
-  const settings = { ...locals.settings };
-  let flash: Flash;
-
-  if (action === 'save') {
-    const apiKey = String(form.get('garminApiKey') ?? '').trim();
-    if (!apiKey) {
-      flash = { type: 'error', text: 'Pega tu API key antes de guardar.' };
-    } else {
-      try {
-        await getAccessToken(apiKey, { force: true }); // valida contra Garmin antes de guardar
-        settings.garminApiKey = apiKey;
-        writeSettings(cookies, settings, secure);
-        flash = { type: 'success', text: 'Cuenta de Garmin conectada correctamente.' };
-      } catch (err) {
-        flash = {
-          type: 'error',
-          text:
-            err instanceof GarminAuthError || !secretConfigured()
-              ? (err as Error).message
-              : 'Error inesperado al validar la key.',
-        };
-      }
-    }
-  } else if (action === 'save-sex') {
-    const sex = form.get('sex');
-    if (sex === 'male' || sex === 'female') settings.sex = sex;
-    else delete settings.sex;
-    if (Object.keys(settings).length) writeSettings(cookies, settings, secure);
-    else clearSettings(cookies);
-    flash = { type: 'success', text: 'Perfil actualizado.' };
-  } else if (action === 'remove') {
-    if (settings.garminApiKey) forgetToken(settings.garminApiKey);
-    delete settings.garminApiKey;
-    if (Object.keys(settings).length) writeSettings(cookies, settings, secure);
-    else clearSettings(cookies);
-    flash = { type: 'success', text: 'Key de Garmin eliminada.' };
-  } else {
-    flash = { type: 'error', text: 'Acción no reconocida.' };
-  }
-
+  const handler = ACTIONS.get(String(form.get('action')));
+  const flash: Flash = handler
+    ? await handler({ form, cookies, settings: { ...locals.settings }, secure })
+    : { type: 'error', text: 'Acción no reconocida.' };
   setFlash(cookies, flash, secure);
   return redirect(`${safePath(form.get('redirect'))}#perfil`, 303);
 };

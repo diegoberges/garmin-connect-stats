@@ -58,7 +58,8 @@ async function requestToken(apiKey: string): Promise<CachedToken> {
   if (!res.ok) {
     const detail = (await res.text().catch(() => '')).slice(0, 300);
     console.error(`[garmin] token ${res.status} ${res.headers.get('content-type') ?? ''}: ${detail}`);
-    throw new GarminAuthError(`Error al obtener el token (${res.status})${detail ? `: ${detail}` : ''}`, res.status);
+    const suffix = detail ? `: ${detail}` : '';
+    throw new GarminAuthError(`Error al obtener el token (${res.status})${suffix}`, res.status);
   }
   const text = await res.text();
   let body: unknown;

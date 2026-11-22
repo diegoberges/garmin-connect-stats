@@ -5,7 +5,7 @@
  */
 import createClient from 'openapi-fetch';
 import { createHash } from 'node:crypto';
-import { getAccessToken, forgetToken, GarminAuthError } from './auth';
+import { getAccessToken, forgetToken } from './auth';
 import type { paths } from './schema';
 
 export const GARMIN_API_BASE = process.env.GARMIN_API_BASE ?? 'https://personal.connectapi.garmin.com';
@@ -23,7 +23,7 @@ export class GarminApiError extends Error {
   }
 }
 
-export { GarminAuthError };
+export { GarminAuthError } from './auth';
 
 export interface ClientOptions {
   /** Ignora la caché y fuerza un token nuevo. */
@@ -98,8 +98,7 @@ export async function unwrap<T>(call: Promise<{ data?: T; error?: unknown; respo
     throw new GarminApiError('Garmin ha limitado las peticiones; prueba en unos minutos', 429);
   }
   const detail = (typeof error === 'string' ? error : JSON.stringify(error ?? '')).slice(0, 200);
-  throw new GarminApiError(
-    `Garmin respondió ${response.status} en ${new URL(response.url || 'https://x').pathname}${detail ? `: ${detail}` : ''}`,
-    response.status,
-  );
+  const path = new URL(response.url || 'https://x').pathname;
+  const suffix = detail ? `: ${detail}` : '';
+  throw new GarminApiError(`Garmin respondió ${response.status} en ${path}${suffix}`, response.status);
 }

@@ -50,7 +50,7 @@ const LABELS: Record<string, string> = {
 const humanize = (k: string) => {
   const t = k
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/_/g, ' ')
+    .replaceAll('_', ' ')
     .toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };

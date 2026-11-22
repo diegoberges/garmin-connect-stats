@@ -41,7 +41,7 @@ const fixtureClient = Object.assign(baseClient, { memo: memoFor('test') });
 describe.skipIf(!has)('mapeadores con datos reales', () => {
   it('mapea carreras con ritmo, FC y zonas coherentes', async () => {
     const runs = await getRuns(fixtureClient, '2000-01-01', '2100-01-01');
-    expect(runs.length).toBe(raw('activities-running').length);
+    expect(runs).toHaveLength(raw('activities-running').length);
     for (const r of runs) {
       expect(r.id).toBeGreaterThan(0);
       expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);

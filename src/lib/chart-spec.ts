@@ -9,7 +9,7 @@ export type ColorSlot = 1 | 2 | 3 | 4 | 'seq-light';
 export interface ChartSeries {
   name: string;
   /** Para 'rangeBar': [min, max] por categoría */
-  data: (number | null | [number, number] | null)[];
+  data: (number | [number, number] | null)[];
   color?: ColorSlot;
   /** Línea fina y translúcida (p. ej. el valor diario detrás de la media de 7 días). */
   faint?: boolean;
