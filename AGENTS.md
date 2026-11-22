@@ -146,6 +146,7 @@ src/
       profile.ts              # datos del menú de perfil
       fixtures.ts             # cliente falso con las capturas de .data/raw (solo dev)
     baseline.ts               # Salud: rangos personales, estado de hoy, minutos de intensidad
+    sleep-alert.ts            # alerta "Fatiga por sueño": regla, umbrales configurables e histórico
     load.ts                   # Rendimiento: carga, forma física/fatiga/forma, intensidad, marcas
     efficiency.ts             # Rendimiento: Minetti, EF, VDOT, velocidad crítica
     compare.ts                # Comparador: totales por mes y año
@@ -229,6 +230,21 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 (generado en la investigación; ojo, `reports/` y `research_notes/` están excluidos de git en local).
 **Los umbrales heurísticos están centralizados como constantes** en `baseline.ts`, `load.ts` y
 `efficiency.ts`: cámbialos ahí, no en las páginas. La interfaz debe decir cuándo algo es orientativo.
+
+### Alerta "Fatiga por sueño" (cabecera de todas las páginas)
+
+- `SleepAlertBanner.astro`, isla de servidor (`server:defer` en `Base.astro`): no retrasa la página y, si
+  falla, no se muestra. Regla en `lib/sleep-alert.ts`:
+  - **aviso**: anoche < 6 h y al menos 2 noches < 6,5 h en 7 días, aunque la carga sea baja y la VFC y la
+    FC en reposo estén normales;
+  - **alto**: además, VFC de 7 días < línea base de 60 días − 1 DE (en ln) o FC en reposo de 7 días >
+    mediana de los 30 días previos + 5 ppm.
+- Una noche sin dato no cuenta como corta. Si la de hoy no se ha sincronizado, se evalúa la de ayer.
+- Contexto: anoche (profundo y REM), noches cortas, deuda de 7 días (frente al objetivo o, sin él, a la
+  necesidad de Garmin), ratio A:C y forma (TSB), que se ocultan mientras la carga está calibrando.
+- Umbrales configurables en el menú de perfil (`settings.alert`, validados con `THRESHOLD_LIMITS`).
+- Sin base de datos: el histórico ("Alertas de fatiga por sueño" en `/salud#alertas`) se calcula
+  evaluando la regla día a día.
 
 ### Salud (`/salud`)
 

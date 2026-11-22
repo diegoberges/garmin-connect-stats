@@ -6,6 +6,7 @@ import type { APIRoute, AstroCookies } from 'astro';
 import { clearSettings, secretConfigured, writeSettings, type UserSettings } from '../../lib/settings';
 import { forgetToken, getAccessToken, GarminAuthError } from '../../lib/garmin/auth';
 import { setFlash, type Flash } from '../../lib/flash';
+import { THRESHOLD_LIMITS, type AlertThresholds } from '../../lib/sleep-alert';
 
 /** Campo de texto del formulario (un archivo u otro tipo cuenta como vacío). */
 const textField = (form: FormData, name: string) => {
@@ -52,6 +53,33 @@ function saveSex(ctx: Ctx): Flash {
   return { type: 'success', text: 'Perfil actualizado.' };
 }
 
+/** Umbrales de la alerta de sueño: solo números dentro de su rango; un campo vacío vuelve al de por defecto. */
+function saveAlert(ctx: Ctx): Flash {
+  const alert: Partial<AlertThresholds> = {};
+  for (const [key, { min, max }] of Object.entries(THRESHOLD_LIMITS) as [
+    keyof AlertThresholds,
+    { min: number; max: number },
+  ][]) {
+    const raw = textField(ctx.form, key).trim().replace(',', '.');
+    if (!raw) continue;
+    const v = Number(raw);
+    if (!Number.isFinite(v) || v < min || v > max) {
+      return { type: 'error', text: `Valor fuera de rango (${min}–${max}). No se ha guardado nada.` };
+    }
+    alert[key] = v;
+  }
+  if (Object.keys(alert).length) ctx.settings.alert = alert;
+  else delete ctx.settings.alert;
+  persist(ctx);
+  return { type: 'success', text: 'Umbrales de la alerta guardados.' };
+}
+
+function resetAlert(ctx: Ctx): Flash {
+  delete ctx.settings.alert;
+  persist(ctx);
+  return { type: 'success', text: 'Umbrales de la alerta restablecidos.' };
+}
+
 function removeKey(ctx: Ctx): Flash {
   if (ctx.settings.garminApiKey) forgetToken(ctx.settings.garminApiKey);
   delete ctx.settings.garminApiKey;
@@ -63,6 +91,8 @@ function removeKey(ctx: Ctx): Flash {
 const ACTIONS = new Map<string, (ctx: Ctx) => Flash | Promise<Flash>>([
   ['save', saveKey],
   ['save-sex', saveSex],
+  ['save-alert', saveAlert],
+  ['reset-alert', resetAlert],
   ['remove', removeKey],
 ]);
 

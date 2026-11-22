@@ -3,6 +3,7 @@ import '../styles/global.css';
 import Analytics from '@vercel/analytics/astro';
 import ProfileMenu from '../components/ProfileMenu.astro';
 import LoadingIndicator from '../components/LoadingIndicator.astro';
+import SleepAlertBanner from '../components/SleepAlertBanner.astro';
 
 interface Props {
   title: string;
@@ -187,6 +188,8 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
         </div>
       </div>
     </header>
+    <!-- Alerta de fatiga por sueño: isla de servidor, se carga aparte para no retrasar la página -->
+    <SleepAlertBanner server:defer />
 
     <main id="contenido" class="mx-auto max-w-6xl px-4 py-6">
       <slot />
