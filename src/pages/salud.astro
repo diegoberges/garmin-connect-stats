@@ -7,7 +7,7 @@ import ChartCard from '../components/ChartCard.astro';
 import RangeSelector from '../components/RangeSelector.astro';
 import { clientFor, getDailyHealth, type DayHealth } from '../lib/garmin';
 import { addDays, isoDate } from '../lib/dates';
-import { avgOf } from '../lib/stats';
+import { avgOf, pctChange } from '../lib/stats';
 import { hoursMinutes, hrvStatus, int, shortDate } from '../lib/format';
 import type { ChartSpec } from '../lib/chart-spec';
 
@@ -22,15 +22,22 @@ const days = DAY_OPTIONS.some((o) => o.value === requested) ? requested : 30;
 const client = clientFor(Astro.locals);
 const today = isoDate();
 
-let health: DayHealth[] = [];
+// Siempre al menos 14 días para comparar los últimos 7 con los 7 anteriores
+const fetchDays = Math.max(days, 14);
+let all: DayHealth[] = [];
 let error: unknown;
 if (client) {
   try {
-    health = await getDailyHealth(client, addDays(today, -(days - 1)), today);
+    all = await getDailyHealth(client, addDays(today, -(fetchDays - 1)), today);
   } catch (err) {
     error = err;
   }
 }
+
+const health = all.slice(-days);
+const last7 = all.slice(-7);
+const prev7 = all.slice(-14, -7);
+const vsPrev = 'vs 7 días previos';
 
 const cats = health.map((d) => shortDate(d.date));
 const v = (x?: number) => x ?? null;
@@ -93,6 +100,20 @@ const rows = (pick: (d: DayHealth) => string) => health.map((d) => [shortDate(d.
       <ErrorState error={error} />
     ) : (
       <div class="space-y-6">
+        {days > 7 && (
+        <div>
+          <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Últimos 7 días</h2>
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard label="FC en reposo" value={int(avgOf(last7, 'restingHr'))} unit="ppm" delta={pctChange(avgOf(last7, 'restingHr'), avgOf(prev7, 'restingHr'))} deltaLabel={vsPrev} higherIsBetter={false} />
+            <StatCard label="HRV" value={int(avgOf(last7, 'hrvLastNight'))} unit="ms" delta={pctChange(avgOf(last7, 'hrvLastNight'), avgOf(prev7, 'hrvLastNight'))} deltaLabel={vsPrev} />
+            <StatCard label="Sueño" value={hoursMinutes(avgOf(last7, 'sleepS'))} delta={pctChange(avgOf(last7, 'sleepS'), avgOf(prev7, 'sleepS'))} deltaLabel={vsPrev} />
+            <StatCard label="Body Battery máx" value={int(avgOf(last7, 'bodyBatteryMax'))} hint="media del máximo diario" />
+          </div>
+        </div>
+        )}
+
+        <div>
+        <h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Periodo · {days} días</h2>
         <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           <StatCard label="FC en reposo" value={int(avgOf(health, 'restingHr'))} unit="ppm" hint="media del periodo" />
           <StatCard label="HRV" value={int(avgOf(health, 'hrvLastNight'))} unit="ms" hint={`Estado: ${hrvStatus(last?.hrvStatus)}`} />
@@ -100,6 +121,7 @@ const rows = (pick: (d: DayHealth) => string) => health.map((d) => [shortDate(d.
           <StatCard label="Puntuación sueño" value={int(avgOf(health, 'sleepScore'))} hint="media" />
           <StatCard label="Pasos" value={int(avgOf(health, 'steps'))} hint="media diaria" />
           <StatCard label="Estrés" value={int(avgOf(health, 'stressAvg'))} hint="media (0–100)" />
+        </div>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">

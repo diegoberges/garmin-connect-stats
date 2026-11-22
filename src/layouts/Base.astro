@@ -10,11 +10,11 @@ const { title } = Astro.props;
 const path = Astro.url.pathname;
 
 const nav = [
-  { href: '/', label: 'Resumen' },
-  { href: '/running', label: 'Carrera' },
   { href: '/salud', label: 'Salud' },
+  { href: '/rendimiento', label: 'Rendimiento' },
+  { href: '/actividades', label: 'Actividades' },
 ];
-const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 ---
 
 <html lang="es">

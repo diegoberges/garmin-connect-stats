@@ -28,7 +28,7 @@ const { runs } = Astro.props;
           <tr class="border-b border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
             <td class="px-4 py-3 whitespace-nowrap">{dayLabel(r.date)}</td>
             <td class="px-4 py-3">
-              <a href={`/running/${r.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
+              <a href={`/actividades/${r.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
                 {r.name}
               </a>
               {r.typeKey !== 'running' && (
