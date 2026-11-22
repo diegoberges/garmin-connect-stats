@@ -2,7 +2,7 @@
  * Especificación serializable de una gráfica: la página la genera en el servidor y
  * src/scripts/charts.ts la convierte en opciones de ApexCharts en el navegador.
  */
-export type ValueFormat = 'int' | 'km' | 'pace' | 'pace100' | 'kmh' | 'hm' | 'bpm' | 'ms' | 'pct';
+export type ValueFormat = 'int' | 'dec1' | 'km' | 'pace' | 'pace100' | 'kmh' | 'hm' | 'bpm' | 'ms' | 'pct';
 
 export type ColorSlot = 1 | 2 | 3 | 4 | 'seq-light';
 
@@ -11,6 +11,8 @@ export interface ChartSeries {
   /** Para 'rangeBar': [min, max] por categoría */
   data: (number | null | [number, number] | null)[];
   color?: ColorSlot;
+  /** Línea fina y translúcida (p. ej. el valor diario detrás de la media de 7 días). */
+  faint?: boolean;
 }
 
 export interface ChartSpec {
@@ -26,6 +28,8 @@ export interface ChartSpec {
   height?: number;
   /** Línea horizontal de referencia (p. ej. objetivo de pasos). */
   reference?: { value: number; label: string };
+  /** Banda sombreada de rango normal detrás de las series ([mín, máx] por categoría). */
+  band?: { name: string; data: ([number, number] | null)[] };
   /** Gráficas con el mismo grupo comparten el cursor (mismo eje x). */
   group?: string;
   /** Oculta las etiquetas del eje x (en gráficas apiladas solo la de abajo las muestra). */

@@ -35,6 +35,7 @@ export const GET: APIRoute = async ({ locals }) => {
     ['stress-7d', `/usersummary-service/stats/stress/daily/${d7}/${today}`],
     ['steps-7d', `/usersummary-service/stats/steps/daily/${d7}/${today}`],
     ['heart-rate-yesterday', '/wellness-service/wellness/dailyHeartRate', { date: yesterday }],
+    ['fitness-age', `/fitnessage-service/fitnessage/v2/${today}`],
   ];
 
   // Llamada sin tipar a propósito: queremos la respuesta tal cual para contrastarla con la spec.

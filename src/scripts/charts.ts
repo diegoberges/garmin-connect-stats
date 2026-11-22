@@ -16,6 +16,8 @@ function fmt(format: ValueFormat, v: number | null | undefined): string {
       const t = Math.round(v);
       return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')} ${format === 'pace' ? '/km' : '/100 m'}`;
     }
+    case 'dec1':
+      return v.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     case 'kmh':
       return `${v.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km/h`;
     case 'hm': {
@@ -62,7 +64,7 @@ function paceScale(spec: ChartSpec): { min: number; max: number; tickAmount: num
   return { min, max, tickAmount: (max - min) / step };
 }
 
-function options(spec: ChartSpec): ApexCharts.ApexOptions {
+function options(spec: ChartSpec, width = window.innerWidth): ApexCharts.ApexOptions {
   const text = css('--viz-text');
   const muted = css('--viz-muted');
   const grid = css('--viz-grid');
@@ -74,17 +76,31 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
   const time = timeScale(spec);
   const paceAxis = paceScale(spec);
 
-  const series =
-    spec.type === 'rangeBar'
+  const band = spec.band && spec.type !== 'rangeBar' ? spec.band : undefined;
+  const series = band
+    ? // Banda (rangeArea) + líneas en formato {x, y}: así ApexCharts las combina en una sola gráfica
+      [
+        { type: 'rangeArea', name: band.name, data: spec.categories.map((x, i) => ({ x, y: band.data[i] ?? null })) },
+        ...spec.series.map((s) => ({
+          type: spec.type === 'area' ? 'area' : 'line',
+          name: s.name,
+          data: spec.categories.map((x, i) => ({ x, y: s.data[i] as number | null })),
+        })),
+      ]
+    : spec.type === 'rangeBar'
       ? spec.series.map((s) => ({
           name: s.name,
           data: s.data.map((d, i) => ({ x: spec.categories[i], y: Array.isArray(d) ? d : null })),
         }))
       : spec.series.map((s) => ({ name: s.name, data: s.data as (number | null)[] }));
+  // Series tenues: mismo color con transparencia; la banda va primero con su propio color
+  const lineColors = spec.series.map((s, i) => (s.faint ? `${colors[i]}66` : colors[i]));
+  const allColors = band ? [slot('seq-light'), ...lineColors] : lineColors;
+  const widths = spec.series.map((s) => (s.faint ? 1.5 : 2));
 
   return {
     chart: {
-      type: spec.type,
+      type: band ? 'rangeArea' : spec.type,
       height: spec.height ?? 260,
       stacked: spec.stacked,
       toolbar: { show: false },
@@ -96,13 +112,25 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
       parentHeightOffset: 0,
       ...(spec.group ? { group: spec.group, id: `${spec.group}-${spec.series[0]?.name ?? ''}-${Math.random().toString(36).slice(2, 7)}` } : {}),
     },
-    colors,
+    colors: allColors,
     series: series as ApexCharts.ApexOptions['series'],
     // 2px de separación entre segmentos/barras con el color de la superficie
     stroke: isBar
-      ? { show: true, width: spec.stacked ? 2 : 0, colors: [surface] }
-      : { curve: 'straight', width: 2 },
-    markers: isBar ? undefined : { size: spec.categories.length <= 31 ? 3 : 0, strokeWidth: 2, strokeColors: surface, hover: { size: 6 } },
+      ? { show: true, width: spec.stacked && !dense ? 2 : 0, colors: [surface] }
+      : { curve: 'straight', width: band ? [0, ...widths] : widths },
+    markers: isBar
+      ? undefined
+      : {
+          // Sin puntos en la banda ni en las series tenues
+          size: (() => {
+            const base = spec.categories.length <= 31 ? 3 : 0;
+            const perSeries = spec.series.map((s) => (s.faint ? 0 : base));
+            return band ? [0, ...perSeries] : perSeries;
+          })(),
+          strokeWidth: 2,
+          strokeColors: surface,
+          hover: { size: 6 },
+        },
     plotOptions: {
       bar: {
         borderRadius: 4,
@@ -111,14 +139,15 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
         horizontal: false,
       },
     },
-    fill: { opacity: spec.type === 'area' ? 0.15 : 1 },
+    fill: { opacity: band ? [0.22, ...spec.series.map(() => 1)] : spec.type === 'area' ? 0.15 : 1 },
     dataLabels: { enabled: false },
     grid: { borderColor: grid, strokeDashArray: 0, xaxis: { lines: { show: false } }, padding: { left: 8, right: 8 } },
     xaxis: {
-      categories: spec.type === 'rangeBar' ? undefined : spec.categories,
+      categories: spec.type === 'rangeBar' || band ? undefined : spec.categories,
       type: 'category',
       labels: { show: !spec.hideXLabels, style: { colors: muted }, rotate: 0, hideOverlappingLabels: true, trim: false },
-      tickAmount: dense || narrow ? (narrow ? 4 : 8) : undefined,
+      // Una etiqueta cada ~90 px del ancho real de la gráfica, para que no se monten
+      tickAmount: dense || narrow ? Math.max(3, Math.min(8, Math.floor(width / 90))) : undefined,
       axisBorder: { color: css('--viz-axis') },
       axisTicks: { show: false },
       tooltip: { enabled: false },
@@ -133,7 +162,8 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
       labels: { minWidth: spec.group ? 56 : undefined, maxWidth: spec.group ? 56 : undefined, style: { colors: muted }, formatter: (v: number) => fmt(spec.format, v).replace(/ \/(km|100 m)$/, '') },
     },
     legend: {
-      show: spec.series.length > 1,
+      // Con banda también: si no, la franja sombreada aparece sin explicación
+      show: spec.series.length > 1 || Boolean(band),
       position: 'top',
       horizontalAlign: 'left',
       labels: { colors: text },
@@ -168,7 +198,7 @@ function renderAll() {
     charts.get(el)?.destroy();
     const spec = JSON.parse(el.dataset.chart!) as ChartSpec;
     el.innerHTML = '';
-    const chart = new ApexCharts(el, options(spec));
+    const chart = new ApexCharts(el, options(spec, el.clientWidth || window.innerWidth));
     chart.render();
     charts.set(el, chart);
   }

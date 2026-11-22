@@ -13,3 +13,4 @@ export * from './wellness';
 export * from './profile';
 export type * from './types';
 export * from './track';
+export * from './fitness-age';
