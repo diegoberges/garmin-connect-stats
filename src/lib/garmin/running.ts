@@ -33,7 +33,9 @@ export function mapActivity(a: ApiActivity): Activity {
     calories: num(a.calories),
     isPr: a.pr === true,
     bestEfforts: Object.fromEntries(
-      BEST_EFFORT_DISTANCES.map((m) => [m, num((a as Record<string, unknown>)[`fastestSplit_${m}`])]).filter(([, s]) => s !== undefined),
+      BEST_EFFORT_DISTANCES.map((m) => [m, num((a as Record<string, unknown>)[`fastestSplit_${m}`])]).filter(
+        ([, s]) => s !== undefined,
+      ),
     ),
   };
 }
@@ -73,7 +75,16 @@ export async function getActivities(
   for (let start = 0; ; start += PAGE) {
     const page = await unwrap(
       client.GET('/activitylist-service/activities/search/activities', {
-        params: { query: { ...(activityType ? { activityType } : {}), ...(eventType ? { eventType } : {}), startDate, endDate, start, limit: PAGE } },
+        params: {
+          query: {
+            ...(activityType ? { activityType } : {}),
+            ...(eventType ? { eventType } : {}),
+            startDate,
+            endDate,
+            start,
+            limit: PAGE,
+          },
+        },
       }),
     );
     const list = (Array.isArray(page) ? page : []) as ApiActivity[];

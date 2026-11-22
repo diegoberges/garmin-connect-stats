@@ -1,9 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { criticalSpeed, efTrend, efficiencyFactor, gradeFactor, isComparableRun, minettiCost, paceAtHr, predictTime, riegel, vdot } from './efficiency';
+import {
+  criticalSpeed,
+  efTrend,
+  efficiencyFactor,
+  gradeFactor,
+  isComparableRun,
+  minettiCost,
+  paceAtHr,
+  predictTime,
+  riegel,
+  vdot,
+} from './efficiency';
 import type { Activity } from './garmin/types';
 
 const run = (over: Partial<Activity> = {}): Activity =>
-  ({ id: 1, name: 'x', typeKey: 'running', startLocal: '2026-11-01 08:00:00', date: '2026-11-01', distanceKm: 10, durationS: 3000, movingS: 3000, avgHr: 145, elevationGainM: 40, trainingEffectLabel: 'AEROBIC_BASE', hrZonesS: [0, 0, 0, 0, 0], bestEfforts: {}, isPr: false, ...over }) as Activity;
+  ({
+    id: 1,
+    name: 'x',
+    typeKey: 'running',
+    startLocal: '2026-11-01 08:00:00',
+    date: '2026-11-01',
+    distanceKm: 10,
+    durationS: 3000,
+    movingS: 3000,
+    avgHr: 145,
+    elevationGainM: 40,
+    trainingEffectLabel: 'AEROBIC_BASE',
+    hrZonesS: [0, 0, 0, 0, 0],
+    bestEfforts: {},
+    isPr: false,
+    ...over,
+  }) as Activity;
 
 describe('Minetti', () => {
   it('llano = 3,6 J/kg/m y subir cuesta más', () => {

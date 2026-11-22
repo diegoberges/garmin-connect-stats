@@ -54,7 +54,15 @@ const x = run?.extra;
 const fmtSpeed = (v?: number) => (v === undefined ? '—' : cycling ? speed(v) : pace(v));
 /** m/s → ritmo o velocidad en la unidad de la familia */
 const fromMs = (ms?: number) =>
-  ms === undefined || ms <= 0 ? undefined : cycling ? ms * 3.6 : swim ? 100 / ms : kind === 'foot' ? 1000 / ms : undefined;
+  ms === undefined || ms <= 0
+    ? undefined
+    : cycling
+      ? ms * 3.6
+      : swim
+        ? 100 / ms
+        : kind === 'foot'
+          ? 1000 / ms
+          : undefined;
 const avgSpeed = run ? speedValue(kind, run.distanceKm, run.movingS) : undefined;
 const showDistance = run !== undefined && hasDistance(kind) && run.distanceKm > 0;
 const hasMap = (track?.route.length ?? 0) > 1;
@@ -63,7 +71,11 @@ const hasMap = (track?.route.length ?? 0) > 1;
 const headline: { label: string; value: string; unit?: string }[] = run
   ? showDistance
     ? [
-        { label: 'Distancia', value: swim ? int(run.distanceKm * 1000) : km(run.distanceKm, 2), unit: swim ? 'm' : 'km' },
+        {
+          label: 'Distancia',
+          value: swim ? int(run.distanceKm * 1000) : km(run.distanceKm, 2),
+          unit: swim ? 'm' : 'km',
+        },
         { label: 'Tiempo', value: duration(run.movingS) },
         { label: cycling ? 'Velocidad' : 'Ritmo', value: fmtSpeed(avgSpeed), unit: speedUnit(kind) },
       ]
@@ -76,7 +88,11 @@ const headline: { label: string; value: string; unit?: string }[] = run
 
 // Ritmo ajustado por pendiente (Minetti): solo a pie y si el desnivel lo cambia de forma apreciable
 const gapPace =
-  kind === 'foot' && track?.gapDistanceM && track.activeS && run?.elevationGainM && run.elevationGainM / run.distanceKm >= 5
+  kind === 'foot' &&
+  track?.gapDistanceM &&
+  track.activeS &&
+  run?.elevationGainM &&
+  run.elevationGainM / run.distanceKm >= 5
     ? track.activeS / (track.gapDistanceM / 1000)
     : undefined;
 
@@ -163,7 +179,13 @@ if (kind !== 'other' && paceSeries.some((v) => v !== null)) {
 if (series.some((p) => p.hr !== undefined)) {
   charts.push({
     title: 'Frecuencia cardiaca (ppm)',
-    spec: { type: 'line', categories: xCats, series: [{ name: 'FC', data: series.map((p) => p.hr ?? null), color: 2 }], format: 'bpm', height: 150 },
+    spec: {
+      type: 'line',
+      categories: xCats,
+      series: [{ name: 'FC', data: series.map((p) => p.hr ?? null), color: 2 }],
+      format: 'bpm',
+      height: 150,
+    },
   });
 }
 if (hasDistance(kind) && series.filter((p) => p.alt !== undefined).length > 2) {
@@ -172,7 +194,9 @@ if (hasDistance(kind) && series.filter((p) => p.alt !== undefined).length > 2) {
     spec: {
       type: 'area',
       categories: xCats,
-      series: [{ name: 'Altitud', data: series.map((p) => (p.alt === undefined ? null : Math.round(p.alt))), color: 3 }],
+      series: [
+        { name: 'Altitud', data: series.map((p) => (p.alt === undefined ? null : Math.round(p.alt))), color: 3 },
+      ],
       format: 'int',
       height: 130,
     },
@@ -191,7 +215,11 @@ const best = vals.length ? (cycling ? Math.max(...vals) : Math.min(...vals)) : u
 const worst = vals.length ? (cycling ? Math.min(...vals) : Math.max(...vals)) : undefined;
 /** Ancho de barra: el km más rápido al 100 %, el más lento al 35 % (vale para ritmo y para velocidad) */
 const barPct = (v?: number) =>
-  v === undefined || best === undefined || worst === undefined ? 0 : best === worst ? 100 : 35 + (65 * (worst - v)) / (worst - best);
+  v === undefined || best === undefined || worst === undefined
+    ? 0
+    : best === worst
+      ? 100
+      : 35 + (65 * (worst - v)) / (worst - best);
 
 // ---------- Zonas ----------
 const zoneTotal = run ? run.hrZonesS.reduce((a, b) => a + b, 0) : 0;
@@ -215,203 +243,214 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
 
 <Base title={run?.name ?? 'Actividad'}>
   <a href="/actividades" class="text-sm text-blue-700 hover:underline dark:text-blue-400">← Actividades</a>
-  {
-    !client ? (
-      <ConnectPrompt />
-    ) : error ? (
-      <ErrorState error={error} />
-    ) : (
-      run && (
-        <div class="mt-3 space-y-6">
-          <header>
-            <span class="rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-              {activityLabel(run.typeKey)}
-            </span>
-            <h1 class="mt-2 flex items-center gap-2 text-2xl font-bold">
-              {run.name}
-              {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
-            </h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              {dayLabel(run.date)} · {run.startLocal.slice(11, 16)}
-            </p>
-          </header>
+  {!client ? (
+    <ConnectPrompt />
+  ) : error ? (
+    <ErrorState error={error} />
+  ) : (
+    run && (
+      <div class="mt-3 space-y-6">
+        <header>
+          <span class="rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+            {activityLabel(run.typeKey)}
+          </span>
+          <h1 class="mt-2 flex items-center gap-2 text-2xl font-bold">
+            {run.name}
+            {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
+          </h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {dayLabel(run.date)} · {run.startLocal.slice(11, 16)}
+          </p>
+        </header>
 
-          <div class:list={['grid gap-6', hasMap && 'lg:grid-cols-5']}>
-            {hasMap && (
-              <div class="min-w-0 lg:col-span-3">
-                <RouteMap route={track!.route} style={mapStyleFor(run.typeKey)} />
-              </div>
-            )}
-            <section class:list={[card, 'flex flex-col p-5', hasMap && 'lg:col-span-2']}>
-              <dl class="grid grid-cols-3 gap-3">
-                {headline.map((h) => (
-                  <div class="min-w-0">
-                    <dt class={label}>{h.label}</dt>
-                    <dd class="mt-1 text-2xl font-bold tabular-nums">
-                      {h.value}
-                      {h.unit && <span class="ml-0.5 text-sm font-normal text-gray-500 dark:text-gray-400">{h.unit}</span>}
-                    </dd>
+        <div class:list={['grid gap-6', hasMap && 'lg:grid-cols-5']}>
+          {hasMap && (
+            <div class="min-w-0 lg:col-span-3">
+              <RouteMap route={track!.route} style={mapStyleFor(run.typeKey)} />
+            </div>
+          )}
+          <section class:list={[card, 'flex flex-col p-5', hasMap && 'lg:col-span-2']}>
+            <dl class="grid grid-cols-3 gap-3">
+              {headline.map((h) => (
+                <div class="min-w-0">
+                  <dt class={label}>{h.label}</dt>
+                  <dd class="mt-1 text-2xl font-bold tabular-nums">
+                    {h.value}
+                    {h.unit && (
+                      <span class="ml-0.5 text-sm font-normal text-gray-500 dark:text-gray-400">{h.unit}</span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            {secondary.length > 0 && (
+              <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t border-gray-200 pt-4 text-sm sm:grid-cols-2 dark:border-gray-700">
+                {secondary.map(([l, v]) => (
+                  <div class="flex items-baseline justify-between gap-2">
+                    <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
+                    <dd class="font-semibold tabular-nums">{v}</dd>
                   </div>
                 ))}
               </dl>
+            )}
 
-              {secondary.length > 0 && (
-                <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t border-gray-200 pt-4 text-sm sm:grid-cols-2 dark:border-gray-700">
-                  {secondary.map(([l, v]) => (
-                    <div class="flex items-baseline justify-between gap-2">
-                      <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
-                      <dd class="font-semibold tabular-nums">{v}</dd>
+            {te.length > 0 && (
+              <div class="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class={label}>Efecto del entrenamiento</p>
+                  <p class="text-sm font-medium">{trainingEffect(run.trainingEffectLabel)}</p>
+                </div>
+                <div class="mt-3 space-y-2">
+                  {te.map((t, i) => (
+                    <div class="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-3 text-sm">
+                      <span class="text-gray-500 dark:text-gray-400">{t.label}</span>
+                      <span class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                        <span
+                          class="block h-full rounded-full"
+                          style={`width:${Math.min(100, (t.value / 5) * 100)}%;background:var(--viz-${i === 0 ? 1 : 2})`}
+                        />
+                      </span>
+                      <span class="text-right font-semibold tabular-nums">{km(t.value)}</span>
                     </div>
                   ))}
-                </dl>
-              )}
-
-              {te.length > 0 && (
-                <div class="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
-                  <div class="flex items-baseline justify-between gap-2">
-                    <p class={label}>Efecto del entrenamiento</p>
-                    <p class="text-sm font-medium">{trainingEffect(run.trainingEffectLabel)}</p>
-                  </div>
-                  <div class="mt-3 space-y-2">
-                    {te.map((t, i) => (
-                      <div class="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-3 text-sm">
-                        <span class="text-gray-500 dark:text-gray-400">{t.label}</span>
-                        <span class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-                          <span
-                            class="block h-full rounded-full"
-                            style={`width:${Math.min(100, (t.value / 5) * 100)}%;background:var(--viz-${i === 0 ? 1 : 2})`}
-                          />
-                        </span>
-                        <span class="text-right font-semibold tabular-nums">{km(t.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Escala de Garmin de 0 a 5.</p>
                 </div>
-              )}
-            </section>
-          </div>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Escala de Garmin de 0 a 5.</p>
+              </div>
+            )}
+          </section>
+        </div>
 
-          {charts.length > 0 && (
+        {charts.length > 0 && (
+          <section class:list={[card, 'min-w-0 p-4']}>
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 class="text-base font-semibold">A lo largo de la actividad</h2>
+              {charts.length > 1 && (
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Pasa el cursor: las gráficas marcan el mismo punto
+                </p>
+              )}
+            </div>
+            <div class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+              {charts.map((c) => (
+                <div class="py-2 first:pt-0">
+                  <p class="mb-1 text-sm text-gray-500 dark:text-gray-400">{c.title}</p>
+                  <div
+                    class="w-full min-w-0"
+                    data-chart={JSON.stringify(c.spec)}
+                    role="img"
+                    aria-label={c.title}
+                    style={`min-height:${c.spec.height}px`}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div class:list={['grid items-start gap-6', splitRows.length > 1 && 'lg:grid-cols-2']}>
+          {splitRows.length > 1 && (
             <section class:list={[card, 'min-w-0 p-4']}>
-              <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 class="text-base font-semibold">A lo largo de la actividad</h2>
-                {charts.length > 1 && (
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Pasa el cursor: las gráficas marcan el mismo punto</p>
-                )}
+              <h2 class="text-base font-semibold">Parciales por km</h2>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="text-xs text-gray-500 dark:text-gray-400">
+                    <tr>
+                      <th class="py-1 pr-3 text-left font-medium">Km</th>
+                      <th class="py-1 pr-3 text-left font-medium">{cycling ? 'km/h' : 'Ritmo'}</th>
+                      <th class="w-full py-1">
+                        <span class="sr-only">Comparación</span>
+                      </th>
+                      <th class="py-1 pl-3 text-right font-medium">FC</th>
+                      <th class="py-1 pl-3 text-right font-medium whitespace-nowrap">Desn. +/−</th>
+                    </tr>
+                  </thead>
+                  <tbody class="tabular-nums">
+                    {splitRows.map((r) => (
+                      <tr class="border-t border-gray-100 dark:border-gray-700">
+                        <td class="py-1.5 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                          {r.distanceM >= 999 ? r.index : km(r.distanceM / 1000, 2)}
+                        </td>
+                        <td
+                          class:list={['py-1.5 pr-3 font-semibold', r.v === best && 'text-blue-700 dark:text-blue-400']}
+                        >
+                          {fmtSpeed(r.v)}
+                        </td>
+                        <td class="py-1.5">
+                          <span
+                            class="block h-2 rounded-full"
+                            style={`width:${barPct(r.v)}%;background:var(--viz-1);opacity:${r.v === best ? 1 : 0.5}`}
+                          />
+                        </td>
+                        <td class="py-1.5 pl-3 text-right">{int(r.avgHr)}</td>
+                        <td class="py-1.5 pl-3 text-right whitespace-nowrap text-gray-500 dark:text-gray-400">
+                          +{r.elevGainM} / −{r.elevLossM}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
-                {charts.map((c) => (
-                  <div class="py-2 first:pt-0">
-                    <p class="mb-1 text-sm text-gray-500 dark:text-gray-400">{c.title}</p>
-                    <div
-                      class="w-full min-w-0"
-                      data-chart={JSON.stringify(c.spec)}
-                      role="img"
-                      aria-label={c.title}
-                      style={`min-height:${c.spec.height}px`}
-                    />
-                  </div>
-                ))}
-              </div>
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Barra más larga = km más rápido (resaltado en azul).
+              </p>
             </section>
           )}
 
-          <div class:list={['grid items-start gap-6', splitRows.length > 1 && 'lg:grid-cols-2']}>
-            {splitRows.length > 1 && (
-              <section class:list={[card, 'min-w-0 p-4']}>
-                <h2 class="text-base font-semibold">Parciales por km</h2>
-                <div class="mt-3 overflow-x-auto">
-                  <table class="w-full text-sm">
-                    <thead class="text-xs text-gray-500 dark:text-gray-400">
-                      <tr>
-                        <th class="py-1 pr-3 text-left font-medium">Km</th>
-                        <th class="py-1 pr-3 text-left font-medium">{cycling ? 'km/h' : 'Ritmo'}</th>
-                        <th class="w-full py-1">
-                          <span class="sr-only">Comparación</span>
-                        </th>
-                        <th class="py-1 pl-3 text-right font-medium">FC</th>
-                        <th class="py-1 pl-3 text-right font-medium whitespace-nowrap">Desn. +/−</th>
-                      </tr>
-                    </thead>
-                    <tbody class="tabular-nums">
-                      {splitRows.map((r) => (
-                        <tr class="border-t border-gray-100 dark:border-gray-700">
-                          <td class="py-1.5 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            {r.distanceM >= 999 ? r.index : km(r.distanceM / 1000, 2)}
-                          </td>
-                          <td class:list={['py-1.5 pr-3 font-semibold', r.v === best && 'text-blue-700 dark:text-blue-400']}>
-                            {fmtSpeed(r.v)}
-                          </td>
-                          <td class="py-1.5">
-                            <span
-                              class="block h-2 rounded-full"
-                              style={`width:${barPct(r.v)}%;background:var(--viz-1);opacity:${r.v === best ? 1 : 0.5}`}
-                            />
-                          </td>
-                          <td class="py-1.5 pl-3 text-right">{int(r.avgHr)}</td>
-                          <td class="py-1.5 pl-3 text-right whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            +{r.elevGainM} / −{r.elevLossM}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Barra más larga = km más rápido (resaltado en azul).</p>
+          <div class="min-w-0 space-y-6">
+            {zoneTotal > 0 && (
+              <section class:list={[card, 'p-4']}>
+                <h2 class="text-base font-semibold">Zonas de frecuencia cardiaca</h2>
+                <ul class="mt-3 space-y-2.5 text-sm">
+                  {zoneRows.map((z, i) => (
+                    <li class="grid grid-cols-[2rem_1fr_3rem_4.5rem] items-center gap-3">
+                      <span class="font-semibold">{z.zone}</span>
+                      <span class="min-w-0">
+                        <span class="block h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                          <span
+                            class="block h-full rounded-full"
+                            style={`width:${z.pct}%;background:var(--viz-2);opacity:${ZONE_OPACITY[i]}`}
+                          />
+                        </span>
+                        {z.range && <span class="text-xs text-gray-500 dark:text-gray-400">{z.range}</span>}
+                      </span>
+                      <span class="text-right font-semibold tabular-nums">{Math.round(z.pct)} %</span>
+                      <span class="text-right text-gray-500 tabular-nums dark:text-gray-400">{z.time}</span>
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 
-            <div class="min-w-0 space-y-6">
-              {zoneTotal > 0 && (
-                <section class:list={[card, 'p-4']}>
-                  <h2 class="text-base font-semibold">Zonas de frecuencia cardiaca</h2>
-                  <ul class="mt-3 space-y-2.5 text-sm">
-                    {zoneRows.map((z, i) => (
-                      <li class="grid grid-cols-[2rem_1fr_3rem_4.5rem] items-center gap-3">
-                        <span class="font-semibold">{z.zone}</span>
-                        <span class="min-w-0">
-                          <span class="block h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-                            <span class="block h-full rounded-full" style={`width:${z.pct}%;background:var(--viz-2);opacity:${ZONE_OPACITY[i]}`} />
-                          </span>
-                          {z.range && <span class="text-xs text-gray-500 dark:text-gray-400">{z.range}</span>}
-                        </span>
-                        <span class="text-right font-semibold tabular-nums">{Math.round(z.pct)} %</span>
-                        <span class="text-right text-gray-500 tabular-nums dark:text-gray-400">{z.time}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              {(dynamics.length > 0 || others.length > 0) && (
-                <section class:list={[card, 'grid gap-6 p-4', dynamics.length > 0 && others.length > 0 && 'sm:grid-cols-2']}>
-                  {[
-                    { title: 'Dinámica de carrera', rows: dynamics },
-                    { title: 'Otros datos', rows: others },
-                  ]
-                    .filter((g) => g.rows.length > 0)
-                    .map((g) => (
-                      <div>
-                        <h2 class="text-base font-semibold">{g.title}</h2>
-                        <dl class="mt-3 space-y-2 text-sm">
-                          {g.rows.map(([l, v]) => (
-                            <div class="flex items-baseline justify-between gap-2">
-                              <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
-                              <dd class="font-semibold tabular-nums">{v}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    ))}
-                </section>
-              )}
-            </div>
+            {(dynamics.length > 0 || others.length > 0) && (
+              <section
+                class:list={[card, 'grid gap-6 p-4', dynamics.length > 0 && others.length > 0 && 'sm:grid-cols-2']}
+              >
+                {[
+                  { title: 'Dinámica de carrera', rows: dynamics },
+                  { title: 'Otros datos', rows: others },
+                ]
+                  .filter((g) => g.rows.length > 0)
+                  .map((g) => (
+                    <div>
+                      <h2 class="text-base font-semibold">{g.title}</h2>
+                      <dl class="mt-3 space-y-2 text-sm">
+                        {g.rows.map(([l, v]) => (
+                          <div class="flex items-baseline justify-between gap-2">
+                            <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
+                            <dd class="font-semibold tabular-nums">{v}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))}
+              </section>
+            )}
           </div>
         </div>
-      )
+      </div>
     )
-  }
+  )}
 </Base>
 
 <script>

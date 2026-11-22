@@ -3,9 +3,28 @@ import { cumulative, monthlyTotals, yearSummary, yearToDate } from './compare';
 import type { Activity } from './garmin/types';
 
 const a = (date: string, km: number, movingS = 3000, avgHr?: number): Activity =>
-  ({ id: 1, name: 'x', typeKey: 'running', startLocal: `${date} 08:00:00`, date, distanceKm: km, durationS: movingS, movingS, avgHr, hrZonesS: [0, 0, 0, 0, 0], bestEfforts: {}, isPr: false }) as Activity;
+  ({
+    id: 1,
+    name: 'x',
+    typeKey: 'running',
+    startLocal: `${date} 08:00:00`,
+    date,
+    distanceKm: km,
+    durationS: movingS,
+    movingS,
+    avgHr,
+    hrZonesS: [0, 0, 0, 0, 0],
+    bestEfforts: {},
+    isPr: false,
+  }) as Activity;
 
-const acts = [a('2025-01-10', 10), a('2025-01-20', 5), a('2025-03-01', 21, 7200, 150), a('2026-01-05', 8), a('2026-11-30', 12)];
+const acts = [
+  a('2025-01-10', 10),
+  a('2025-01-20', 5),
+  a('2025-03-01', 21, 7200, 150),
+  a('2026-01-05', 8),
+  a('2026-11-30', 12),
+];
 
 describe('comparador', () => {
   it('totales por mes del año pedido', () => {

@@ -47,37 +47,37 @@ const distanceText = (a: Activity, i: number) =>
       </tr>
     </thead>
     <tbody class="tabular-nums">
-      {
-        activities.map((a, i) => (
-          <tr class="border-b border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
-            <td class="px-4 py-3 whitespace-nowrap">{dayLabel(a.date)}</td>
-            <td class="px-4 py-3">
-              <a href={`/actividades/${a.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
-                {a.name}
-              </a>
-              {a.isPr && (
-                <span class="ml-1.5">
-                  <TrophyTip label="Récord personal en Garmin" />
-                </span>
-              )}
-              {showType && (
-                <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                  {activityLabel(a.typeKey)}
-                </span>
-              )}
-            </td>
-            {anyDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
-            <td class="px-4 py-3 text-right">{duration(a.movingS)}</td>
-            {anySpeed && <td class="px-4 py-3 text-right whitespace-nowrap">{speedText(a, i)}</td>}
-            <td class="px-4 py-3 text-right">{int(a.avgHr)}</td>
-            <td class="px-4 py-3 text-right">{int(a.maxHr)}</td>
-            {anyElevation && (
-              <td class="px-4 py-3 text-right whitespace-nowrap">{a.elevationGainM ? `${int(a.elevationGainM)} m` : '—'}</td>
+      {activities.map((a, i) => (
+        <tr class="border-b border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
+          <td class="px-4 py-3 whitespace-nowrap">{dayLabel(a.date)}</td>
+          <td class="px-4 py-3">
+            <a href={`/actividades/${a.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
+              {a.name}
+            </a>
+            {a.isPr && (
+              <span class="ml-1.5">
+                <TrophyTip label="Récord personal en Garmin" />
+              </span>
             )}
-            {anyCalories && <td class="px-4 py-3 text-right">{int(a.calories)}</td>}
-          </tr>
-        ))
-      }
+            {showType && (
+              <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                {activityLabel(a.typeKey)}
+              </span>
+            )}
+          </td>
+          {anyDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
+          <td class="px-4 py-3 text-right">{duration(a.movingS)}</td>
+          {anySpeed && <td class="px-4 py-3 text-right whitespace-nowrap">{speedText(a, i)}</td>}
+          <td class="px-4 py-3 text-right">{int(a.avgHr)}</td>
+          <td class="px-4 py-3 text-right">{int(a.maxHr)}</td>
+          {anyElevation && (
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              {a.elevationGainM ? `${int(a.elevationGainM)} m` : '—'}
+            </td>
+          )}
+          {anyCalories && <td class="px-4 py-3 text-right">{int(a.calories)}</td>}
+        </tr>
+      ))}
     </tbody>
   </table>
 </div>

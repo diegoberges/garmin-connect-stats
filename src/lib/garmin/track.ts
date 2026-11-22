@@ -74,7 +74,8 @@ export function getActivityTrack(client: GarminClient, id: number): Promise<Acti
       params: { path: { activityId: id } },
       parseAs: 'arrayBuffer',
     });
-    if (!response.ok || !data) throw new GarminApiError(`Garmin respondió ${response.status} al descargar la actividad`, response.status);
+    if (!response.ok || !data)
+      throw new GarminApiError(`Garmin respondió ${response.status} al descargar la actividad`, response.status);
     return parseActivityFile(new Uint8Array(data as ArrayBuffer));
   });
 }
@@ -114,8 +115,7 @@ function toSamples(records: RecordMesg[], events: EventMesg[]): Sample[] {
       stoppedAt = undefined;
     }
   }
-  const pausedBefore = (ts: number) =>
-    pauses.reduce((acc, [a, b]) => acc + (ts >= b ? b - a : ts > a ? ts - a : 0), 0);
+  const pausedBefore = (ts: number) => pauses.reduce((acc, [a, b]) => acc + (ts >= b ? b - a : ts > a ? ts - a : 0), 0);
 
   const out: Sample[] = [];
   let t0: number | undefined;
@@ -132,7 +132,7 @@ function toSamples(records: RecordMesg[], events: EventMesg[]): Sample[] {
       lon: lat !== undefined && lon !== undefined ? lon * SEMI_TO_DEG : undefined,
       hr: n(r.heartRate),
       alt: n(r.enhancedAltitude) ?? n(r.altitude),
-      cadence: n(r.cadence) !== undefined ? (n(r.cadence)! + (n(r.fractionalCadence) ?? 0)) : undefined,
+      cadence: n(r.cadence) !== undefined ? n(r.cadence)! + (n(r.fractionalCadence) ?? 0) : undefined,
     });
   }
   return out;
@@ -219,7 +219,14 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
     while (b.d! >= mark) {
       const f = b.d! === a.d! ? 1 : (mark - a.d!) / (b.d! - a.d!);
       const tAt = a.t + f * (b.t - a.t);
-      splits.push({ index: splits.length + 1, distanceM: mark - startD, timeS: tAt - startT, avgHr: round(avg(hrs)), elevGainM: Math.round(gain), elevLossM: Math.round(loss) });
+      splits.push({
+        index: splits.length + 1,
+        distanceM: mark - startD,
+        timeS: tAt - startT,
+        avgHr: round(avg(hrs)),
+        elevGainM: Math.round(gain),
+        elevLossM: Math.round(loss),
+      });
       startT = tAt;
       startD = mark;
       hrs = [];
@@ -230,7 +237,14 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
   }
   const rest = total - startD;
   if (rest >= 50) {
-    splits.push({ index: splits.length + 1, distanceM: rest, timeS: withD.at(-1)!.t - startT, avgHr: round(avg(hrs)), elevGainM: Math.round(gain), elevLossM: Math.round(loss) });
+    splits.push({
+      index: splits.length + 1,
+      distanceM: rest,
+      timeS: withD.at(-1)!.t - startT,
+      avgHr: round(avg(hrs)),
+      elevGainM: Math.round(gain),
+      elevLossM: Math.round(loss),
+    });
   }
   const full = splits.filter((s) => s.distanceM >= 999 && s.timeS > 0);
   return { splits, fastestSplitS: full.length ? Math.min(...full.map((s) => s.timeS)) : undefined };

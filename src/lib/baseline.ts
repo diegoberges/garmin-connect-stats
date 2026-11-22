@@ -74,7 +74,11 @@ export interface DeltaPoint {
 }
 
 /** Valor del día frente a la mediana de los `window` días anteriores (mín. 1/3 de la ventana con datos). */
-export function deltaTrend(days: DayHealth[], pick: (d: DayHealth) => number | undefined, window: number): DeltaPoint[] {
+export function deltaTrend(
+  days: DayHealth[],
+  pick: (d: DayHealth) => number | undefined,
+  window: number,
+): DeltaPoint[] {
   const vals = days.map(pick);
   return days.map((d, i) => {
     const prev = defined(vals.slice(Math.max(0, i - window), i));
@@ -114,9 +118,22 @@ export function todayStatus(days: DayHealth[], fmt: { ms: (v: number) => string;
   const signals: Signal[] = [];
 
   const hrv = lastWith(hrvTrend(days), (p) => p.avg7 !== undefined);
-  if (!hrv) signals.push({ key: 'hrv', label: 'HRV (7 días)', state: 'nodata', value: '—', detail: 'Sin datos de HRV nocturna' });
+  if (!hrv)
+    signals.push({
+      key: 'hrv',
+      label: 'HRV (7 días)',
+      state: 'nodata',
+      value: '—',
+      detail: 'Sin datos de HRV nocturna',
+    });
   else if (hrv.low === undefined)
-    signals.push({ key: 'hrv', label: 'HRV (7 días)', state: 'calibrating', value: fmt.ms(hrv.avg7!), detail: `Calibrando tu rango (${hrv.nights}/${HRV_MIN_NIGHTS} noches)` });
+    signals.push({
+      key: 'hrv',
+      label: 'HRV (7 días)',
+      state: 'calibrating',
+      value: fmt.ms(hrv.avg7!),
+      detail: `Calibrando tu rango (${hrv.nights}/${HRV_MIN_NIGHTS} noches)`,
+    });
   else {
     const state: SignalState = hrv.avg7! < hrv.low ? 'warn' : hrv.avg7! > hrv.high! ? 'high' : 'ok';
     const range = `rango ${fmt.ms(hrv.low)}–${fmt.ms(hrv.high!)}`;
@@ -125,12 +142,21 @@ export function todayStatus(days: DayHealth[], fmt: { ms: (v: number) => string;
       label: 'HRV (7 días)',
       state,
       value: fmt.ms(hrv.avg7!),
-      detail: state === 'warn' ? `Por debajo de tu ${range}` : state === 'high' ? `Por encima de tu ${range}` : `Dentro de tu ${range}`,
+      detail:
+        state === 'warn'
+          ? `Por debajo de tu ${range}`
+          : state === 'high'
+            ? `Por encima de tu ${range}`
+            : `Dentro de tu ${range}`,
     });
   }
 
-  const rhr = lastWith(deltaTrend(days, (d) => d.restingHr, RHR_WINDOW), (p) => p.delta !== undefined);
-  if (!rhr) signals.push({ key: 'rhr', label: 'FC en reposo', state: 'nodata', value: '—', detail: 'Sin línea base todavía' });
+  const rhr = lastWith(
+    deltaTrend(days, (d) => d.restingHr, RHR_WINDOW),
+    (p) => p.delta !== undefined,
+  );
+  if (!rhr)
+    signals.push({ key: 'rhr', label: 'FC en reposo', state: 'nodata', value: '—', detail: 'Sin línea base todavía' });
   else {
     const sign = rhr.delta! > 0 ? '+' : rhr.delta! < 0 ? '−' : '±';
     signals.push({
@@ -142,7 +168,10 @@ export function todayStatus(days: DayHealth[], fmt: { ms: (v: number) => string;
     });
   }
 
-  const resp = lastWith(deltaTrend(days, (d) => d.sleepRespiration, RESP_WINDOW), (p) => p.delta !== undefined);
+  const resp = lastWith(
+    deltaTrend(days, (d) => d.sleepRespiration, RESP_WINDOW),
+    (p) => p.delta !== undefined,
+  );
   if (resp) {
     const d = Math.round(resp.delta! * 10) / 10;
     signals.push({
@@ -161,7 +190,10 @@ export function todayStatus(days: DayHealth[], fmt: { ms: (v: number) => string;
       label: 'Deuda de sueño (7 noches)',
       state: debt.debtS >= SLEEP_DEBT_ALERT_S ? 'warn' : 'ok',
       value: fmt.hm(debt.debtS),
-      detail: debt.debtS < 600 ? 'Has cubierto tu necesidad de sueño' : 'Lo que te faltó frente a la necesidad que calcula Garmin',
+      detail:
+        debt.debtS < 600
+          ? 'Has cubierto tu necesidad de sueño'
+          : 'Lo que te faltó frente a la necesidad que calcula Garmin',
     });
 
   const warns = signals.filter((s) => s.state === 'warn').length;
@@ -182,7 +214,8 @@ export interface WeekIntensity {
 export function weeklyIntensity(days: DayHealth[], weeks: number, today: string): WeekIntensity[] {
   const current = weekStart(today);
   const out: WeekIntensity[] = [];
-  for (let i = weeks - 1; i >= 0; i--) out.push({ week: addDays(current, -7 * i), moderate: 0, vigorousX2: 0, total: 0 });
+  for (let i = weeks - 1; i >= 0; i--)
+    out.push({ week: addDays(current, -7 * i), moderate: 0, vigorousX2: 0, total: 0 });
   const byWeek = new Map(out.map((w) => [w.week, w]));
   for (const d of days) {
     const w = byWeek.get(weekStart(d.date));

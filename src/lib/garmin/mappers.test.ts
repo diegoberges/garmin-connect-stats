@@ -21,12 +21,17 @@ const baseClient = createClient<paths>({
     const { pathname } = new URL(req.url);
     const file = pathname.includes('/activities/search/activities')
       ? 'activities-running'
-      : pathname.includes('/heartRateZones') ? 'hr-zones'
-      : pathname.includes('/maxmet/') ? 'vo2max-30d'
-      : pathname.includes('/v2/dailysummaries') ? 'daily-summaries-7d'
-      : pathname.includes('/dailySleepSummariesByDate') ? 'sleep-7d'
-      : pathname.includes('/hrv/daily/') ? 'hrv-7d'
-      : undefined;
+      : pathname.includes('/heartRateZones')
+        ? 'hr-zones'
+        : pathname.includes('/maxmet/')
+          ? 'vo2max-30d'
+          : pathname.includes('/v2/dailysummaries')
+            ? 'daily-summaries-7d'
+            : pathname.includes('/dailySleepSummariesByDate')
+              ? 'sleep-7d'
+              : pathname.includes('/hrv/daily/')
+                ? 'hrv-7d'
+                : undefined;
     if (!file) return new Response('not mocked', { status: 404 });
     return new Response(readFileSync(`${RAW}/${file}.json`), { headers: { 'Content-Type': 'application/json' } });
   },
@@ -57,7 +62,9 @@ describe.skipIf(!has)('mapeadores con datos reales', () => {
   });
 
   it('combina salud diaria por fecha', async () => {
-    const dates = raw('daily-summaries-7d').data.map((d: { calendarDate: string }) => d.calendarDate).sort();
+    const dates = raw('daily-summaries-7d')
+      .data.map((d: { calendarDate: string }) => d.calendarDate)
+      .sort();
     const days = await getDailyHealth(fixtureClient, dates[0], dates.at(-1));
     expect(days).toHaveLength(dates.length);
     const withData = days.filter((d) => d.restingHr && d.steps !== undefined);

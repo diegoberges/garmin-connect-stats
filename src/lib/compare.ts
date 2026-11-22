@@ -28,7 +28,11 @@ export function monthlyTotals(activities: Activity[], year: number): MonthTotal[
 /** Acumulado mes a mes; los meses futuros del año en curso quedan en null para no pintar una línea plana. */
 export function cumulative(values: number[], lastMonth = 12): (number | null)[] {
   let acc = 0;
-  return values.map((v, i) => (i < lastMonth ? (acc += v) : null));
+  return values.map((v, i) => {
+    if (i >= lastMonth) return null;
+    acc += v;
+    return acc;
+  });
 }
 
 export interface YearSummary {

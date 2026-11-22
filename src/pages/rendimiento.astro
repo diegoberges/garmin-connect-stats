@@ -10,7 +10,14 @@ import ErrorState from '../components/ErrorState.astro';
 import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
 import RangeSelector from '../components/RangeSelector.astro';
-import { clientFor, getActivities, getActivityTrack, getAllRuns, type Activity, type ActivityTrack } from '../lib/garmin';
+import {
+  clientFor,
+  getActivities,
+  getActivityTrack,
+  getAllRuns,
+  type Activity,
+  type ActivityTrack,
+} from '../lib/garmin';
 import { criticalSpeed, efTrend, paceAtHr, predictTime, vdot } from '../lib/efficiency';
 import { addDays, isoDate, weekStart } from '../lib/dates';
 import { pctChange, runsBetween, totals, weeklyTotals } from '../lib/stats';
@@ -72,7 +79,9 @@ if (client && !error) {
     .filter((a) => /run/.test(a.typeKey) && a.movingS >= 60 * 60 && a.avgHr)
     .sort((a, b) => b.startLocal.localeCompare(a.startLocal))
     .slice(0, 8);
-  longTracks = await Promise.all(longRuns.map(async (run) => ({ run, track: await getActivityTrack(client, run.id).catch(() => undefined) })));
+  longTracks = await Promise.all(
+    longRuns.map(async (run) => ({ run, track: await getActivityTrack(client, run.id).catch(() => undefined) })),
+  );
 }
 
 // ---------- Carga ----------
@@ -108,7 +117,9 @@ const formSpec: ChartSpec = {
   type: 'line',
   categories: pmcCats,
   band: { name: 'Zona productiva (−10 a −30 %)', data: visible.map(() => [-30, -10]) },
-  series: [{ name: 'Forma', data: visible.map((p) => (p.formPct === undefined ? null : Math.round(p.formPct))), color: 3 }],
+  series: [
+    { name: 'Forma', data: visible.map((p) => (p.formPct === undefined ? null : Math.round(p.formPct))), color: 3 },
+  ],
   format: 'pct',
   height: 170,
   group: 'pmc',
@@ -116,7 +127,8 @@ const formSpec: ChartSpec = {
 
 // Carga semanal por tipo: 3 tipos con más carga + "Otras" (máx. 4 colores)
 const typeTotals = new Map<string, number>();
-for (const w of shownWeeks) for (const [t, l] of Object.entries(w.byType)) typeTotals.set(t, (typeTotals.get(t) ?? 0) + l);
+for (const w of shownWeeks)
+  for (const [t, l] of Object.entries(w.byType)) typeTotals.set(t, (typeTotals.get(t) ?? 0) + l);
 const ranked = [...typeTotals.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
 const topTypes = ranked.slice(0, ranked.length > 4 ? 3 : 4);
 const hasOthers = ranked.length > topTypes.length;
@@ -126,12 +138,22 @@ const loadSpec: ChartSpec = {
   stacked: true,
   categories: weekCats,
   series: [
-    ...topTypes.map((t, i) => ({ name: activityLabel(t), data: shownWeeks.map((w) => Math.round(w.byType[t] ?? 0)), color: (i + 1) as ColorSlot })),
+    ...topTypes.map((t, i) => ({
+      name: activityLabel(t),
+      data: shownWeeks.map((w) => Math.round(w.byType[t] ?? 0)),
+      color: (i + 1) as ColorSlot,
+    })),
     ...(hasOthers
       ? [
           {
             name: 'Otras',
-            data: shownWeeks.map((w) => Math.round(Object.entries(w.byType).filter(([t]) => !topTypes.includes(t)).reduce((a, [, l]) => a + l, 0))),
+            data: shownWeeks.map((w) =>
+              Math.round(
+                Object.entries(w.byType)
+                  .filter(([t]) => !topTypes.includes(t))
+                  .reduce((a, [, l]) => a + l, 0),
+              ),
+            ),
             color: 4 as ColorSlot,
           },
         ]
@@ -159,7 +181,11 @@ const intensitySpec: ChartSpec = {
   yMax: 100,
   reference: { value: 80, label: '80 % suave' },
 };
-const period = shownWeeks.reduce((a, w) => ({ low: a.low + w.low, mid: a.mid + w.mid, high: a.high + w.high }), { low: 0, mid: 0, high: 0 });
+const period = shownWeeks.reduce((a, w) => ({ low: a.low + w.low, mid: a.mid + w.mid, high: a.high + w.high }), {
+  low: 0,
+  mid: 0,
+  high: 0,
+});
 const periodLow = pctOf(period, 'low');
 
 // ---------- Carrera ----------
@@ -186,7 +212,14 @@ const lastYearRuns = [...(history ?? []), ...runs].filter((r) => r.date >= yearA
 const records = bestEfforts(lastYearRuns);
 const allTime = new Map((history ? bestEfforts([...history, ...runs]) : []).map((r) => [r.distance, r]));
 const firstRun = history?.at(-1)?.date;
-const DIST_LABEL: Record<number, string> = { 1000: '1 km', 1609: '1 milla', 5000: '5 km', 10000: '10 km', 21098: 'Media maratón', 42195: 'Maratón' };
+const DIST_LABEL: Record<number, string> = {
+  1000: '1 km',
+  1609: '1 milla',
+  5000: '5 km',
+  10000: '10 km',
+  21098: 'Media maratón',
+  42195: 'Maratón',
+};
 const periodByDist = new Map(records.map((r) => [r.distance, r]));
 // Todas las distancias con marca en el periodo o en el histórico, en orden de distancia
 const recordRows = BEST_EFFORT_DISTANCES.filter((d) => periodByDist.has(d) || allTime.has(d)).map((distance) => ({
@@ -197,13 +230,15 @@ const recordRows = BEST_EFFORT_DISTANCES.filter((d) => periodByDist.has(d) || al
 /** "4 nov 2024": las marcas históricas pueden ser de otros años */
 const yearDate = (d: string) => `${shortDate(d)} ${d.slice(0, 4)}`;
 
-
 // ---------- Eficiencia y progreso (fase 3) ----------
 // Factor de eficiencia en carreras comparables (rodajes suaves de asfalto/cinta)
 const ef = efTrend(runs);
 const efShown = ef.filter((p) => p.date >= from);
 const refHr = (() => {
-  const hrs = runs.filter((r) => ef.some((p) => p.id === r.id)).map((r) => r.avgHr!).sort((a, b) => a - b);
+  const hrs = runs
+    .filter((r) => ef.some((p) => p.id === r.id))
+    .map((r) => r.avgHr!)
+    .sort((a, b) => a - b);
   return hrs.length ? Math.round(hrs[Math.floor(hrs.length / 2)] / 5) * 5 : undefined; // mediana redondeada a 5
 })();
 const efMean = (pts: typeof ef) => (pts.length ? pts.reduce((s, p) => s + p.ef, 0) / pts.length : undefined);
@@ -215,7 +250,11 @@ const efSpec: ChartSpec = {
   type: 'line',
   categories: efShown.map((p) => shortDate(p.date)),
   series: [
-    { name: 'Media 28 días', data: efShown.map((p) => (p.avg28 === undefined ? null : Math.round(p.avg28 * 1000) / 1000)), color: 1 },
+    {
+      name: 'Media 28 días',
+      data: efShown.map((p) => (p.avg28 === undefined ? null : Math.round(p.avg28 * 1000) / 1000)),
+      color: 1,
+    },
     { name: 'Cada carrera', data: efShown.map((p) => Math.round(p.ef * 1000) / 1000), color: 1, faint: true },
   ],
   format: 'dec2',
@@ -225,7 +264,13 @@ const paceRefSpec: ChartSpec | undefined = refHr
   ? {
       type: 'line',
       categories: efShown.map((p) => shortDate(p.date)),
-      series: [{ name: `Ritmo a ${refHr} ppm`, data: efShown.map((p) => (p.avg28 ? Math.round(paceAtHr(p.avg28, refHr)) : null)), color: 3 }],
+      series: [
+        {
+          name: `Ritmo a ${refHr} ppm`,
+          data: efShown.map((p) => (p.avg28 ? Math.round(paceAtHr(p.avg28, refHr)) : null)),
+          color: 3,
+        },
+      ],
       format: 'pace',
       reversed: true,
       height: 240,
@@ -243,8 +288,23 @@ const curveSpec: ChartSpec = {
   type: 'line',
   categories: curveDistances.map((d) => DIST_LABEL[d]),
   series: [
-    { name: 'Últimos 12 meses', data: curveDistances.map((d) => { const r = periodByDist.get(d); return r ? Math.round(r.timeS / (d / 1000)) : null; }), color: 1 },
-    { name: 'Histórico', data: curveDistances.map((d) => { const r = allTime.get(d); return r ? Math.round(r.timeS / (d / 1000)) : null; }), color: 2, faint: true },
+    {
+      name: 'Últimos 12 meses',
+      data: curveDistances.map((d) => {
+        const r = periodByDist.get(d);
+        return r ? Math.round(r.timeS / (d / 1000)) : null;
+      }),
+      color: 1,
+    },
+    {
+      name: 'Histórico',
+      data: curveDistances.map((d) => {
+        const r = allTime.get(d);
+        return r ? Math.round(r.timeS / (d / 1000)) : null;
+      }),
+      color: 2,
+      faint: true,
+    },
   ],
   format: 'pace',
   reversed: true,
@@ -256,7 +316,12 @@ const vdotBase = records
   .map((r) => ({ r, v: vdot(r.distance, r.timeS) }))
   .sort((a, b) => b.v - a.v)[0];
 const PREDICT = [5000, 10000, 21097.5, 42195] as const;
-const PREDICT_LABEL: Record<number, string> = { 5000: '5 km', 10000: '10 km', 21097.5: 'Media maratón', 42195: 'Maratón' };
+const PREDICT_LABEL: Record<number, string> = {
+  5000: '5 km',
+  10000: '10 km',
+  21097.5: 'Media maratón',
+  42195: 'Maratón',
+};
 const predictions = vdotBase ? PREDICT.map((d) => ({ d, t: predictTime(vdotBase.v, d) })) : [];
 const cs = criticalSpeed(records);
 const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.min(8, Math.max(1, kmWeekly.length - 1));
@@ -278,361 +343,518 @@ const ZONE_TONE: Record<string, string> = {
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
 
-  {
-    !client ? (
-      <ConnectPrompt />
-    ) : error ? (
-      <ErrorState error={error} />
-    ) : (
-      <div class="space-y-8">
-        {/* ---------- Estado de forma ---------- */}
-        {nowP && !zone && (
-          <section class:list={[card, 'border-l-4 border-l-gray-400 p-5']} aria-labelledby="estado">
-            <h2 id="estado" class={sectionTitle}>Estado de forma · hoy</h2>
-            <p class="mt-2 text-xl font-bold">Calibrando</p>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              Hacen falta {FITNESS_DAYS} días de historial de actividades para estimar tu forma física y tu forma. Mientras tanto se muestran la carga y la fatiga.
-            </p>
-          </section>
-        )}
-        {nowP && zone && (
-          <section class:list={[card, 'border-l-4 p-5', ZONE_TONE[zone.zone]]} aria-labelledby="estado">
-            <div class="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+  {!client ? (
+    <ConnectPrompt />
+  ) : error ? (
+    <ErrorState error={error} />
+  ) : (
+    <div class="space-y-8">
+      {/* ---------- Estado de forma ---------- */}
+      {nowP && !zone && (
+        <section class:list={[card, 'border-l-4 border-l-gray-400 p-5']} aria-labelledby="estado">
+          <h2 id="estado" class={sectionTitle}>
+            Estado de forma · hoy
+          </h2>
+          <p class="mt-2 text-xl font-bold">Calibrando</p>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Hacen falta {FITNESS_DAYS} días de historial de actividades para estimar tu forma física y tu forma.
+            Mientras tanto se muestran la carga y la fatiga.
+          </p>
+        </section>
+      )}
+      {nowP && zone && (
+        <section class:list={[card, 'border-l-4 p-5', ZONE_TONE[zone.zone]]} aria-labelledby="estado">
+          <div class="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+            <div>
+              <h2 id="estado" class={sectionTitle}>
+                Estado de forma · hoy
+              </h2>
+              <p class="mt-2 text-xl font-bold">{zone.label}</p>
+              <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{zone.text}</p>
+              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                Forma = forma física (carga media de {FITNESS_DAYS} días) − fatiga (de {FATIGUE_DAYS} días), en % de tu
+                forma física. Las zonas son orientativas, no umbrales validados.
+              </p>
+            </div>
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
               <div>
-                <h2 id="estado" class={sectionTitle}>Estado de forma · hoy</h2>
-                <p class="mt-2 text-xl font-bold">{zone.label}</p>
-                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{zone.text}</p>
-                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  Forma = forma física (carga media de {FITNESS_DAYS} días) − fatiga (de {FATIGUE_DAYS} días), en % de tu forma física.
-                  Las zonas son orientativas, no umbrales validados.
-                </p>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Forma</dt>
+                <dd class="text-2xl font-bold tabular-nums">
+                  {nowP.formPct! > 0 ? '+' : ''}
+                  {Math.round(nowP.formPct!)} %
+                </dd>
               </div>
-              <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-                <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Forma</dt>
-                  <dd class="text-2xl font-bold tabular-nums">{nowP.formPct! > 0 ? '+' : ''}{Math.round(nowP.formPct!)} %</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Forma física</dt>
-                  <dd class="text-2xl font-bold tabular-nums">{int(nowP.fitness)}</dd>
-                  {fitnessChange !== undefined && (
-                    <dd class="text-xs text-gray-500 tabular-nums dark:text-gray-400">
-                      {fitnessChange >= 0 ? '↑ +' : '↓ −'}{km(Math.abs(fitnessChange))} en 7 días
-                    </dd>
-                  )}
-                </div>
-                <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Fatiga</dt>
-                  <dd class="text-2xl font-bold tabular-nums">{int(nowP.fatigue)}</dd>
-                </div>
-                {change && (
-                  <div class="col-span-2">
-                    <dt class="text-xs text-gray-500 dark:text-gray-400">Carga de la semana pasada</dt>
-                    <dd class="text-sm">
-                      <span class="font-semibold tabular-nums">{int(change.last.total)}</span>
-                      {change.pct !== undefined && (
-                        <span class:list={['ml-1 tabular-nums', spike ? 'font-medium text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400']}>
-                          ({change.pct >= 0 ? '+' : '−'}{Math.abs(Math.round(change.pct))} % vs media de 4 semanas{spike ? ' · subida brusca' : ''})
-                        </span>
-                      )}
-                    </dd>
-                  </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Forma física</dt>
+                <dd class="text-2xl font-bold tabular-nums">{int(nowP.fitness)}</dd>
+                {fitnessChange !== undefined && (
+                  <dd class="text-xs text-gray-500 tabular-nums dark:text-gray-400">
+                    {fitnessChange >= 0 ? '↑ +' : '↓ −'}
+                    {km(Math.abs(fitnessChange))} en 7 días
+                  </dd>
                 )}
-                <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Días de fuerza</dt>
-                  <dd class="text-sm"><span class="font-semibold tabular-nums">{km(strength4)}</span> <span class="text-gray-500 dark:text-gray-400">/ semana (4 sem)</span></dd>
-                </div>
-              </dl>
-            </div>
-          </section>
-        )}
-
-        {/* ---------- Carga ---------- */}
-        <section class="space-y-4" aria-labelledby="carga">
-          <h2 id="carga" class={sectionTitle}>Carga de entrenamiento · todas las actividades</h2>
-          <section class:list={[card, 'min-w-0 p-4']}>
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 class="text-base font-semibold">Forma física, fatiga y forma</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Carga de entrenamiento de Garmin por sesión</p>
-            </div>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              La forma física sube despacio con la carga constante; la fatiga reacciona rápido. Si la forma cae por debajo de −30 %, la fatiga va por delante.
-            </p>
-            <div class="mt-3 w-full min-w-0" data-chart={JSON.stringify(fitnessSpec)} role="img" aria-label="Forma física y fatiga" style="min-height:220px" />
-            {hasForm && (
-              <>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Forma (% de la forma física)</p>
-                <div class="w-full min-w-0" data-chart={JSON.stringify(formSpec)} role="img" aria-label="Forma" style="min-height:170px" />
-              </>
-            )}
-            <details class="mt-2 text-sm">
-              <summary class="cursor-pointer text-gray-500 select-none hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Cómo leer las zonas</summary>
-              <ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
-                {FORM_ZONES.map((z, i) => (
-                  <li>
-                    <span class="font-semibold">{z.label}</span>
-                    {' '}({i === 0 ? `> +${z.min} %` : z.min === -Infinity ? `< ${FORM_ZONES[i - 1].min} %` : `${z.min} a ${FORM_ZONES[i - 1].min} %`}): {z.text}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          </section>
-
-          <div class="grid gap-6 lg:grid-cols-2">
-            <ChartCard
-              title="Carga semanal por tipo"
-              subtitle={`Avisa si una semana sube más de un ${WEEKLY_SPIKE_PCT} % sobre la media de las 4 anteriores`}
-              spec={loadSpec}
-              table={{
-                headers: ['Semana', 'Carga', 'Días de fuerza'],
-                rows: shownWeeks.map((w) => [shortDate(w.week), int(w.total), int(w.strengthDays)]),
-              }}
-            />
-            <ChartCard
-              title="Distribución de intensidad"
-              subtitle={`${periodLow !== null ? `${periodLow} % del tiempo en baja intensidad en el periodo · ` : ''}los fondistas de élite hacen ~80 % suave`}
-              spec={intensitySpec}
-              table={{
-                headers: ['Semana', 'Baja', 'Moderada', 'Alta'],
-                rows: shownWeeks.map((w) => [shortDate(w.week), duration(w.low), duration(w.mid), duration(w.high)]),
-              }}
-            />
-          </div>
-        </section>
-
-        {/* ---------- Carrera ---------- */}
-        <section class="space-y-4" aria-labelledby="carrera">
-          <h2 id="carrera" class={sectionTitle}>Carrera</h2>
-          <div>
-            <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Esta semana · desde el {shortDate(thisWeek)}</p>
-            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="Distancia" value={km(cur.km)} unit="km" delta={pctChange(cur.km, prev.km)} deltaLabel={vsLabel} />
-              <StatCard label="Sesiones" value={int(cur.runs)} hint={`${int(prev.runs)} la semana pasada a estas alturas`} />
-              <StatCard label="Ritmo medio" value={pace(cur.paceSPerKm)} unit="/km" delta={pctChange(cur.paceSPerKm, prev.paceSPerKm)} deltaLabel={vsLabel} higherIsBetter={false} />
-              <StatCard label="Tiempo" value={hoursMinutes(cur.movingS)} delta={pctChange(cur.movingS, prev.movingS)} deltaLabel={vsLabel} />
-            </div>
-          </div>
-          <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
-            <dl class:list={[card, 'grid grid-cols-2 content-start gap-4 p-4']}>
-              <p class="col-span-2 text-sm text-gray-500 dark:text-gray-400">Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}</p>
-              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Distancia</dt><dd class="text-xl font-bold tabular-nums">{km(t.km)} <span class="text-sm font-normal text-gray-500">km</span></dd></div>
-              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Sesiones</dt><dd class="text-xl font-bold tabular-nums">{int(t.runs)}</dd></div>
-              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Tiempo</dt><dd class="text-xl font-bold tabular-nums">{hoursMinutes(t.movingS)}</dd></div>
-              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Ritmo medio</dt><dd class="text-xl font-bold tabular-nums">{pace(t.paceSPerKm)} <span class="text-sm font-normal text-gray-500">/km</span></dd></div>
-              <div><dt class="text-xs text-gray-500 dark:text-gray-400">FC media</dt><dd class="text-xl font-bold tabular-nums">{int(t.avgHr)} <span class="text-sm font-normal text-gray-500">ppm</span></dd></div>
-              <div><dt class="text-xs text-gray-500 dark:text-gray-400">Desnivel +</dt><dd class="text-xl font-bold tabular-nums">{int(t.elevationGainM)} <span class="text-sm font-normal text-gray-500">m</span></dd></div>
-            </dl>
-            <ChartCard
-              title="Kilómetros por semana"
-              subtitle="Carrera, trail y cinta · semanas de lunes a domingo"
-              spec={kmSpec}
-              table={{ headers: ['Semana', 'Km', 'Sesiones', 'Tiempo'], rows: kmWeekly.map((w) => [shortDate(w.week), km(w.km), int(w.runs), duration(w.movingS)]) }}
-            />
-          </div>
-
-          <section class:list={[card, 'min-w-0 p-4']}>
-            <h3 class="text-base font-semibold">Mejores marcas</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              Mejor tramo dentro de cualquier carrera en los últimos 12 meses (desde el {shortDate(yearAgo)} {yearAgo.slice(0, 4)}) frente a tu mejor marca
-              {firstRun ? ` desde ${yearDate(firstRun)}` : ' histórica'}.
-            </p>
-            {recordRows.length ? (
-              <div class="mt-3 overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead class="text-xs text-gray-500 dark:text-gray-400">
-                    <tr>
-                      <th class="py-1 pr-3 text-left font-medium">Distancia</th>
-                      <th class="py-1 pr-3 text-right font-medium">Últimos 12 meses</th>
-                      <th class="py-1 pr-3 text-right font-medium">Histórica</th>
-                      <th class="py-1 text-right font-medium">Diferencia</th>
-                    </tr>
-                  </thead>
-                  <tbody class="tabular-nums">
-                    {recordRows.map(({ distance, period, best }) => (
-                      <tr class="border-t border-gray-100 dark:border-gray-700">
-                        <td class="py-2 pr-3 font-medium whitespace-nowrap">{DIST_LABEL[distance]}</td>
-                        <td class="py-2 pr-3 text-right whitespace-nowrap">
-                          {period ? (
-                            <>
-                              <span class="font-semibold">{duration(period.timeS)}</span>
-                              <span class="block text-xs text-gray-500 dark:text-gray-400">
-                                {pace(period.timeS / (distance / 1000))} /km ·{' '}
-                                <a href={`/actividades/${period.activityId}`} class="text-blue-700 hover:underline dark:text-blue-400" title={period.activityName}>
-                                  {shortDate(period.date)}
-                                </a>
-                              </span>
-                            </>
-                          ) : (
-                            <span class="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td class="py-2 pr-3 text-right whitespace-nowrap">
-                          {best ? (
-                            <>
-                              <span class="font-semibold">{duration(best.timeS)}</span>
-                              <span class="block text-xs text-gray-500 dark:text-gray-400">
-                                {pace(best.timeS / (distance / 1000))} /km ·{' '}
-                                <a href={`/actividades/${best.activityId}`} class="text-blue-700 hover:underline dark:text-blue-400" title={best.activityName}>
-                                  {yearDate(best.date)}
-                                </a>
-                              </span>
-                            </>
-                          ) : (
-                            <span class="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td class="py-2 text-right whitespace-nowrap">
-                          {period && best ? (
-                            period.timeS <= best.timeS ? (
-                              <span class="rounded-sm bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-300">
-                                Récord
-                              </span>
-                            ) : (
-                              <>
-                                <span class="font-medium">+{duration(period.timeS - best.timeS)}</span>
-                                <span class="block text-xs text-gray-500 dark:text-gray-400">+{km(((period.timeS - best.timeS) / best.timeS) * 100)} %</span>
-                              </>
-                            )
-                          ) : (
-                            <span class="text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
-            ) : (
-              <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Sin carreras con marcas registradas.</p>
-            )}
-            {!history && <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">No se ha podido cargar el histórico completo; se muestra solo el periodo.</p>}
-          </section>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Fatiga</dt>
+                <dd class="text-2xl font-bold tabular-nums">{int(nowP.fatigue)}</dd>
+              </div>
+              {change && (
+                <div class="col-span-2">
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Carga de la semana pasada</dt>
+                  <dd class="text-sm">
+                    <span class="font-semibold tabular-nums">{int(change.last.total)}</span>
+                    {change.pct !== undefined && (
+                      <span
+                        class:list={[
+                          'ml-1 tabular-nums',
+                          spike ? 'font-medium text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400',
+                        ]}
+                      >
+                        ({change.pct >= 0 ? '+' : '−'}
+                        {Math.abs(Math.round(change.pct))} % vs media de 4 semanas{spike ? ' · subida brusca' : ''})
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Días de fuerza</dt>
+                <dd class="text-sm">
+                  <span class="font-semibold tabular-nums">{km(strength4)}</span>{' '}
+                  <span class="text-gray-500 dark:text-gray-400">/ semana (4 sem)</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      )}
 
+      {/* ---------- Carga ---------- */}
+      <section class="space-y-4" aria-labelledby="carga">
+        <h2 id="carga" class={sectionTitle}>
+          Carga de entrenamiento · todas las actividades
+        </h2>
+        <section class:list={[card, 'min-w-0 p-4']}>
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-base font-semibold">Forma física, fatiga y forma</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Carga de entrenamiento de Garmin por sesión</p>
+          </div>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            La forma física sube despacio con la carga constante; la fatiga reacciona rápido. Si la forma cae por debajo
+            de −30 %, la fatiga va por delante.
+          </p>
+          <div
+            class="mt-3 w-full min-w-0"
+            data-chart={JSON.stringify(fitnessSpec)}
+            role="img"
+            aria-label="Forma física y fatiga"
+            style="min-height:220px"
+          />
+          {hasForm && (
+            <>
+              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Forma (% de la forma física)</p>
+              <div
+                class="w-full min-w-0"
+                data-chart={JSON.stringify(formSpec)}
+                role="img"
+                aria-label="Forma"
+                style="min-height:170px"
+              />
+            </>
+          )}
+          <details class="mt-2 text-sm">
+            <summary class="cursor-pointer text-gray-500 select-none hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              Cómo leer las zonas
+            </summary>
+            <ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+              {FORM_ZONES.map((z, i) => (
+                <li>
+                  <span class="font-semibold">{z.label}</span> (
+                  {i === 0
+                    ? `> +${z.min} %`
+                    : z.min === -Infinity
+                      ? `< ${FORM_ZONES[i - 1].min} %`
+                      : `${z.min} a ${FORM_ZONES[i - 1].min} %`}
+                  ): {z.text}
+                </li>
+              ))}
+            </ul>
+          </details>
         </section>
 
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard
+            title="Carga semanal por tipo"
+            subtitle={`Avisa si una semana sube más de un ${WEEKLY_SPIKE_PCT} % sobre la media de las 4 anteriores`}
+            spec={loadSpec}
+            table={{
+              headers: ['Semana', 'Carga', 'Días de fuerza'],
+              rows: shownWeeks.map((w) => [shortDate(w.week), int(w.total), int(w.strengthDays)]),
+            }}
+          />
+          <ChartCard
+            title="Distribución de intensidad"
+            subtitle={`${periodLow !== null ? `${periodLow} % del tiempo en baja intensidad en el periodo · ` : ''}los fondistas de élite hacen ~80 % suave`}
+            spec={intensitySpec}
+            table={{
+              headers: ['Semana', 'Baja', 'Moderada', 'Alta'],
+              rows: shownWeeks.map((w) => [shortDate(w.week), duration(w.low), duration(w.mid), duration(w.high)]),
+            }}
+          />
+        </div>
+      </section>
 
-        {/* ---------- Eficiencia y progreso ---------- */}
-        <section class="space-y-4" aria-labelledby="eficiencia">
-          <div>
-            <h2 id="eficiencia" class={sectionTitle}>Eficiencia y progreso</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              ¿Corres más rápido con el mismo esfuerzo? Solo se comparan rodajes suaves de asfalto o cinta (30–120 min, poco desnivel),
-              para que series y trail no mezclen la tendencia.
-            </p>
+      {/* ---------- Carrera ---------- */}
+      <section class="space-y-4" aria-labelledby="carrera">
+        <h2 id="carrera" class={sectionTitle}>
+          Carrera
+        </h2>
+        <div>
+          <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Esta semana · desde el {shortDate(thisWeek)}</p>
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard
+              label="Distancia"
+              value={km(cur.km)}
+              unit="km"
+              delta={pctChange(cur.km, prev.km)}
+              deltaLabel={vsLabel}
+            />
+            <StatCard
+              label="Sesiones"
+              value={int(cur.runs)}
+              hint={`${int(prev.runs)} la semana pasada a estas alturas`}
+            />
+            <StatCard
+              label="Ritmo medio"
+              value={pace(cur.paceSPerKm)}
+              unit="/km"
+              delta={pctChange(cur.paceSPerKm, prev.paceSPerKm)}
+              deltaLabel={vsLabel}
+              higherIsBetter={false}
+            />
+            <StatCard
+              label="Tiempo"
+              value={hoursMinutes(cur.movingS)}
+              delta={pctChange(cur.movingS, prev.movingS)}
+              deltaLabel={vsLabel}
+            />
           </div>
+        </div>
+        <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
+          <dl class:list={[card, 'grid grid-cols-2 content-start gap-4 p-4']}>
+            <p class="col-span-2 text-sm text-gray-500 dark:text-gray-400">
+              Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}
+            </p>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Distancia</dt>
+              <dd class="text-xl font-bold tabular-nums">
+                {km(t.km)} <span class="text-sm font-normal text-gray-500">km</span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Sesiones</dt>
+              <dd class="text-xl font-bold tabular-nums">{int(t.runs)}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Tiempo</dt>
+              <dd class="text-xl font-bold tabular-nums">{hoursMinutes(t.movingS)}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Ritmo medio</dt>
+              <dd class="text-xl font-bold tabular-nums">
+                {pace(t.paceSPerKm)} <span class="text-sm font-normal text-gray-500">/km</span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">FC media</dt>
+              <dd class="text-xl font-bold tabular-nums">
+                {int(t.avgHr)} <span class="text-sm font-normal text-gray-500">ppm</span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Desnivel +</dt>
+              <dd class="text-xl font-bold tabular-nums">
+                {int(t.elevationGainM)} <span class="text-sm font-normal text-gray-500">m</span>
+              </dd>
+            </div>
+          </dl>
+          <ChartCard
+            title="Kilómetros por semana"
+            subtitle="Carrera, trail y cinta · semanas de lunes a domingo"
+            spec={kmSpec}
+            table={{
+              headers: ['Semana', 'Km', 'Sesiones', 'Tiempo'],
+              rows: kmWeekly.map((w) => [shortDate(w.week), km(w.km), int(w.runs), duration(w.movingS)]),
+            }}
+          />
+        </div>
 
-          {efShown.length >= 2 ? (
-            <div class="grid gap-6 lg:grid-cols-2">
-              <section class:list={[card, 'min-w-0 p-4']}>
-                <div class="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 class="text-base font-semibold">Factor de eficiencia</h3>
-                  {efChange !== undefined && (
-                    <span class:list={['text-sm font-medium tabular-nums', Math.abs(efChange) < 1 ? 'text-gray-500 dark:text-gray-400' : efChange > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400']}>
-                      {Math.abs(efChange) < 1 ? '→ estable' : `${efChange > 0 ? '↑ +' : '↓ −'}${km(Math.abs(efChange))} %`} en 6 semanas
-                    </span>
-                  )}
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Metros por minuto ÷ FC media. Más alto = más velocidad por latido.</p>
-                <div class="mt-2 w-full min-w-0" data-chart={JSON.stringify(efSpec)} role="img" aria-label="Factor de eficiencia" style="min-height:240px" />
-              </section>
-              {paceRefSpec && (
-                <ChartCard
-                  title={`Ritmo a ${refHr} ppm`}
-                  subtitle="El ritmo que llevarías a tu FC habitual de rodaje, según tu eficiencia de las últimas 4 semanas. Más rápido = mejor forma aeróbica."
-                  spec={paceRefSpec}
-                />
-              )}
+        <section class:list={[card, 'min-w-0 p-4']}>
+          <h3 class="text-base font-semibold">Mejores marcas</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Mejor tramo dentro de cualquier carrera en los últimos 12 meses (desde el {shortDate(yearAgo)}{' '}
+            {yearAgo.slice(0, 4)}) frente a tu mejor marca
+            {firstRun ? ` desde ${yearDate(firstRun)}` : ' histórica'}.
+          </p>
+          {recordRows.length ? (
+            <div class="mt-3 overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-xs text-gray-500 dark:text-gray-400">
+                  <tr>
+                    <th class="py-1 pr-3 text-left font-medium">Distancia</th>
+                    <th class="py-1 pr-3 text-right font-medium">Últimos 12 meses</th>
+                    <th class="py-1 pr-3 text-right font-medium">Histórica</th>
+                    <th class="py-1 text-right font-medium">Diferencia</th>
+                  </tr>
+                </thead>
+                <tbody class="tabular-nums">
+                  {recordRows.map(({ distance, period, best }) => (
+                    <tr class="border-t border-gray-100 dark:border-gray-700">
+                      <td class="py-2 pr-3 font-medium whitespace-nowrap">{DIST_LABEL[distance]}</td>
+                      <td class="py-2 pr-3 text-right whitespace-nowrap">
+                        {period ? (
+                          <>
+                            <span class="font-semibold">{duration(period.timeS)}</span>
+                            <span class="block text-xs text-gray-500 dark:text-gray-400">
+                              {pace(period.timeS / (distance / 1000))} /km ·{' '}
+                              <a
+                                href={`/actividades/${period.activityId}`}
+                                class="text-blue-700 hover:underline dark:text-blue-400"
+                                title={period.activityName}
+                              >
+                                {shortDate(period.date)}
+                              </a>
+                            </span>
+                          </>
+                        ) : (
+                          <span class="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td class="py-2 pr-3 text-right whitespace-nowrap">
+                        {best ? (
+                          <>
+                            <span class="font-semibold">{duration(best.timeS)}</span>
+                            <span class="block text-xs text-gray-500 dark:text-gray-400">
+                              {pace(best.timeS / (distance / 1000))} /km ·{' '}
+                              <a
+                                href={`/actividades/${best.activityId}`}
+                                class="text-blue-700 hover:underline dark:text-blue-400"
+                                title={best.activityName}
+                              >
+                                {yearDate(best.date)}
+                              </a>
+                            </span>
+                          </>
+                        ) : (
+                          <span class="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td class="py-2 text-right whitespace-nowrap">
+                        {period && best ? (
+                          period.timeS <= best.timeS ? (
+                            <span class="rounded-sm bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-300">
+                              Récord
+                            </span>
+                          ) : (
+                            <>
+                              <span class="font-medium">+{duration(period.timeS - best.timeS)}</span>
+                              <span class="block text-xs text-gray-500 dark:text-gray-400">
+                                +{km(((period.timeS - best.timeS) / best.timeS) * 100)} %
+                              </span>
+                            </>
+                          )
+                        ) : (
+                          <span class="text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
-            <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>
-              Hacen falta al menos 2 rodajes suaves en el periodo para ver la tendencia de eficiencia.
+            <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              Sin carreras con marcas registradas.
             </p>
           )}
+          {!history && (
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              No se ha podido cargar el histórico completo; se muestra solo el periodo.
+            </p>
+          )}
+        </section>
+      </section>
 
+      {/* ---------- Eficiencia y progreso ---------- */}
+      <section class="space-y-4" aria-labelledby="eficiencia">
+        <div>
+          <h2 id="eficiencia" class={sectionTitle}>
+            Eficiencia y progreso
+          </h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            ¿Corres más rápido con el mismo esfuerzo? Solo se comparan rodajes suaves de asfalto o cinta (30–120 min,
+            poco desnivel), para que series y trail no mezclen la tendencia.
+          </p>
+        </div>
+
+        {efShown.length >= 2 ? (
           <div class="grid gap-6 lg:grid-cols-2">
             <section class:list={[card, 'min-w-0 p-4']}>
-              <h3 class="text-base font-semibold">Desacoplamiento en tiradas largas</h3>
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 class="text-base font-semibold">Factor de eficiencia</h3>
+                {efChange !== undefined && (
+                  <span
+                    class:list={[
+                      'text-sm font-medium tabular-nums',
+                      Math.abs(efChange) < 1
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : efChange > 0
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-red-700 dark:text-red-400',
+                    ]}
+                  >
+                    {Math.abs(efChange) < 1
+                      ? '→ estable'
+                      : `${efChange > 0 ? '↑ +' : '↓ −'}${km(Math.abs(efChange))} %`}{' '}
+                    en 6 semanas
+                  </span>
+                )}
+              </div>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Cuánto cae la eficiencia de la 1.ª a la 2.ª mitad (con ritmo ajustado por pendiente y sin los 10 primeros minutos).
-                Por debajo del 5 % suele indicar buena base aeróbica (regla orientativa; el calor y la deshidratación lo suben).
+                Metros por minuto ÷ FC media. Más alto = más velocidad por latido.
               </p>
-              {decouplings.length ? (
+              <div
+                class="mt-2 w-full min-w-0"
+                data-chart={JSON.stringify(efSpec)}
+                role="img"
+                aria-label="Factor de eficiencia"
+                style="min-height:240px"
+              />
+            </section>
+            {paceRefSpec && (
+              <ChartCard
+                title={`Ritmo a ${refHr} ppm`}
+                subtitle="El ritmo que llevarías a tu FC habitual de rodaje, según tu eficiencia de las últimas 4 semanas. Más rápido = mejor forma aeróbica."
+                spec={paceRefSpec}
+              />
+            )}
+          </div>
+        ) : (
+          <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>
+            Hacen falta al menos 2 rodajes suaves en el periodo para ver la tendencia de eficiencia.
+          </p>
+        )}
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <section class:list={[card, 'min-w-0 p-4']}>
+            <h3 class="text-base font-semibold">Desacoplamiento en tiradas largas</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Cuánto cae la eficiencia de la 1.ª a la 2.ª mitad (con ritmo ajustado por pendiente y sin los 10 primeros
+              minutos). Por debajo del 5 % suele indicar buena base aeróbica (regla orientativa; el calor y la
+              deshidratación lo suben).
+            </p>
+            {decouplings.length ? (
+              <table class="mt-3 w-full text-sm">
+                <tbody class="tabular-nums">
+                  {decouplings.map(({ run, d }) => (
+                    <tr class="border-t border-gray-100 dark:border-gray-700">
+                      <td class="py-2 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                        {shortDate(run.date)}
+                      </td>
+                      <td class="py-2 pr-3">
+                        <a href={`/actividades/${run.id}`} class="text-blue-700 hover:underline dark:text-blue-400">
+                          {run.name}
+                        </a>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">
+                          {km(run.distanceKm)} km · {duration(run.movingS)}
+                        </span>
+                      </td>
+                      <td
+                        class:list={[
+                          'py-2 text-right font-semibold whitespace-nowrap',
+                          d.pct < 5
+                            ? 'text-green-700 dark:text-green-400'
+                            : d.pct < 10
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-red-700 dark:text-red-400',
+                        ]}
+                      >
+                        {d.pct >= 0 ? '' : '−'}
+                        {km(Math.abs(d.pct))} %
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                Sin tiradas de 60 minutos o más en el historial cargado.
+              </p>
+            )}
+          </section>
+
+          <section class:list={[card, 'min-w-0 p-4']}>
+            <h3 class="text-base font-semibold">Predicción de carrera</h3>
+            {vdotBase ? (
+              <>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  VDOT de Daniels <span class="font-semibold text-gray-900 dark:text-white">{km(vdotBase.v)}</span>,
+                  calculado con tu mejor {DIST_LABEL[vdotBase.r.distance]} de los últimos 12 meses (
+                  {duration(vdotBase.r.timeS)}).
+                </p>
                 <table class="mt-3 w-full text-sm">
                   <tbody class="tabular-nums">
-                    {decouplings.map(({ run, d }) => (
+                    {predictions.map(({ d, t }) => (
                       <tr class="border-t border-gray-100 dark:border-gray-700">
-                        <td class="py-2 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">{shortDate(run.date)}</td>
-                        <td class="py-2 pr-3">
-                          <a href={`/actividades/${run.id}`} class="text-blue-700 hover:underline dark:text-blue-400">{run.name}</a>
-                          <span class="block text-xs text-gray-500 dark:text-gray-400">{km(run.distanceKm)} km · {duration(run.movingS)}</span>
-                        </td>
-                        <td class:list={['py-2 text-right font-semibold whitespace-nowrap', d.pct < 5 ? 'text-green-700 dark:text-green-400' : d.pct < 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-700 dark:text-red-400']}>
-                          {d.pct >= 0 ? '' : '−'}{km(Math.abs(d.pct))} %
-                        </td>
+                        <td class="py-2 font-medium">{PREDICT_LABEL[d]}</td>
+                        <td class="py-2 text-right font-semibold">{duration(t)}</td>
+                        <td class="py-2 text-right text-gray-500 dark:text-gray-400">{pace(t / (d / 1000))} /km</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : (
-                <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Sin tiradas de 60 minutos o más en el historial cargado.</p>
-              )}
-            </section>
-
-            <section class:list={[card, 'min-w-0 p-4']}>
-              <h3 class="text-base font-semibold">Predicción de carrera</h3>
-              {vdotBase ? (
-                <>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    VDOT de Daniels <span class="font-semibold text-gray-900 dark:text-white">{km(vdotBase.v)}</span>, calculado con tu mejor
-                    {' '}{DIST_LABEL[vdotBase.r.distance]} de los últimos 12 meses ({duration(vdotBase.r.timeS)}).
+                {cs && (
+                  <p class="mt-3 text-sm">
+                    <span class="text-gray-500 dark:text-gray-400">Velocidad crítica (≈ ritmo umbral):</span>{' '}
+                    <span class="font-semibold tabular-nums">{pace(1000 / cs.csMs)} /km</span>
                   </p>
-                  <table class="mt-3 w-full text-sm">
-                    <tbody class="tabular-nums">
-                      {predictions.map(({ d, t }) => (
-                        <tr class="border-t border-gray-100 dark:border-gray-700">
-                          <td class="py-2 font-medium">{PREDICT_LABEL[d]}</td>
-                          <td class="py-2 text-right font-semibold">{duration(t)}</td>
-                          <td class="py-2 text-right text-gray-500 dark:text-gray-400">{pace(t / (d / 1000))} /km</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {cs && (
-                    <p class="mt-3 text-sm">
-                      <span class="text-gray-500 dark:text-gray-400">Velocidad crítica (≈ ritmo umbral):</span>{' '}
-                      <span class="font-semibold tabular-nums">{pace(1000 / cs.csMs)} /km</span>
-                    </p>
-                  )}
-                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Predicciones de mejores tramos dentro de entrenos, no de carreras. Hasta la media suelen acertar; la maratón tiende a salir
-                    más lenta si el volumen es bajo (llevas {km(weeklyKm8)} km/semana de media en 8 semanas).
-                  </p>
-                </>
-              ) : (
-                <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Hace falta una marca de 5 km o más en los últimos 12 meses.</p>
-              )}
-            </section>
-          </div>
+                )}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Predicciones de mejores tramos dentro de entrenos, no de carreras. Hasta la media suelen acertar; la
+                  maratón tiende a salir más lenta si el volumen es bajo (llevas {km(weeklyKm8)} km/semana de media en 8
+                  semanas).
+                </p>
+              </>
+            ) : (
+              <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                Hace falta una marca de 5 km o más en los últimos 12 meses.
+              </p>
+            )}
+          </section>
+        </div>
 
-          {curveDistances.length >= 2 && (
-            <ChartCard
-              title="Curva de marcas"
-              subtitle="Ritmo de tu mejor tramo en cada distancia: cuanto más plana, mejor aguantas el ritmo al alargar la distancia."
-              spec={curveSpec}
-              table={{
-                headers: ['Distancia', 'Últimos 12 meses', 'Histórico'],
-                rows: curveDistances.map((d) => [
-                  DIST_LABEL[d],
-                  periodByDist.get(d) ? `${duration(periodByDist.get(d)!.timeS)} (${pace(periodByDist.get(d)!.timeS / (d / 1000))} /km)` : '—',
-                  allTime.get(d) ? `${duration(allTime.get(d)!.timeS)} (${pace(allTime.get(d)!.timeS / (d / 1000))} /km)` : '—',
-                ]),
-              }}
-            />
-          )}
-        </section>
-      </div>
-    )
-  }
+        {curveDistances.length >= 2 && (
+          <ChartCard
+            title="Curva de marcas"
+            subtitle="Ritmo de tu mejor tramo en cada distancia: cuanto más plana, mejor aguantas el ritmo al alargar la distancia."
+            spec={curveSpec}
+            table={{
+              headers: ['Distancia', 'Últimos 12 meses', 'Histórico'],
+              rows: curveDistances.map((d) => [
+                DIST_LABEL[d],
+                periodByDist.get(d)
+                  ? `${duration(periodByDist.get(d)!.timeS)} (${pace(periodByDist.get(d)!.timeS / (d / 1000))} /km)`
+                  : '—',
+                allTime.get(d)
+                  ? `${duration(allTime.get(d)!.timeS)} (${pace(allTime.get(d)!.timeS / (d / 1000))} /km)`
+                  : '—',
+              ]),
+            }}
+          />
+        )}
+      </section>
+    </div>
+  )}
 </Base>
 
 <script>

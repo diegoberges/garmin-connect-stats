@@ -91,9 +91,7 @@ export function memoFor(scope: string, fresh = false): Memo {
 export type GarminClient = ReturnType<typeof createGarminClient>;
 
 /** Convierte el resultado {data, error, response} de openapi-fetch en datos o excepción. */
-export async function unwrap<T>(
-  call: Promise<{ data?: T; error?: unknown; response: Response }>,
-): Promise<T> {
+export async function unwrap<T>(call: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
   const { data, error, response } = await call;
   if (response.ok && data !== undefined) return data;
   if (response.status === 429) {

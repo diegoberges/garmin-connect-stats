@@ -12,10 +12,10 @@ interface Props {
 const { label, class: className = 'h-4 w-4' } = Astro.props;
 ---
 
-<span class="trophy-tip" tabindex="0">
+<button type="button" class="trophy-tip" aria-label={label}>
   <Trophy class={className} />
-  <span role="tooltip" class="trophy-tip-text">{label}</span>
-</span>
+  <span role="tooltip" class="trophy-tip-text" aria-hidden="true">{label}</span>
+</button>
 
 <style>
   .trophy-tip {
@@ -24,6 +24,10 @@ const { label, class: className = 'h-4 w-4' } = Astro.props;
     vertical-align: -2px;
     cursor: help;
     color: #f59e0b;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
   }
   :global(.dark) .trophy-tip {
     color: #fbbf24;

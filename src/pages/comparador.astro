@@ -42,7 +42,8 @@ const runCount = all.filter((a) => isRunType(a.typeKey)).length;
 
 const tipoParam = Astro.url.searchParams.get('tipo');
 const tipo = tipoParam && /^[a-z0-9_]+$/i.test(tipoParam) ? tipoParam : runCount ? RUN : ALL;
-const activities = tipo === ALL ? all : tipo === RUN ? all.filter((a) => isRunType(a.typeKey)) : all.filter((a) => a.typeKey === tipo);
+const activities =
+  tipo === ALL ? all : tipo === RUN ? all.filter((a) => isRunType(a.typeKey)) : all.filter((a) => a.typeKey === tipo);
 const kind = tipo === RUN ? 'foot' : tipo === ALL ? undefined : kindOf(tipo);
 const byDistance = kind !== undefined && hasDistance(kind) && activities.some((a) => a.distanceKm > 0);
 const typeTitle = tipo === RUN ? 'Correr' : tipo === ALL ? 'Todas las actividades' : activityLabel(tipo);
@@ -57,7 +58,10 @@ const years = (yearsParam.length ? yearsParam : availableYears.slice(0, 3)).slic
 
 const hrefWith = (changes: Record<string, string | undefined>) => {
   const params = new URLSearchParams(Astro.url.search);
-  for (const [k, v] of Object.entries(changes)) v === undefined ? params.delete(k) : params.set(k, v);
+  for (const [k, v] of Object.entries(changes)) {
+    if (v === undefined) params.delete(k);
+    else params.set(k, v);
+  }
   const qs = params.toString();
   return qs ? `?${qs}` : '/comparador';
 };
@@ -107,178 +111,220 @@ const signed = (p?: number) => (p === undefined ? '' : `${p >= 0 ? '+' : '−'}$
 
 const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
 const sectionTitle = 'text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
-const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${today}T00:00:00Z`));
+const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
+  new Date(`${today}T00:00:00Z`),
+);
 ---
 
 <Base title="Comparador">
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-    {
-      client && !error ? (
-        <div>
-          <h1>
-            <button
-              data-dropdown-toggle="cmp-type-menu"
-              data-dropdown-placement="bottom-start"
-              type="button"
-              class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-2xl font-bold hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 focus:outline-none dark:hover:bg-gray-800 dark:focus:ring-gray-700"
-              aria-label={`Tipo de actividad: ${typeTitle}`}
-            >
-              Comparador · {typeTitle}
-              <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 10 6" aria-hidden="true">
-                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4" />
-              </svg>
-            </button>
-          </h1>
-          <div id="cmp-type-menu" class="z-50 hidden max-h-96 w-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            <ul class="py-1 text-sm" aria-label="Tipo de actividad">
-              {[
-                ...(runCount ? [[RUN, runCount, 'Correr (carrera + trail + cinta)'] as const] : []),
-                [ALL, all.length, 'Todas las actividades'] as const,
-                ...types.map(([k, n]) => [k, n, activityLabel(k)] as const),
-              ].map(([key, n, label]) => (
-                <li>
-                  <a
-                    href={hrefWith({ tipo: key, anios: undefined })}
-                    aria-current={key === tipo ? 'page' : undefined}
-                    class:list={['flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700', key === tipo && 'font-semibold text-blue-700 dark:text-blue-400']}
-                  >
-                    <span class="truncate">{label}</span>
-                    <span class="text-xs text-gray-500 tabular-nums dark:text-gray-400">{n}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+    {client && !error ? (
+      <div>
+        <h1>
+          <button
+            data-dropdown-toggle="cmp-type-menu"
+            data-dropdown-placement="bottom-start"
+            type="button"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-2xl font-bold hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 focus:outline-none dark:hover:bg-gray-800 dark:focus:ring-gray-700"
+            aria-label={`Tipo de actividad: ${typeTitle}`}
+          >
+            Comparador · {typeTitle}
+            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+              <path
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="m1 1 4 4 4-4"
+              />
+            </svg>
+          </button>
+        </h1>
+        <div
+          id="cmp-type-menu"
+          class="z-50 hidden max-h-96 w-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          <ul class="py-1 text-sm" aria-label="Tipo de actividad">
+            {[
+              ...(runCount ? [[RUN, runCount, 'Correr (carrera + trail + cinta)'] as const] : []),
+              [ALL, all.length, 'Todas las actividades'] as const,
+              ...types.map(([k, n]) => [k, n, activityLabel(k)] as const),
+            ].map(([key, n, label]) => (
+              <li>
+                <a
+                  href={hrefWith({ tipo: key, anios: undefined })}
+                  aria-current={key === tipo ? 'page' : undefined}
+                  class:list={[
+                    'flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
+                    key === tipo && 'font-semibold text-blue-700 dark:text-blue-400',
+                  ]}
+                >
+                  <span class="truncate">{label}</span>
+                  <span class="text-xs text-gray-500 tabular-nums dark:text-gray-400">{n}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
-      ) : (
-        <h1 class="text-2xl font-bold">Comparador</h1>
-      )
-    }
+      </div>
+    ) : (
+      <h1 class="text-2xl font-bold">Comparador</h1>
+    )}
   </div>
 
-  {
-    !client ? (
-      <ConnectPrompt />
-    ) : error ? (
-      <ErrorState error={error} />
-    ) : availableYears.length === 0 ? (
-      <p class:list={[card, 'p-6 text-sm text-gray-500 dark:text-gray-400']}>No hay actividades de este tipo.</p>
-    ) : (
-      <div class="space-y-6">
-        {/* Selector de años */}
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="text-sm text-gray-500 dark:text-gray-400">Años (máx. {MAX_YEARS}):</span>
-          {availableYears.map((y) => (
-            <a
-              href={toggleYear(y)}
-              aria-pressed={years.includes(y) ? 'true' : 'false'}
-              class:list={[
-                'rounded-full border px-3 py-1 text-sm font-medium tabular-nums',
-                years.includes(y)
-                  ? 'border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-              ]}
-            >
-              {y}
-            </a>
-          ))}
-        </div>
+  {!client ? (
+    <ConnectPrompt />
+  ) : error ? (
+    <ErrorState error={error} />
+  ) : availableYears.length === 0 ? (
+    <p class:list={[card, 'p-6 text-sm text-gray-500 dark:text-gray-400']}>No hay actividades de este tipo.</p>
+  ) : (
+    <div class="space-y-6">
+      {/* Selector de años */}
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm text-gray-500 dark:text-gray-400">Años (máx. {MAX_YEARS}):</span>
+        {availableYears.map((y) => (
+          <a
+            href={toggleYear(y)}
+            aria-current={years.includes(y) ? 'true' : undefined}
+            class:list={[
+              'rounded-full border px-3 py-1 text-sm font-medium tabular-nums',
+              years.includes(y)
+                ? 'border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+            ]}
+          >
+            {y}
+          </a>
+        ))}
+      </div>
 
-        {years.length === 0 ? (
-          <p class:list={[card, 'p-6 text-sm text-gray-500 dark:text-gray-400']}>Elige al menos un año.</p>
-        ) : (
-          <>
-            {/* Año hasta hoy */}
-            <section aria-labelledby="ytd">
-              <h2 id="ytd" class:list={[sectionTitle, 'mb-3']}>Del 1 de enero al {todayLabel}</h2>
-              <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {ytd.map((y) => {
-                  const delta = y.year !== thisYear && ytdCurrent ? pctVs(mainOf(ytdCurrent), mainOf(y)) : undefined;
+      {years.length === 0 ? (
+        <p class:list={[card, 'p-6 text-sm text-gray-500 dark:text-gray-400']}>Elige al menos un año.</p>
+      ) : (
+        <>
+          {/* Año hasta hoy */}
+          <section aria-labelledby="ytd">
+            <h2 id="ytd" class:list={[sectionTitle, 'mb-3']}>
+              Del 1 de enero al {todayLabel}
+            </h2>
+            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {ytd.map((y) => {
+                const delta = y.year !== thisYear && ytdCurrent ? pctVs(mainOf(ytdCurrent), mainOf(y)) : undefined;
+                return (
+                  <div class:list={[card, 'p-4']}>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{y.year}</p>
+                    <p class="mt-1 text-2xl font-semibold tabular-nums">{fmtMetric(y)}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{int(y.sessions)} sesiones</p>
+                    {delta !== undefined &&
+                      (Math.abs(delta) < 1 ? (
+                        <p class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                          → {thisYear} va igual que {y.year}
+                        </p>
+                      ) : (
+                        <p
+                          class:list={[
+                            'mt-1 text-xs font-medium tabular-nums',
+                            delta > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400',
+                          ]}
+                        >
+                          {delta > 0 ? '↑' : '↓'} {thisYear} va {signed(delta)} frente a {y.year}
+                        </p>
+                      ))}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <div class="grid gap-6 xl:grid-cols-2">
+            <ChartCard
+              title={`${unitLabel} por mes`}
+              subtitle="Un color por año"
+              spec={monthlySpec}
+              table={{
+                headers: ['Mes', ...years.map(String)],
+                rows: MONTHS.map((m, i) => [
+                  m,
+                  ...monthly.map((y) => `${fmtMetric(y.months[i])} · ${y.months[i].sessions} ses.`),
+                ]),
+              }}
+            />
+            <ChartCard
+              title={byDistance ? 'Kilómetros acumulados en el año' : 'Tiempo acumulado en el año'}
+              subtitle={`El año en curso llega hasta ${MONTHS[Number(mmdd.slice(0, 2)) - 1]}`}
+              spec={cumulativeSpec}
+            />
+          </div>
+
+          {/* Resumen por año */}
+          <section class:list={[card, 'overflow-x-auto']}>
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+                <tr>
+                  <th class="px-4 py-3">Año</th>
+                  <th class="px-4 py-3 text-right">Sesiones</th>
+                  {byDistance && <th class="px-4 py-3 text-right">Distancia</th>}
+                  <th class="px-4 py-3 text-right">Tiempo</th>
+                  {byDistance && (
+                    <th class="px-4 py-3 text-right">{kind === 'cycling' ? 'Velocidad media' : 'Ritmo medio'}</th>
+                  )}
+                  <th class="hidden px-4 py-3 text-right sm:table-cell">FC media</th>
+                  {byDistance && <th class="hidden px-4 py-3 text-right md:table-cell">Desnivel +</th>}
+                  <th class="hidden px-4 py-3 text-right sm:table-cell">Mejor mes</th>
+                  <th class="px-4 py-3 text-right">vs año anterior</th>
+                </tr>
+              </thead>
+              <tbody class="tabular-nums">
+                {summaries.map((s, i) => {
+                  const prev = summaries[i - 1];
+                  const delta = prev && prev.year === s.year - 1 ? pctVs(mainOf(s), mainOf(prev)) : undefined;
                   return (
-                    <div class:list={[card, 'p-4']}>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">{y.year}</p>
-                      <p class="mt-1 text-2xl font-semibold tabular-nums">{fmtMetric(y)}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">{int(y.sessions)} sesiones</p>
-                      {delta !== undefined && (
-                        Math.abs(delta) < 1 ? (
-                          <p class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">→ {thisYear} va igual que {y.year}</p>
-                        ) : (
-                          <p class:list={['mt-1 text-xs font-medium tabular-nums', delta > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400']}>
-                            {delta > 0 ? '↑' : '↓'} {thisYear} va {signed(delta)} frente a {y.year}
-                          </p>
-                        )
+                    <tr class="border-t border-gray-100 dark:border-gray-700">
+                      <td class="px-4 py-3 font-semibold">
+                        {s.year}
+                        {s.year === thisYear && (
+                          <span class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">(en curso)</span>
+                        )}
+                      </td>
+                      <td class="px-4 py-3 text-right">{int(s.sessions)}</td>
+                      {byDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{km(s.km)} km</td>}
+                      <td class="px-4 py-3 text-right whitespace-nowrap">{hoursMinutes(s.movingS)}</td>
+                      {byDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{avgSpeedText(s)}</td>}
+                      <td class="hidden px-4 py-3 text-right sm:table-cell">{int(s.avgHr)}</td>
+                      {byDistance && (
+                        <td class="hidden px-4 py-3 text-right whitespace-nowrap md:table-cell">
+                          {int(s.elevationGainM)} m
+                        </td>
                       )}
-                    </div>
+                      <td class="hidden px-4 py-3 text-right sm:table-cell">
+                        {s.bestMonth !== undefined ? MONTHS[s.bestMonth] : '—'}
+                      </td>
+                      <td
+                        class:list={[
+                          'px-4 py-3 text-right whitespace-nowrap',
+                          delta === undefined
+                            ? 'text-gray-400'
+                            : delta >= 0
+                              ? 'text-green-700 dark:text-green-400'
+                              : 'text-red-700 dark:text-red-400',
+                        ]}
+                      >
+                        {delta === undefined ? '—' : signed(delta)}
+                        {delta !== undefined && s.year === thisYear && (
+                          <span class="block text-xs text-gray-500 dark:text-gray-400">año incompleto</span>
+                        )}
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            </section>
-
-            <div class="grid gap-6 xl:grid-cols-2">
-              <ChartCard
-                title={`${unitLabel} por mes`}
-                subtitle="Un color por año"
-                spec={monthlySpec}
-                table={{
-                  headers: ['Mes', ...years.map(String)],
-                  rows: MONTHS.map((m, i) => [m, ...monthly.map((y) => `${fmtMetric(y.months[i])} · ${y.months[i].sessions} ses.`)]),
-                }}
-              />
-              <ChartCard
-                title={byDistance ? 'Kilómetros acumulados en el año' : 'Tiempo acumulado en el año'}
-                subtitle={`El año en curso llega hasta ${MONTHS[Number(mmdd.slice(0, 2)) - 1]}`}
-                spec={cumulativeSpec}
-              />
-            </div>
-
-            {/* Resumen por año */}
-            <section class:list={[card, 'overflow-x-auto']}>
-              <table class="w-full text-left text-sm">
-                <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
-                  <tr>
-                    <th class="px-4 py-3">Año</th>
-                    <th class="px-4 py-3 text-right">Sesiones</th>
-                    {byDistance && <th class="px-4 py-3 text-right">Distancia</th>}
-                    <th class="px-4 py-3 text-right">Tiempo</th>
-                    {byDistance && <th class="px-4 py-3 text-right">{kind === 'cycling' ? 'Velocidad media' : 'Ritmo medio'}</th>}
-                    <th class="hidden px-4 py-3 text-right sm:table-cell">FC media</th>
-                    {byDistance && <th class="hidden px-4 py-3 text-right md:table-cell">Desnivel +</th>}
-                    <th class="hidden px-4 py-3 text-right sm:table-cell">Mejor mes</th>
-                    <th class="px-4 py-3 text-right">vs año anterior</th>
-                  </tr>
-                </thead>
-                <tbody class="tabular-nums">
-                  {summaries.map((s, i) => {
-                    const prev = summaries[i - 1];
-                    const delta = prev && prev.year === s.year - 1 ? pctVs(mainOf(s), mainOf(prev)) : undefined;
-                    return (
-                      <tr class="border-t border-gray-100 dark:border-gray-700">
-                        <td class="px-4 py-3 font-semibold">
-                          {s.year}
-                          {s.year === thisYear && <span class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">(en curso)</span>}
-                        </td>
-                        <td class="px-4 py-3 text-right">{int(s.sessions)}</td>
-                        {byDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{km(s.km)} km</td>}
-                        <td class="px-4 py-3 text-right whitespace-nowrap">{hoursMinutes(s.movingS)}</td>
-                        {byDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{avgSpeedText(s)}</td>}
-                        <td class="hidden px-4 py-3 text-right sm:table-cell">{int(s.avgHr)}</td>
-                        {byDistance && <td class="hidden px-4 py-3 text-right whitespace-nowrap md:table-cell">{int(s.elevationGainM)} m</td>}
-                        <td class="hidden px-4 py-3 text-right sm:table-cell">{s.bestMonth !== undefined ? MONTHS[s.bestMonth] : '—'}</td>
-                        <td class:list={['px-4 py-3 text-right whitespace-nowrap', delta === undefined ? 'text-gray-400' : delta >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400']}>
-                          {delta === undefined ? '—' : signed(delta)}
-                          {delta !== undefined && s.year === thisYear && <span class="block text-xs text-gray-500 dark:text-gray-400">año incompleto</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </section>
-          </>
-        )}
-      </div>
-    )
-  }
+              </tbody>
+            </table>
+          </section>
+        </>
+      )}
+    </div>
+  )}
 </Base>
 
 <script>
