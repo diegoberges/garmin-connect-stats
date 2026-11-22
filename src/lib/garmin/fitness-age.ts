@@ -5,8 +5,17 @@
  */
 import { unwrap, type GarminClient } from './client';
 import { isoDate } from '../dates';
+import type { ApiJson } from './types';
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+
+type ApiFitnessAge = Extract<ApiJson<'/fitnessage-service/fitnessage/v2/{calendarDate}'>, unknown[]>[number];
+
+/** La spec dice lista, pero la API real devuelve un objeto suelto: se aceptan ambas formas. */
+export function pickFitnessAge(res: unknown): ApiFitnessAge | undefined {
+  const f = Array.isArray(res) ? res.at(-1) : res;
+  return f && typeof f === 'object' ? (f as ApiFitnessAge) : undefined;
+}
 
 export interface FitnessLever {
   key: string;
@@ -44,10 +53,9 @@ const humanize = (k: string) => {
 };
 
 export async function getFitnessAge(client: GarminClient): Promise<FitnessAge | undefined> {
-  const list = await unwrap(
-    client.GET('/fitnessage-service/fitnessage/v2/{calendarDate}', { params: { path: { calendarDate: isoDate() } } }),
+  const f = pickFitnessAge(
+    await unwrap(client.GET('/fitnessage-service/fitnessage/v2/{calendarDate}', { params: { path: { calendarDate: isoDate() } } })),
   );
-  const f = Array.isArray(list) ? list.at(-1) : undefined;
   if (!f || f.invalidReason) return undefined;
   const levers = Object.entries(f.components ?? {})
     .map(([key, c]) => ({

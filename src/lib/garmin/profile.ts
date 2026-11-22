@@ -1,6 +1,7 @@
 import { unwrap, type GarminClient } from './client';
 import { isoDate } from '../dates';
 import type { ApiActivity, UserProfile } from './types';
+import { pickFitnessAge } from './fitness-age';
 
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
@@ -21,7 +22,7 @@ export async function getProfile(client: GarminClient): Promise<UserProfile> {
       .then((list) => (Array.isArray(list) ? (list[0] as ApiActivity | undefined) : undefined))
       .catch(() => undefined),
     unwrap(client.GET('/fitnessage-service/fitnessage/v2/{calendarDate}', { params: { path: { calendarDate: today } } }))
-      .then((list) => (Array.isArray(list) ? list.at(-1) : undefined))
+      .then(pickFitnessAge)
       .catch(() => undefined),
   ]);
 

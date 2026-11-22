@@ -76,3 +76,13 @@ describe.skipIf(!has)('mapeadores con datos reales', () => {
     expect(vo2[0].value).toBeGreaterThan(20);
   });
 });
+
+describe.skipIf(!existsSync(`${RAW}/fitness-age.json`))('edad física con la respuesta real', () => {
+  it('acepta el objeto suelto que devuelve la API (la spec dice lista)', async () => {
+    const { pickFitnessAge } = await import('./fitness-age');
+    const f = pickFitnessAge(raw('fitness-age'));
+    expect(typeof f?.fitnessAge).toBe('number');
+    expect(typeof f?.chronologicalAge).toBe('number');
+    expect(pickFitnessAge([raw('fitness-age')])).toEqual(f);
+  });
+});
