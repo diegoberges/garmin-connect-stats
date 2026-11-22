@@ -71,7 +71,7 @@ export interface PredictionPoint {
 const PREDICT_FROM = [5000, 10000, 21098, 42195] as const;
 
 /** Mayor VDOT de las mejores marcas (≥ 5 km) de las carreras entre dos fechas. */
-function bestVdot(runs: Activity[], from: string, to: string): number | undefined {
+export function bestVdot(runs: Activity[], from: string, to: string): number | undefined {
   let best: number | undefined;
   for (const r of runs) {
     if (r.date < from || r.date > to) continue;

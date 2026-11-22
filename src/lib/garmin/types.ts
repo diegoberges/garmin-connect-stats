@@ -59,6 +59,9 @@ export interface Activity {
   bestEfforts: Partial<Record<BestEffortDistance, number>>;
   /** Garmin marcó la actividad como récord personal (no dice cuál) */
   isPr: boolean;
+  /** Punto de salida (para encontrar actividades en la misma ruta) */
+  startLat?: number;
+  startLon?: number;
 }
 
 export const BEST_EFFORT_DISTANCES = [1000, 1609, 5000, 10000, 21098, 42195] as const;
@@ -85,6 +88,13 @@ export interface ActivityExtra {
   /** respiraciones/min */
   respirationRate?: number;
   maxCadence?: number;
+  /** Esfuerzo percibido 1–10 y sensación 0–100 que se anotan en el reloj o en Garmin Connect */
+  rpe?: number;
+  feel?: number;
+  /** W (solo con sensor de potencia) */
+  avgPower?: number;
+  normPower?: number;
+  maxPower?: number;
 }
 
 export interface DayHealth {

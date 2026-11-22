@@ -17,6 +17,24 @@ describe('fmt', () => {
 });
 
 describe('buildOptions', () => {
+  it('zoom solo si se pide, con el botón de restablecer y sin descargas', () => {
+    const base: ChartSpec = {
+      type: 'line',
+      categories: cats(5),
+      series: [{ name: 'A', data: [1, 2, 3, 4, 5] }],
+      format: 'int',
+    };
+    expect(buildOptions(base, env).chart?.zoom?.enabled).toBe(false);
+    expect(buildOptions(base, env).chart?.toolbar?.show).toBe(false);
+    const z = buildOptions({ ...base, zoom: true, group: 'g' }, env).chart!;
+    expect(z.zoom?.enabled).toBe(true);
+    expect(z.zoom?.type).toBe('x');
+    expect(z.toolbar?.show).toBe(true);
+    expect(z.toolbar?.tools?.reset).toBe(true);
+    expect(z.toolbar?.tools?.download).toBe(false);
+    expect(buildOptions({ ...base, zoom: true, zoomControls: false }, env).chart?.toolbar?.show).toBe(false);
+  });
+
   it('con banda: rangeArea, leyenda visible y la banda sin puntos ni trazo', () => {
     const spec: ChartSpec = {
       type: 'line',

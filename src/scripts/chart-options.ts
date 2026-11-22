@@ -146,6 +146,8 @@ function xAxisOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Option
   return {
     categories: spec.type === 'rangeBar' || band ? undefined : spec.categories,
     type: 'category',
+    // El zoom por selección en un eje de categorías solo funciona con las marcas sobre los puntos
+    ...(spec.zoom ? { tickPlacement: 'on' as const } : {}),
     labels: { show: !spec.hideXLabels, style: { colors: muted }, rotate: 0, hideOverlappingLabels: true, trim: false },
     // Una etiqueta cada ~90 px del ancho real de la gráfica, para que no se monten
     tickAmount: crowded ? Math.max(3, Math.min(8, Math.floor(env.width / 90))) : undefined,
@@ -210,6 +212,19 @@ function groupOf(spec: ChartSpec) {
   };
 }
 
+/** Zoom por selección en x con solo el botón de restablecer (sin descargas ni otras herramientas). */
+function zoomOf(spec: ChartSpec) {
+  if (!spec.zoom) return { toolbar: { show: false }, zoom: { enabled: false } };
+  return {
+    toolbar: {
+      show: spec.zoomControls !== false,
+      autoSelected: 'zoom' as const,
+      tools: { download: false, selection: false, zoom: true, zoomin: false, zoomout: false, pan: false, reset: true },
+    },
+    zoom: { enabled: true, type: 'x' as const, autoScaleYaxis: true },
+  };
+}
+
 export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
   const band = bandOf(spec);
   const isBar = isBarSpec(spec);
@@ -218,8 +233,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       type: band ? 'rangeArea' : spec.type,
       height: spec.height ?? 260,
       stacked: spec.stacked,
-      toolbar: { show: false },
-      zoom: { enabled: false },
+      ...zoomOf(spec),
       fontFamily: 'inherit',
       foreColor: env.css('--viz-muted'),
       background: 'transparent',

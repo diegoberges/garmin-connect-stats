@@ -8,6 +8,7 @@ import { unzipSync } from 'fflate';
 import type { GarminClient } from './client';
 import { GarminApiError } from './client';
 import { gradeFactor } from '../efficiency';
+import { rrStats, type RrStats } from '../rr';
 
 /** Punto ya agregado para gráficas (x = distancia en km, o minutos si no hay distancia). */
 export interface SeriesPoint {
@@ -19,6 +20,8 @@ export interface SeriesPoint {
   gapSpeed?: number;
   alt?: number;
   cadence?: number;
+  /** respiraciones/min (si el reloj las registra) */
+  resp?: number;
 }
 
 export interface KmSplit {
@@ -29,6 +32,8 @@ export interface KmSplit {
   avgHr?: number;
   elevGainM: number;
   elevLossM: number;
+  /** Distancia "en llano equivalente" del parcial (m), para su ritmo ajustado por pendiente */
+  gapDistanceM?: number;
 }
 
 export interface ActivityTrack {
@@ -45,7 +50,14 @@ export interface ActivityTrack {
   activeS?: number;
   /** Desacoplamiento FC/ritmo ajustado entre 1.ª y 2.ª mitad (%), sin los 10 primeros minutos */
   decoupling?: { pct: number; durationS: number };
+  /** Segundos por velocidad ajustada por pendiente, en tramos de GAP_BUCKET m/s (para zonas de ritmo) */
+  gapTimeBySpeed?: number[];
+  /** VFC intra-sesión con los intervalos RR del FIT (si los hay) */
+  rr?: RrStats;
 }
+
+/** Anchura de cada tramo de `gapTimeBySpeed` (m/s). */
+export const GAP_BUCKET = 0.05;
 
 interface Sample {
   /** segundos de tiempo activo (sin pausas) */
@@ -58,6 +70,7 @@ interface Sample {
   hr?: number;
   alt?: number;
   cadence?: number;
+  resp?: number;
 }
 
 const SEMI_TO_DEG = 180 / 2 ** 31;
@@ -96,6 +109,8 @@ export function parseActivityFile(bytes: Uint8Array): ActivityTrack | undefined 
     gapDistanceM: last.gd,
     activeS: last.t,
     decoupling: decoupling(samples),
+    gapTimeBySpeed: gapHistogram(samples),
+    rr: rrStats(rrIntervals(messages.hrvMesgs ?? [])),
   };
 }
 
@@ -141,6 +156,7 @@ function recordToSample(r: RecordMesg, t: number): Sample {
     hr: n(r.heartRate),
     alt: n(r.enhancedAltitude) ?? n(r.altitude),
     cadence: cadence === undefined ? undefined : cadence + (n(r.fractionalCadence) ?? 0),
+    resp: n((r as { enhancedRespirationRate?: unknown }).enhancedRespirationRate),
   };
 }
 
@@ -200,6 +216,7 @@ function buildSeries(samples: Sample[]): Pick<ActivityTrack, 'series' | 'xUnit'>
       gapSpeed: byDistance && dt > 0 && dgd >= 0 && end.gd !== undefined ? dgd / dt : undefined,
       alt: round(avg(g.map((s) => s.alt)), 1),
       cadence: round(avg(g.map((s) => s.cadence))),
+      resp: round(avg(g.map((s) => s.resp))),
     });
     prev = end;
   }
@@ -213,19 +230,29 @@ const round = (v: number | undefined, digits = 0) =>
 interface OpenSplit {
   startT: number;
   startD: number;
+  /** distancia ajustada por pendiente al empezar el parcial */
+  startGd?: number;
   hrs: number[];
   gain: number;
   loss: number;
 }
 
-const closeSplit = (seg: OpenSplit, index: number, distanceM: number, timeS: number): KmSplit => ({
+const closeSplit = (seg: OpenSplit, index: number, distanceM: number, timeS: number, endGd?: number): KmSplit => ({
   index,
   distanceM,
   timeS,
   avgHr: round(avg(seg.hrs)),
   elevGainM: Math.round(seg.gain),
   elevLossM: Math.round(seg.loss),
+  gapDistanceM: endGd !== undefined && seg.startGd !== undefined ? endGd - seg.startGd : undefined,
 });
+
+/** Distancia ajustada por pendiente en la marca `mark` entre dos muestras (interpolada). */
+function gdAt(a: Sample, b: Sample, mark: number): number | undefined {
+  if (a.gd === undefined || b.gd === undefined) return undefined;
+  const f = b.d === a.d ? 1 : (mark - a.d!) / (b.d! - a.d!);
+  return a.gd + f * (b.gd - a.gd);
+}
 
 /** Instante (s) en que se alcanza la distancia `mark` entre dos muestras, por interpolación lineal. */
 function timeAt(a: Sample, b: Sample, mark: number): number {
@@ -253,7 +280,7 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
 
   const splits: KmSplit[] = [];
   // La actividad empieza en el km 0 aunque el primer registro marque unos metros
-  let seg: OpenSplit = { startT: withD[0].t, startD: 0, hrs: [], gain: 0, loss: 0 };
+  let seg: OpenSplit = { startT: withD[0].t, startD: 0, startGd: 0, hrs: [], gain: 0, loss: 0 };
   let prevAlt: number | undefined;
   let mark = 1000;
 
@@ -262,13 +289,17 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
     prevAlt = accumulate(seg, b, prevAlt);
     while (b.d! >= mark) {
       const tAt = timeAt(withD[i - 1], b, mark);
-      splits.push(closeSplit(seg, splits.length + 1, mark - seg.startD, tAt - seg.startT));
-      seg = { startT: tAt, startD: mark, hrs: [], gain: 0, loss: 0 };
+      const gAt = gdAt(withD[i - 1], b, mark);
+      splits.push(closeSplit(seg, splits.length + 1, mark - seg.startD, tAt - seg.startT, gAt));
+      seg = { startT: tAt, startD: mark, startGd: gAt, hrs: [], gain: 0, loss: 0 };
       mark += 1000;
     }
   }
   const rest = total - seg.startD;
-  if (rest >= 50) splits.push(closeSplit(seg, splits.length + 1, rest, withD.at(-1)!.t - seg.startT));
+  if (rest >= 50) {
+    const end = withD.at(-1)!;
+    splits.push(closeSplit(seg, splits.length + 1, rest, end.t - seg.startT, end.gd));
+  }
   const full = splits.filter((s) => s.distanceM >= 999 && s.timeS > 0);
   return { splits, fastestSplitS: full.length ? Math.min(...full.map((s) => s.timeS)) : undefined };
 }
@@ -312,4 +343,28 @@ function decoupling(samples: Sample[]): ActivityTrack['decoupling'] {
   const ef2 = half(body.filter((s) => s.t >= mid));
   if (!ef1 || !ef2) return undefined;
   return { pct: ((ef1 - ef2) / ef1) * 100, durationS: body.at(-1)!.t - body[0].t };
+}
+
+/**
+ * Tiempo (s) por velocidad ajustada por pendiente, en tramos de GAP_BUCKET m/s. Sin paradas (< 0,5 m/s)
+ * ni huecos de más de 10 s entre registros. Solo con distancia.
+ */
+function gapHistogram(samples: Sample[]): number[] | undefined {
+  const out: number[] = [];
+  for (let i = 1; i < samples.length; i++) {
+    const a = samples[i - 1];
+    const b = samples[i];
+    const dt = b.t - a.t;
+    if (a.gd === undefined || b.gd === undefined || dt <= 0 || dt > 10) continue;
+    const v = (b.gd - a.gd) / dt;
+    if (v < 0.5 || v > 10) continue;
+    const k = Math.floor(v / GAP_BUCKET);
+    out[k] = (out[k] ?? 0) + dt;
+  }
+  return out.length ? Array.from(out, (x) => x ?? 0) : undefined;
+}
+
+/** Intervalos RR (s) de los mensajes `hrv` del FIT, en orden (cada mensaje trae hasta 5). */
+function rrIntervals(hrv: { time?: (number | null)[] }[]): number[] {
+  return hrv.flatMap((m) => (m.time ?? []).filter((t): t is number => typeof t === 'number' && Number.isFinite(t)));
 }
