@@ -235,6 +235,16 @@ function timeAt(a: Sample, b: Sample, mark: number): number {
   return a.t + f * (b.t - a.t);
 }
 
+/** Suma la FC y el desnivel de una muestra al tramo abierto; devuelve la altitud para la siguiente. */
+function accumulate(seg: OpenSplit, s: Sample, prevAlt: number | undefined): number | undefined {
+  if (s.hr !== undefined) seg.hrs.push(s.hr);
+  if (s.alt === undefined) return prevAlt;
+  const diff = prevAlt === undefined ? 0 : s.alt - prevAlt;
+  if (diff > 0) seg.gain += diff;
+  else seg.loss -= diff;
+  return s.alt;
+}
+
 /** Parciales por kilómetro (interpolando el instante exacto de cada km) y el más rápido. */
 function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastestSplitS'> {
   const withD = samples.filter((s) => s.d !== undefined);
@@ -249,13 +259,7 @@ function buildSplits(samples: Sample[]): Pick<ActivityTrack, 'splits' | 'fastest
 
   for (let i = 1; i < withD.length; i++) {
     const b = withD[i];
-    if (b.hr !== undefined) seg.hrs.push(b.hr);
-    if (b.alt !== undefined) {
-      const diff = prevAlt === undefined ? 0 : b.alt - prevAlt;
-      if (diff > 0) seg.gain += diff;
-      else seg.loss -= diff;
-      prevAlt = b.alt;
-    }
+    prevAlt = accumulate(seg, b, prevAlt);
     while (b.d! >= mark) {
       const tAt = timeAt(withD[i - 1], b, mark);
       splits.push(closeSplit(seg, splits.length + 1, mark - seg.startD, tAt - seg.startT));
