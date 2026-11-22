@@ -23,14 +23,31 @@
   --viz-seq-light: #86b6ef; /* azul claro (rango / banda) */
 }
 .dark {
-  --viz-surface: #1f2937; /* gray-800 de las tarjetas */
+  --viz-surface: #27272a; /* zinc-800 de las tarjetas */
   --viz-text: #c3c2b7;
   --viz-muted: #898781;
-  --viz-grid: #374151;
-  --viz-axis: #4b5563;
+  --viz-grid: #3f3f46; /* zinc-700 */
+  --viz-axis: #52525b; /* zinc-600 */
   --viz-1: #3987e5;
   --viz-2: #d95926;
   --viz-3: #199e70;
   --viz-4: #c98500;
   --viz-seq-light: #1c5cab;
+}
+
+
+/* Modo oscuro en zinc (gris sin el tinte azul de `gray`): todas las clases gray-* pasan a zinc.
+   El modo claro mantiene la paleta gray original. */
+.dark {
+  --color-gray-50: var(--color-zinc-50);
+  --color-gray-100: var(--color-zinc-100);
+  --color-gray-200: var(--color-zinc-200);
+  --color-gray-300: var(--color-zinc-300);
+  --color-gray-400: var(--color-zinc-400);
+  --color-gray-500: var(--color-zinc-500);
+  --color-gray-600: var(--color-zinc-600);
+  --color-gray-700: var(--color-zinc-700);
+  --color-gray-800: var(--color-zinc-800);
+  --color-gray-900: var(--color-zinc-900);
+  --color-gray-950: var(--color-zinc-950);
 }
