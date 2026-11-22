@@ -54,6 +54,29 @@ export interface Activity {
   calories?: number;
 }
 
+/** Métricas extra del detalle de una actividad (summaryDTO); todas opcionales según deporte y sensores. */
+export interface ActivityExtra {
+  elevationLossM?: number;
+  minElevationM?: number;
+  maxElevationM?: number;
+  /** m/s */
+  maxSpeed?: number;
+  minHr?: number;
+  temperatureC?: number;
+  steps?: number;
+  /** cm */
+  strideLengthCm?: number;
+  /** ms */
+  groundContactMs?: number;
+  /** cm */
+  verticalOscillationCm?: number;
+  /** % */
+  verticalRatio?: number;
+  /** respiraciones/min */
+  respirationRate?: number;
+  maxCadence?: number;
+}
+
 export interface DayHealth {
   date: string;
   steps?: number;

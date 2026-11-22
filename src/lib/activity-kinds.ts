@@ -25,3 +25,7 @@ export function speedValue(k: ActivityKind, distanceKm: number, movingS: number)
 
 export const speedLabel = (k: ActivityKind) => (k === 'cycling' ? 'Velocidad media' : 'Ritmo medio');
 export const speedUnit = (k: ActivityKind) => (k === 'cycling' ? 'km/h' : k === 'swim' ? '/100 m' : '/km');
+
+/** Mapa topográfico (curvas de nivel) para deportes de montaña; callejero para el resto. */
+export const mapStyleFor = (typeKey: string): 'topo' | 'street' =>
+  /trail|hik|mountain|backcountry|snow_shoe|enduro_mtb|cyclocross|gravel|ski/.test(typeKey) ? 'topo' : 'street';

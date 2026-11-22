@@ -74,6 +74,18 @@ export const GET: APIRoute = async ({ locals }) => {
     } catch (err) {
       summary['activity-detail'] = (err as Error).message;
     }
+    // Archivo original (ZIP con el .FIT): de aquí salen el recorrido GPS y las series por segundo
+    try {
+      const { data, response } = await (client.GET as any)('/download-service/files/activity/{activityId}', {
+        params: { path: { activityId: first.activityId } },
+        parseAs: 'arrayBuffer',
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      writeFileSync('.data/raw/activity-fit.zip', Buffer.from(data as ArrayBuffer));
+      summary['activity-fit'] = `ok (${response.headers.get('content-type')})`;
+    } catch (err) {
+      summary['activity-fit'] = (err as Error).message;
+    }
   }
 
   return new Response(JSON.stringify({ guardado_en: '.data/raw/', resultados: summary }, null, 2), {

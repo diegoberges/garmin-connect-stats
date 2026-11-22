@@ -62,7 +62,30 @@ export function createGarminClient(apiKey: string, { fresh = false, ttlMs = DEFA
     return res;
   };
 
-  return createClient<paths>({ baseUrl: GARMIN_API_BASE, fetch: garminFetch });
+  const client = createClient<paths>({ baseUrl: GARMIN_API_BASE, fetch: garminFetch });
+  return Object.assign(client, { memo: memoFor(keyHash, fresh) });
+}
+
+/**
+ * Caché en memoria de resultados ya procesados (p. ej. un recorrido decodificado del FIT),
+ * separada por usuario (hash de la key). Pocas entradas: son objetos grandes.
+ */
+const memoStore = new Map<string, { expiresAt: number; value: Promise<unknown> }>();
+const MEMO_MAX = 30;
+export type Memo = <T>(key: string, ttlMs: number, compute: () => Promise<T>) => Promise<T>;
+
+export function memoFor(scope: string, fresh = false): Memo {
+  return <T>(key: string, ttlMs: number, compute: () => Promise<T>) => {
+    const k = `${scope} ${key}`;
+    const hit = memoStore.get(k);
+    if (!fresh && hit && hit.expiresAt > Date.now()) return hit.value as Promise<T>;
+    const value = compute();
+    value.catch(() => memoStore.delete(k)); // no cachear fallos
+    memoStore.delete(k);
+    memoStore.set(k, { expiresAt: Date.now() + ttlMs, value });
+    while (memoStore.size > MEMO_MAX) memoStore.delete(memoStore.keys().next().value!);
+    return value;
+  };
 }
 
 export type GarminClient = ReturnType<typeof createGarminClient>;

@@ -94,6 +94,7 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
       background: 'transparent',
       animations: { enabled: false },
       parentHeightOffset: 0,
+      ...(spec.group ? { group: spec.group, id: `${spec.group}-${spec.series[0]?.name ?? ''}-${Math.random().toString(36).slice(2, 7)}` } : {}),
     },
     colors,
     series: series as ApexCharts.ApexOptions['series'],
@@ -116,7 +117,7 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
     xaxis: {
       categories: spec.type === 'rangeBar' ? undefined : spec.categories,
       type: 'category',
-      labels: { style: { colors: muted }, rotate: 0, hideOverlappingLabels: true, trim: false },
+      labels: { show: !spec.hideXLabels, style: { colors: muted }, rotate: 0, hideOverlappingLabels: true, trim: false },
       tickAmount: dense || narrow ? (narrow ? 4 : 8) : undefined,
       axisBorder: { color: css('--viz-axis') },
       axisTicks: { show: false },
@@ -128,7 +129,8 @@ function options(spec: ChartSpec): ApexCharts.ApexOptions {
       max: time ? time.max : (paceAxis?.max ?? spec.yMax),
       tickAmount: time?.tickAmount ?? paceAxis?.tickAmount,
       forceNiceScale: !time && !paceAxis,
-      labels: { style: { colors: muted }, formatter: (v: number) => fmt(spec.format, v).replace(/ \/(km|100 m)$/, '') },
+      // Ancho fijo en gráficas agrupadas para que los ejes x queden alineados
+      labels: { minWidth: spec.group ? 56 : undefined, maxWidth: spec.group ? 56 : undefined, style: { colors: muted }, formatter: (v: number) => fmt(spec.format, v).replace(/ \/(km|100 m)$/, '') },
     },
     legend: {
       show: spec.series.length > 1,

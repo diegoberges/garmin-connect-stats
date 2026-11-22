@@ -1,0 +1,82 @@
+---
+/**
+ * Mapa del recorrido (Leaflet) con teselas de OpenStreetMap:
+ *  - 'topo' (trail, senderismo, montaña, BTT): OpenTopoMap, con curvas de nivel y relieve.
+ *  - 'street' (resto): mapa estándar de OSM, con las calles marcadas.
+ * En modo oscuro se invierten las mismas teselas con un filtro CSS (OSM no tiene estilo oscuro).
+ */
+interface Props {
+  route: [number, number][];
+  style?: 'street' | 'topo';
+}
+const { route, style = 'street' } = Astro.props;
+---
+
+<section class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+  <div class="flex items-baseline justify-between gap-3 px-4 pt-4 pb-3">
+    <h2 class="text-base font-semibold">Recorrido</h2>
+    <span class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+      <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Salida</span>
+      <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-red-500"></span>Llegada</span>
+    </span>
+  </div>
+  <div
+    data-route-map
+    data-route={JSON.stringify(route)}
+    data-style={style}
+    class="route-map h-80 w-full sm:h-96"
+    role="img"
+    aria-label={style === 'topo' ? 'Mapa topográfico del recorrido' : 'Mapa del recorrido'}
+  >
+  </div>
+</section>
+
+<script>
+  import L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
+
+  const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+  const TILES = {
+    street: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: OSM, maxZoom: 19 },
+    topo: {
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      attribution: `${OSM}, SRTM | &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)`,
+      maxZoom: 17,
+    },
+  } as const;
+  const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  for (const el of document.querySelectorAll<HTMLElement>('[data-route-map]')) {
+    const route = JSON.parse(el.dataset.route ?? '[]') as [number, number][];
+    if (route.length < 2) continue;
+
+    const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+    const t = TILES[el.dataset.style === 'topo' ? 'topo' : 'street'];
+    L.tileLayer(t.url, { attribution: t.attribution, maxZoom: t.maxZoom }).addTo(map);
+
+    const line = L.polyline(route, { color: css('--viz-1'), weight: 4, opacity: 0.9 }).addTo(map);
+    const dot = (p: [number, number], color: string) =>
+      L.circleMarker(p, { radius: 6, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 }).addTo(map);
+    dot(route[0], '#22c55e');
+    dot(route[route.length - 1], '#ef4444');
+    map.fitBounds(line.getBounds(), { padding: [20, 20] });
+
+    // Tema: el filtro de las teselas es CSS; aquí solo se ajusta el color de la línea
+    new MutationObserver(() => line.setStyle({ color: css('--viz-1') })).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    // La rueda solo hace zoom tras un clic en el mapa, para no atrapar el scroll de la página
+    map.once('click', () => map.scrollWheelZoom.enable());
+  }
+</script>
+
+<style is:global>
+  /* Modo oscuro: mismas teselas de OSM invertidas (el recorrido y los marcadores no se tocan) */
+  .dark .route-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+  }
+  .dark .route-map {
+    background: #1b1b1d;
+  }
+</style>

@@ -26,4 +26,8 @@ export interface ChartSpec {
   height?: number;
   /** Línea horizontal de referencia (p. ej. objetivo de pasos). */
   reference?: { value: number; label: string };
+  /** Gráficas con el mismo grupo comparten el cursor (mismo eje x). */
+  group?: string;
+  /** Oculta las etiquetas del eje x (en gráficas apiladas solo la de abajo las muestra). */
+  hideXLabels?: boolean;
 }

@@ -3,8 +3,9 @@
  * a Garmin. Se activa con GARMIN_FIXTURES=1 para revisar la UI sin key. Los filtros de fecha se ignoran.
  */
 import createClient from 'openapi-fetch';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import type { paths } from './schema';
+import { memoFor } from './client';
 
 const ROUTES: [RegExp, string][] = [
   [/\/activities\/search\/activities$/, 'activities-running'],
@@ -22,15 +23,21 @@ const ROUTES: [RegExp, string][] = [
 export const fixturesEnabled = () => import.meta.env.DEV && process.env.GARMIN_FIXTURES === '1';
 
 export function createFixtureClient() {
-  return createClient<paths>({
+  const client = createClient<paths>({
     baseUrl: 'https://personal.connectapi.garmin.com',
     fetch: async (req: Request) => {
       const { pathname, searchParams } = new URL(req.url);
       let file = ROUTES.find(([re]) => re.test(pathname))?.[1];
       // Búsqueda sin filtro de tipo → la captura con todos los tipos
       if (file === 'activities-running' && !searchParams.has('activityType')) file = 'activities-30d';
+      // Cualquier descarga de actividad sirve el mismo FIT capturado
+      if (/\/download-service\/files\/activity\//.test(pathname)) {
+        if (!existsSync('.data/raw/activity-fit.zip')) return new Response(null, { status: 404 });
+        return new Response(readFileSync('.data/raw/activity-fit.zip'), { headers: { 'Content-Type': 'application/x-zip-compressed' } });
+      }
       if (!file) return new Response('"sin captura"', { status: 404, headers: { 'Content-Type': 'application/json' } });
       return new Response(readFileSync(`.data/raw/${file}.json`), { headers: { 'Content-Type': 'application/json' } });
     },
   });
+  return Object.assign(client, { memo: memoFor('fixtures') });
 }
