@@ -96,6 +96,18 @@ export interface DayHealth {
   hrvLastNight?: number;
   hrvWeeklyAvg?: number;
   hrvStatus?: string;
+  /** minutos de intensidad del día (Garmin cuenta los vigorosos ×2 en su total) */
+  intensityModerate?: number;
+  intensityVigorous?: number;
+  /** respiraciones/min medias durante el sueño */
+  sleepRespiration?: number;
+  /** necesidad de sueño calculada por Garmin para esa noche (s) */
+  sleepNeedS?: number;
+  /** estrés medio durante el sueño (activación nocturna) */
+  sleepStress?: number;
+  /** inicio y fin del sueño, epoch ms en hora local */
+  sleepStartLocal?: number;
+  sleepEndLocal?: number;
 }
 
 export interface HrZones {

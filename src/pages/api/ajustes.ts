@@ -1,6 +1,6 @@
 /**
- * Formularios del menú de perfil: guarda o elimina la API key, deja un aviso de un solo uso
- * y vuelve a la página de origen con el menú abierto (#perfil). Solo POST.
+ * Formularios del menú de perfil: guarda o elimina la API key y los datos del perfil, deja un aviso
+ * de un solo uso y vuelve a la página de origen con el menú abierto (#perfil). Solo POST.
  */
 import type { APIRoute } from 'astro';
 import { clearSettings, secretConfigured, writeSettings } from '../../lib/settings';
@@ -37,6 +37,13 @@ export const POST: APIRoute = async ({ request, cookies, locals, url, redirect }
         };
       }
     }
+  } else if (action === 'save-sex') {
+    const sex = form.get('sex');
+    if (sex === 'male' || sex === 'female') settings.sex = sex;
+    else delete settings.sex;
+    if (Object.keys(settings).length) writeSettings(cookies, settings, secure);
+    else clearSettings(cookies);
+    flash = { type: 'success', text: 'Perfil actualizado.' };
   } else if (action === 'remove') {
     if (settings.garminApiKey) forgetToken(settings.garminApiKey);
     delete settings.garminApiKey;

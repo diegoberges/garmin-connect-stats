@@ -8,6 +8,8 @@ import type { AstroCookies } from 'astro';
 
 export interface UserSettings {
   garminApiKey?: string;
+  /** Para comparar el VO2máx con tablas de referencia por sexo y edad. */
+  sex?: 'male' | 'female';
 }
 
 export const SETTINGS_COOKIE = 'gcs_settings';

@@ -48,6 +48,8 @@ export async function getDailyHealth(client: GarminClient, from: string, to: str
     day.bodyBatteryMax = num(s.bodyBattery?.maxValue);
     day.bodyBatteryCharged = num(s.bodyBattery?.chargedValue);
     day.bodyBatteryDrained = num(s.bodyBattery?.drainedValue);
+    day.intensityModerate = num(s.intensityMinutes?.moderate);
+    day.intensityVigorous = num(s.intensityMinutes?.vigorous);
   }
   for (const s of sleeps) {
     const day = s.calendarDate && byDate.get(s.calendarDate);
@@ -58,6 +60,13 @@ export async function getDailyHealth(client: GarminClient, from: string, to: str
     day.remS = num(s.remSleepSeconds);
     day.awakeS = num(s.awakeSleepSeconds);
     day.sleepScore = num(s.sleepScores?.overall?.value);
+    day.sleepRespiration = num(s.averageRespirationValue);
+    day.sleepStress = num(s.avgSleepStress);
+    const needMin = num(s.sleepNeed?.actual) ?? num(s.sleepNeed?.baseline);
+    day.sleepNeedS = needMin !== undefined ? needMin * 60 : undefined;
+    // La spec dice string; la API real devuelve epoch ms (ver types.ts)
+    day.sleepStartLocal = num(s.sleepStartTimestampLocal as unknown);
+    day.sleepEndLocal = num(s.sleepEndTimestampLocal as unknown);
   }
   for (const h of hrvs) {
     const day = h.calendarDate && byDate.get(h.calendarDate);

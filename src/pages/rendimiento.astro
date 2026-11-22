@@ -72,7 +72,7 @@ const vo2Spec: ChartSpec = {
   type: 'line',
   categories: vo2.map((v) => shortDate(v.date)),
   series: [{ name: 'VO2máx', data: vo2.map((v) => v.value), color: 3 }],
-  format: 'int',
+  format: 'dec1',
   height: 200,
 };
 const sectionTitle = 'mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
