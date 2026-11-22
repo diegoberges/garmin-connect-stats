@@ -15,6 +15,7 @@ import {
   getActivities,
   getActivityTrack,
   getAllRuns,
+  getHrReference,
   type Activity,
   type ActivityTrack,
 } from '../lib/garmin';
@@ -22,18 +23,29 @@ import { criticalSpeed, efTrend, paceAtHr, predictTime, vdot } from '../lib/effi
 import { addDays, isoDate, weekStart } from '../lib/dates';
 import { pctChange, runsBetween, totals, weeklyTotals } from '../lib/stats';
 import {
+  ACWR_ZONES,
   FATIGUE_DAYS,
   FITNESS_DAYS,
   FORM_ZONES,
+  MONOTONY_HIGH,
+  RAMP_ALERT,
+  RAMP_WATCH,
   WARMUP_DAYS,
   WEEKLY_SPIKE_PCT,
+  acwr,
+  acwrZone,
   bestEfforts,
   dailyLoad,
+  estimateHrParams,
   formZone,
+  monotonyStrain,
   pmc,
+  rampRate,
   weeklyChange,
   weeklyLoad,
+  type HrParams,
 } from '../lib/load';
+import { LOAD_SCOPES, SPORT_GROUPS, inLoadScope, parseLoadScope, periodVolumes } from '../lib/volume';
 import { BEST_EFFORT_DISTANCES } from '../lib/garmin/types';
 import { activityLabel, duration, hoursMinutes, int, km, pace, shortDate } from '../lib/format';
 import type { ChartSpec, ColorSlot } from '../lib/chart-spec';
@@ -46,6 +58,8 @@ const WEEK_OPTIONS = [
 ];
 const requested = Number(Astro.url.searchParams.get('semanas'));
 const weeks = WEEK_OPTIONS.some((o) => o.value === requested) ? requested : 12;
+const scope = parseLoadScope(Astro.url.searchParams.get('carga'));
+const scopeLabel = LOAD_SCOPES.find((s) => s.scope === scope)!.label;
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
@@ -57,17 +71,19 @@ const loadFrom = addDays(from, -WARMUP_DAYS);
 
 let all: Activity[] = [];
 let history: Activity[] | undefined;
+let hrRef: { restingHr: number; maxHr: number } | undefined;
 let longTracks: { run: Activity; track?: ActivityTrack }[] = [];
 let error: unknown;
 if (client) {
   try {
-    [all, history] = await Promise.all([
+    [all, history, hrRef] = await Promise.all([
       getActivities(client, loadFrom, today),
       // Si el histórico falla, la tabla se muestra solo con el periodo
       getAllRuns(client, today).catch((err) => {
         console.error('[garmin] histórico de carreras', err);
         return undefined;
       }),
+      getHrReference(client).catch(() => undefined),
     ]);
   } catch (err) {
     error = err;
@@ -84,8 +100,10 @@ if (client && !error) {
   );
 }
 
-// ---------- Carga ----------
-const model = pmc(dailyLoad(all, loadFrom, today));
+// ---------- Carga (TRIMP de Banister, la única métrica de carga) ----------
+const hr: HrParams = { ...(hrRef ?? estimateHrParams(all)), sex: Astro.locals.settings.sex };
+const scoped = all.filter(inLoadScope(scope));
+const model = pmc(dailyLoad(scoped, loadFrom, today, hr));
 const visible = model.filter((p) => p.date >= from);
 const nowP = model.at(-1);
 const weekAgo = model.at(-8);
@@ -94,11 +112,56 @@ const hasForm = visible.some((p) => p.formPct !== undefined);
 // Sin gráfica de forma, la de forma física/fatiga muestra su propio eje x
 const zone = nowP?.formPct !== undefined ? formZone(nowP.formPct) : undefined;
 
-const allWeeks = weeklyLoad(all, weeks + 5, today);
+const allWeeks = weeklyLoad(scoped, weeks + 5, today, hr);
 const shownWeeks = allWeeks.slice(-weeks);
 const change = weeklyChange(allWeeks);
 const spike = change?.pct !== undefined && change.pct >= WEEKLY_SPIKE_PCT;
-const strength4 = allWeeks.slice(-5, -1).reduce((a, w) => a + w.strengthDays, 0) / 4;
+// Los días de fuerza se cuentan siempre, aunque el filtro de carga los deje fuera
+const strength4 =
+  weeklyLoad(all, 5, today, hr)
+    .slice(0, -1)
+    .reduce((a, w) => a + w.strengthDays, 0) / 4;
+const ratioNow = nowP?.formPct !== undefined ? acwr(nowP) : undefined;
+const ratioZone = ratioNow !== undefined ? acwrZone(ratioNow) : undefined;
+const ramp = rampRate(model);
+const mono = monotonyStrain(model);
+const acwrPoints = visible.map((p) => (p.formPct !== undefined ? acwr(p) : undefined));
+const acwrSpec: ChartSpec = {
+  type: 'line',
+  categories: visible.map((p) => shortDate(p.date)),
+  band: { name: 'Óptimo (0,8–1,3)', data: visible.map(() => [0.8, 1.3]) },
+  series: [
+    {
+      name: 'Ratio agudo:crónico',
+      data: acwrPoints.map((x) => (x === undefined ? null : Math.round(x * 100) / 100)),
+      color: 2,
+    },
+  ],
+  format: 'dec2',
+  reference: { value: 1.5, label: 'Riesgo > 1,5' },
+  height: 220,
+};
+const hasAcwr = acwrPoints.some((x) => x !== undefined);
+const dec = (v: number) => String(v).replace('.', ',');
+/** "Carga baja: < 0,8 · Óptima: 0,8–1,3 · …" */
+const acwrLegend = ACWR_ZONES.map((z, i) => {
+  if (i === 0) return `${z.label}: < ${dec(z.max)}`;
+  const lo = dec(ACWR_ZONES[i - 1].max);
+  return z.max === Infinity ? `${z.label}: > ${lo}` : `${z.label}: ${lo}–${dec(z.max)}`;
+}).join(' · ');
+/** " (+12 %)" frente al tramo anterior; vacío si antes no había nada. */
+function vs(current: number, previous: number): string {
+  const pc = pctChange(current, previous);
+  if (pc === undefined) return '';
+  const sign = pc >= 0 ? '+' : '−';
+  return ` (${sign}${Math.abs(Math.round(pc))} %)`;
+}
+function rampText(r: number): string {
+  if (r > RAMP_ALERT) return `Sube demasiado rápido (> ${RAMP_ALERT})`;
+  if (r > RAMP_WATCH) return `Vigilar (> ${RAMP_WATCH})`;
+  return 'Subida sostenible';
+}
+const volumes = periodVolumes(all, today);
 
 const pmcCats = visible.map((p) => shortDate(p.date));
 const fitnessSpec: ChartSpec = {
@@ -398,6 +461,61 @@ const ZONE_TONE: Record<string, string> = {
                 <dt class="text-xs text-gray-500 dark:text-gray-400">Fatiga</dt>
                 <dd class="text-2xl font-bold tabular-nums">{int(nowP.fatigue)}</dd>
               </div>
+              {ratioNow !== undefined && (
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Ratio agudo:crónico</dt>
+                  <dd class="text-2xl font-bold tabular-nums">{km(ratioNow, 2)}</dd>
+                  <dd
+                    class:list={[
+                      'text-xs',
+                      ratioZone!.zone === 'optimal'
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : 'font-medium text-amber-800 dark:text-amber-300',
+                    ]}
+                  >
+                    {ratioZone!.label}
+                  </dd>
+                </div>
+              )}
+              {ramp !== undefined && (
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Rampa (forma física, 7 días)</dt>
+                  <dd class="text-2xl font-bold tabular-nums">
+                    {ramp >= 0 ? '+' : '−'}
+                    {km(Math.abs(ramp))}
+                  </dd>
+                  <dd
+                    class:list={[
+                      'text-xs',
+                      ramp > RAMP_ALERT
+                        ? 'font-medium text-red-700 dark:text-red-400'
+                        : 'text-gray-500 dark:text-gray-400',
+                    ]}
+                  >
+                    {rampText(ramp)}
+                  </dd>
+                </div>
+              )}
+              {mono && (
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Monotonía · strain (7 días)</dt>
+                  <dd class="text-2xl font-bold tabular-nums">
+                    {km(mono.monotony, 2)} · {int(mono.strain)}
+                  </dd>
+                  <dd
+                    class:list={[
+                      'text-xs',
+                      mono.monotony > MONOTONY_HIGH
+                        ? 'font-medium text-amber-800 dark:text-amber-300'
+                        : 'text-gray-500 dark:text-gray-400',
+                    ]}
+                  >
+                    {mono.monotony > MONOTONY_HIGH
+                      ? 'Poca variedad entre días duros y suaves'
+                      : 'Buena variedad de carga'}
+                  </dd>
+                </div>
+              )}
               {change && (
                 <div class="col-span-2">
                   <dt class="text-xs text-gray-500 dark:text-gray-400">Carga de la semana pasada</dt>
@@ -430,14 +548,26 @@ const ZONE_TONE: Record<string, string> = {
       )}
 
       {/* ---------- Carga ---------- */}
-      <section class="space-y-4" aria-labelledby="carga">
-        <h2 id="carga" class={sectionTitle}>
-          Carga de entrenamiento · todas las actividades
-        </h2>
+      <section id="seccion-carga" class="scroll-mt-4 space-y-4" aria-labelledby="carga">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="carga" class={sectionTitle}>
+            Carga de entrenamiento · {scopeLabel.toLowerCase()}
+          </h2>
+          <RangeSelector
+            options={LOAD_SCOPES.map((o) => ({ value: o.scope, label: o.label }))}
+            current={scope}
+            param="carga"
+            label="Actividades que cuentan como carga"
+            anchor="seccion-carga"
+          />
+        </div>
         <section class:list={[card, 'min-w-0 p-4']}>
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h3 class="text-base font-semibold">Forma física, fatiga y forma</h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Carga de entrenamiento de Garmin por sesión</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              TRIMP de Banister por sesión · FC reposo {hr.restingHr}, máx. {hr.maxHr}
+              {hrRef ? ' (zonas de Garmin)' : ' (estimadas)'}
+            </p>
           </div>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             La forma física sube despacio con la carga constante; la fatiga reacciona rápido. Si la forma cae por debajo
@@ -501,6 +631,106 @@ const ZONE_TONE: Record<string, string> = {
               rows: shownWeeks.map((w) => [shortDate(w.week), duration(w.low), duration(w.mid), duration(w.high)]),
             }}
           />
+          {hasAcwr && (
+            <ChartCard
+              title="Ratio agudo:crónico"
+              subtitle={`Fatiga (7 d) / forma física (42 d). ${acwrLegend}. Orientativo.`}
+              spec={acwrSpec}
+              table={{
+                headers: ['Día', 'Ratio'],
+                rows: visible.map((p, i) => [
+                  shortDate(p.date),
+                  acwrPoints[i] === undefined ? '—' : km(acwrPoints[i], 2),
+                ]),
+              }}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* ---------- Volumen por deporte ---------- */}
+      <section class="space-y-4" aria-labelledby="volumen">
+        <h2 id="volumen" class={sectionTitle}>
+          Volumen por deporte
+        </h2>
+        <div class="grid gap-6 lg:grid-cols-2">
+          {volumes.map((period) => {
+            const groups = SPORT_GROUPS.filter((g) => period.current.has(g.group) || period.previous.has(g.group));
+            const captionId = `volumen-${period.label.toLowerCase()}`;
+            return (
+              <section class:list={[card, 'min-w-0 p-4']} aria-labelledby={captionId}>
+                <h3 id={captionId} class="text-base font-semibold">
+                  {period.label} en curso
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Desde el {shortDate(period.from)} frente al mismo tramo anterior ({shortDate(period.prevFrom)}–
+                  {shortDate(period.prevTo)})
+                </p>
+                {groups.length === 0 ? (
+                  <p class="mt-3 text-sm">Sin actividades.</p>
+                ) : (
+                  <div class="mt-3 overflow-x-auto">
+                    <table class="w-full text-sm">
+                      <caption class="sr-only">
+                        Volumen por deporte · {period.label.toLowerCase()} en curso frente al mismo tramo anterior
+                      </caption>
+                      <thead class="text-xs text-gray-500 dark:text-gray-400">
+                        <tr>
+                          <th scope="col" class="py-1 pr-3 text-left font-medium">
+                            Deporte
+                          </th>
+                          <th scope="col" class="py-1 pr-3 text-right font-medium">
+                            Sesiones
+                          </th>
+                          <th scope="col" class="py-1 pr-3 text-right font-medium">
+                            Km
+                          </th>
+                          <th scope="col" class="py-1 pr-3 text-right font-medium">
+                            Tiempo
+                          </th>
+                          <th scope="col" class="hidden py-1 text-right font-medium sm:table-cell">
+                            Desnivel +
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="tabular-nums">
+                        {groups.map(({ group, label }) => {
+                          const c = period.current.get(group) ?? { sessions: 0, km: 0, timeS: 0, elevationM: 0 };
+                          const prevV = period.previous.get(group) ?? { sessions: 0, km: 0, timeS: 0, elevationM: 0 };
+                          return (
+                            <tr class="border-t border-gray-100 dark:border-gray-700">
+                              <th scope="row" class="py-2 pr-3 text-left font-medium">
+                                {label}
+                              </th>
+                              <td class="py-2 pr-3 text-right whitespace-nowrap">
+                                {c.sessions}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                  {vs(c.sessions, prevV.sessions)}
+                                </span>
+                              </td>
+                              <td class="py-2 pr-3 text-right whitespace-nowrap">
+                                {c.km > 0 ? km(c.km) : '—'}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                  {c.km > 0 ? vs(c.km, prevV.km) : ''}
+                                </span>
+                              </td>
+                              <td class="py-2 pr-3 text-right whitespace-nowrap">
+                                {hoursMinutes(c.timeS)}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{vs(c.timeS, prevV.timeS)}</span>
+                              </td>
+                              <td class="hidden py-2 text-right whitespace-nowrap sm:table-cell">
+                                {c.elevationM > 0 ? `${int(c.elevationM)} m` : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       </section>
 

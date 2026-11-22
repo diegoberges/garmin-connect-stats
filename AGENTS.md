@@ -147,7 +147,9 @@ src/
       fixtures.ts             # cliente falso con las capturas de .data/raw (solo dev)
     baseline.ts               # Salud: rangos personales, estado de hoy, minutos de intensidad
     sleep-alert.ts            # alerta "Fatiga por sueño": regla, umbrales configurables e histórico
-    load.ts                   # Rendimiento: carga, forma física/fatiga/forma, intensidad, marcas
+    load.ts                   # Rendimiento: carga (TRIMP de Banister), forma física/fatiga/forma, ACWR, rampa, monotonía
+    volume.ts                 # volumen por deporte frente al periodo anterior y filtro de la carga
+    readiness.ts              # disposición 0–100 (z de VFC, FC reposo, sueño y TSB con pesos documentados)
     efficiency.ts             # Rendimiento: Minetti, EF, VDOT, velocidad crítica
     compare.ts                # Comparador: totales por mes y año
     races.ts                  # categorías de competición y mejores marcas
@@ -199,7 +201,8 @@ docs/garmin-personal-api.json # spec OpenAPI (la fuente de verdad de rutas y tip
 `.data/raw/`, incluido el FIT de la última carrera. Se usan para:
 
 - modelar tipos y comprobar desviaciones de la spec;
-- el modo `GARMIN_FIXTURES=1`, que repite las series diarias para cubrir el rango pedido;
+- el modo `GARMIN_FIXTURES=1`, que repite las series diarias y las actividades (en bloques de semanas
+  completas) para cubrir el rango pedido;
 - los tests de `mappers.test.ts`, que se saltan si no hay capturas.
 
 ---
@@ -263,13 +266,23 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Pasos frente a una meta por edad.
 - **Contexto** (evidencia limitada): Body Battery, estrés (se muestra como "activación fisiológica") y fases del sueño.
 
+- **Disposición** (en la tarjeta Hoy): 0–100, 50 = tu día normal. z de VFC (35 %), FC en reposo (25 %),
+  sueño frente al objetivo (25 %) y forma TSB (15 %), cada una limitada a ±3; orientativa.
+
 ### Rendimiento (`/rendimiento`)
 
 - **Carga**:
-  - Por sesión, la `activityTrainingLoad` de Garmin; si falta, TRIMP de Edwards con las zonas.
+  - **Una sola métrica**: TRIMP de Banister por sesión, `min × HRr × 0,64 × e^(1,92 × HRr)` (mujeres:
+    0,86 y 1,67), con la FC en reposo y máxima de las zonas generales de Garmin (si faltan, estimadas y
+    se avisa). No se mezcla con la carga de Garmin ni con otras escalas. Sin FC, la sesión no suma.
+  - Filtro `?carga=` (todas, sin caminatas, solo carrera) para la carga; los días de fuerza se cuentan siempre.
+  - Ratio agudo:crónico (fatiga / forma física; < 0,8 baja, 0,8–1,3 óptima, > 1,5 riesgo), rampa de la
+    forma física en 7 días (> 5 vigilar, > 8 alerta) y monotonía y strain de Foster de 7 días.
   - Forma física (media exponencial de 42 días), fatiga (7 días) y forma en % de la forma física, con zonas orientativas.
   - Estado "calibrando" con menos de 42 días desde la primera carga.
 - Carga semanal por tipo con aviso si sube más de un 25 % sobre la media de 4 semanas; días de fuerza.
+- Volumen por deporte (sesiones, km, tiempo y desnivel) de la semana y el mes en curso frente al mismo
+  tramo del periodo anterior.
 - **Distribución de intensidad**: Z1–Z2 baja, Z3 moderada, Z4–Z5 alta, con la referencia del 80 % suave.
 - **Carrera**: esta semana frente al mismo tramo de la anterior, totales del periodo y km por semana.
 - **Mejores marcas**: últimos 12 meses frente al histórico, a partir de `fastestSplit_*` de cada actividad.

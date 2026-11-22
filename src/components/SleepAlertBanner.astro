@@ -4,10 +4,10 @@
  * Se carga como isla de servidor (`server:defer` en Base.astro): consulta salud y carga sin retrasar la
  * página. Si algo falla, no se muestra: la alerta nunca debe romper una página.
  */
-import { clientFor, getActivities, getDailyHealth } from '../lib/garmin';
+import { clientFor, getActivities, getDailyHealth, getHrReference } from '../lib/garmin';
 import { addDays, isoDate } from '../lib/dates';
 import { currentAlert, resolveThresholds, type SleepFatigueAlert } from '../lib/sleep-alert';
-import { acwr, acwrZone, dailyLoad, pmc, WARMUP_DAYS } from '../lib/load';
+import { acwr, acwrZone, dailyLoad, estimateHrParams, pmc, WARMUP_DAYS } from '../lib/load';
 import { dayLabel, hoursMinutes, int, km } from '../lib/format';
 
 /** 7 días de la regla + 60 de línea base de VFC + 1 por si la noche de hoy no se ha sincronizado. */
@@ -28,8 +28,12 @@ if (client) {
     if (alert) {
       // Contexto de carga (si falla, la alerta se muestra igual sin él)
       const loadFrom = addDays(today, -WARMUP_DAYS);
-      const acts = await getActivities(client, loadFrom, today).catch(() => undefined);
-      const now = acts ? pmc(dailyLoad(acts, loadFrom, today)).at(-1) : undefined;
+      const [acts, ref] = await Promise.all([
+        getActivities(client, loadFrom, today).catch(() => undefined),
+        getHrReference(client).catch(() => undefined),
+      ]);
+      const hr = acts && { ...(ref ?? estimateHrParams(acts)), sex: Astro.locals.settings.sex };
+      const now = acts && hr ? pmc(dailyLoad(acts, loadFrom, today, hr)).at(-1) : undefined;
       // Con menos de 42 días de historial la forma física está a medio construir: ni ratio ni forma
       if (now?.formPct !== undefined) {
         ratio = acwr(now);

@@ -147,6 +147,19 @@ export async function getHrZones(
   };
 }
 
+/**
+ * FC en reposo y máxima para el TRIMP de Banister: las de la configuración de zonas general de Garmin
+ * (no por deporte). Son las de hoy: no hay histórico de zonas, así que se aplican a todas las fechas.
+ */
+export async function getHrReference(client: GarminClient): Promise<{ restingHr: number; maxHr: number } | undefined> {
+  const data = (await unwrap(client.GET('/biometric-service/heartRateZones/v2', {}))) as ApiHrZones;
+  const list = Array.isArray(data) ? data : [];
+  const z = list.find((x) => x.sport === 'DEFAULT') ?? list[0];
+  const restingHr = num(z?.restingHeartRateUsed);
+  const maxHr = num(z?.maxHeartRateUsed);
+  return restingHr && maxHr && maxHr > restingHr ? { restingHr, maxHr } : undefined;
+}
+
 export async function getVo2Max(client: GarminClient, startDate: string, endDate: string): Promise<Vo2Point[]> {
   const data = (await unwrap(
     client.GET('/metrics-service/metrics/maxmet/daily/{startDate}/{endDate}', {
