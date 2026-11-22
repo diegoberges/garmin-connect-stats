@@ -10,7 +10,8 @@ import ErrorState from '../components/ErrorState.astro';
 import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
 import RangeSelector from '../components/RangeSelector.astro';
-import { clientFor, getActivities, getAllRuns, type Activity } from '../lib/garmin';
+import { clientFor, getActivities, getActivityTrack, getAllRuns, type Activity, type ActivityTrack } from '../lib/garmin';
+import { criticalSpeed, efTrend, paceAtHr, predictTime, vdot } from '../lib/efficiency';
 import { addDays, isoDate, weekStart } from '../lib/dates';
 import { pctChange, runsBetween, totals, weeklyTotals } from '../lib/stats';
 import {
@@ -49,6 +50,7 @@ const loadFrom = addDays(from, -WARMUP_DAYS);
 
 let all: Activity[] = [];
 let history: Activity[] | undefined;
+let longTracks: { run: Activity; track?: ActivityTrack }[] = [];
 let error: unknown;
 if (client) {
   try {
@@ -63,6 +65,14 @@ if (client) {
   } catch (err) {
     error = err;
   }
+}
+
+if (client && !error) {
+  const longRuns = all
+    .filter((a) => /run/.test(a.typeKey) && a.movingS >= 60 * 60 && a.avgHr)
+    .sort((a, b) => b.startLocal.localeCompare(a.startLocal))
+    .slice(0, 8);
+  longTracks = await Promise.all(longRuns.map(async (run) => ({ run, track: await getActivityTrack(client, run.id).catch(() => undefined) })));
 }
 
 // ---------- Carga ----------
@@ -187,6 +197,69 @@ const recordRows = BEST_EFFORT_DISTANCES.filter((d) => periodByDist.has(d) || al
 /** "4 nov 2024": las marcas históricas pueden ser de otros años */
 const yearDate = (d: string) => `${shortDate(d)} ${d.slice(0, 4)}`;
 
+
+// ---------- Eficiencia y progreso (fase 3) ----------
+// Factor de eficiencia en carreras comparables (rodajes suaves de asfalto/cinta)
+const ef = efTrend(runs);
+const efShown = ef.filter((p) => p.date >= from);
+const refHr = (() => {
+  const hrs = runs.filter((r) => ef.some((p) => p.id === r.id)).map((r) => r.avgHr!).sort((a, b) => a - b);
+  return hrs.length ? Math.round(hrs[Math.floor(hrs.length / 2)] / 5) * 5 : undefined; // mediana redondeada a 5
+})();
+const efMean = (pts: typeof ef) => (pts.length ? pts.reduce((s, p) => s + p.ef, 0) / pts.length : undefined);
+const sixWeeksAgo = addDays(today, -42);
+const efRecent = efMean(ef.filter((p) => p.date > sixWeeksAgo));
+const efPrevious = efMean(ef.filter((p) => p.date <= sixWeeksAgo && p.date > addDays(sixWeeksAgo, -42)));
+const efChange = efRecent && efPrevious ? ((efRecent - efPrevious) / efPrevious) * 100 : undefined;
+const efSpec: ChartSpec = {
+  type: 'line',
+  categories: efShown.map((p) => shortDate(p.date)),
+  series: [
+    { name: 'Media 28 días', data: efShown.map((p) => (p.avg28 === undefined ? null : Math.round(p.avg28 * 1000) / 1000)), color: 1 },
+    { name: 'Cada carrera', data: efShown.map((p) => Math.round(p.ef * 1000) / 1000), color: 1, faint: true },
+  ],
+  format: 'dec2',
+  height: 240,
+};
+const paceRefSpec: ChartSpec | undefined = refHr
+  ? {
+      type: 'line',
+      categories: efShown.map((p) => shortDate(p.date)),
+      series: [{ name: `Ritmo a ${refHr} ppm`, data: efShown.map((p) => (p.avg28 ? Math.round(paceAtHr(p.avg28, refHr)) : null)), color: 3 }],
+      format: 'pace',
+      reversed: true,
+      height: 240,
+    }
+  : undefined;
+
+// Desacoplamiento en las tiradas largas recientes (≥ 60 min): requiere el archivo FIT de cada una
+const decouplings = longTracks
+  .map(({ run, track }) => ({ run, d: track?.decoupling }))
+  .filter((x): x is { run: Activity; d: NonNullable<ActivityTrack['decoupling']> } => Boolean(x.d));
+
+// Curva de marcas (ritmo por distancia) y predicción
+const curveDistances = BEST_EFFORT_DISTANCES.filter((d) => periodByDist.has(d) || allTime.has(d));
+const curveSpec: ChartSpec = {
+  type: 'line',
+  categories: curveDistances.map((d) => DIST_LABEL[d]),
+  series: [
+    { name: 'Últimos 12 meses', data: curveDistances.map((d) => { const r = periodByDist.get(d); return r ? Math.round(r.timeS / (d / 1000)) : null; }), color: 1 },
+    { name: 'Histórico', data: curveDistances.map((d) => { const r = allTime.get(d); return r ? Math.round(r.timeS / (d / 1000)) : null; }), color: 2, faint: true },
+  ],
+  format: 'pace',
+  reversed: true,
+  height: 240,
+};
+// VDOT: la mejor marca de 5 km o más en los últimos 12 meses (las cortas sobrestiman la resistencia)
+const vdotBase = records
+  .filter((r) => r.distance >= 5000)
+  .map((r) => ({ r, v: vdot(r.distance, r.timeS) }))
+  .sort((a, b) => b.v - a.v)[0];
+const PREDICT = [5000, 10000, 21097.5, 42195] as const;
+const PREDICT_LABEL: Record<number, string> = { 5000: '5 km', 10000: '10 km', 21097.5: 'Media maratón', 42195: 'Maratón' };
+const predictions = vdotBase ? PREDICT.map((d) => ({ d, t: predictTime(vdotBase.v, d) })) : [];
+const cs = criticalSpeed(records);
+const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.min(8, Math.max(1, kmWeekly.length - 1));
 
 const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
 const sectionTitle = 'text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
@@ -437,6 +510,126 @@ const ZONE_TONE: Record<string, string> = {
 
         </section>
 
+
+        {/* ---------- Eficiencia y progreso ---------- */}
+        <section class="space-y-4" aria-labelledby="eficiencia">
+          <div>
+            <h2 id="eficiencia" class={sectionTitle}>Eficiencia y progreso</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              ¿Corres más rápido con el mismo esfuerzo? Solo se comparan rodajes suaves de asfalto o cinta (30–120 min, poco desnivel),
+              para que series y trail no mezclen la tendencia.
+            </p>
+          </div>
+
+          {efShown.length >= 2 ? (
+            <div class="grid gap-6 lg:grid-cols-2">
+              <section class:list={[card, 'min-w-0 p-4']}>
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 class="text-base font-semibold">Factor de eficiencia</h3>
+                  {efChange !== undefined && (
+                    <span class:list={['text-sm font-medium tabular-nums', Math.abs(efChange) < 1 ? 'text-gray-500 dark:text-gray-400' : efChange > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400']}>
+                      {Math.abs(efChange) < 1 ? '→ estable' : `${efChange > 0 ? '↑ +' : '↓ −'}${km(Math.abs(efChange))} %`} en 6 semanas
+                    </span>
+                  )}
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Metros por minuto ÷ FC media. Más alto = más velocidad por latido.</p>
+                <div class="mt-2 w-full min-w-0" data-chart={JSON.stringify(efSpec)} role="img" aria-label="Factor de eficiencia" style="min-height:240px" />
+              </section>
+              {paceRefSpec && (
+                <ChartCard
+                  title={`Ritmo a ${refHr} ppm`}
+                  subtitle="El ritmo que llevarías a tu FC habitual de rodaje, según tu eficiencia de las últimas 4 semanas. Más rápido = mejor forma aeróbica."
+                  spec={paceRefSpec}
+                />
+              )}
+            </div>
+          ) : (
+            <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>
+              Hacen falta al menos 2 rodajes suaves en el periodo para ver la tendencia de eficiencia.
+            </p>
+          )}
+
+          <div class="grid gap-6 lg:grid-cols-2">
+            <section class:list={[card, 'min-w-0 p-4']}>
+              <h3 class="text-base font-semibold">Desacoplamiento en tiradas largas</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Cuánto cae la eficiencia de la 1.ª a la 2.ª mitad (con ritmo ajustado por pendiente y sin los 10 primeros minutos).
+                Por debajo del 5 % suele indicar buena base aeróbica (regla orientativa; el calor y la deshidratación lo suben).
+              </p>
+              {decouplings.length ? (
+                <table class="mt-3 w-full text-sm">
+                  <tbody class="tabular-nums">
+                    {decouplings.map(({ run, d }) => (
+                      <tr class="border-t border-gray-100 dark:border-gray-700">
+                        <td class="py-2 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">{shortDate(run.date)}</td>
+                        <td class="py-2 pr-3">
+                          <a href={`/actividades/${run.id}`} class="text-blue-700 hover:underline dark:text-blue-400">{run.name}</a>
+                          <span class="block text-xs text-gray-500 dark:text-gray-400">{km(run.distanceKm)} km · {duration(run.movingS)}</span>
+                        </td>
+                        <td class:list={['py-2 text-right font-semibold whitespace-nowrap', d.pct < 5 ? 'text-green-700 dark:text-green-400' : d.pct < 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-700 dark:text-red-400']}>
+                          {d.pct >= 0 ? '' : '−'}{km(Math.abs(d.pct))} %
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Sin tiradas de 60 minutos o más en el historial cargado.</p>
+              )}
+            </section>
+
+            <section class:list={[card, 'min-w-0 p-4']}>
+              <h3 class="text-base font-semibold">Predicción de carrera</h3>
+              {vdotBase ? (
+                <>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    VDOT de Daniels <span class="font-semibold text-gray-900 dark:text-white">{km(vdotBase.v)}</span>, calculado con tu mejor
+                    {' '}{DIST_LABEL[vdotBase.r.distance]} de los últimos 12 meses ({duration(vdotBase.r.timeS)}).
+                  </p>
+                  <table class="mt-3 w-full text-sm">
+                    <tbody class="tabular-nums">
+                      {predictions.map(({ d, t }) => (
+                        <tr class="border-t border-gray-100 dark:border-gray-700">
+                          <td class="py-2 font-medium">{PREDICT_LABEL[d]}</td>
+                          <td class="py-2 text-right font-semibold">{duration(t)}</td>
+                          <td class="py-2 text-right text-gray-500 dark:text-gray-400">{pace(t / (d / 1000))} /km</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {cs && (
+                    <p class="mt-3 text-sm">
+                      <span class="text-gray-500 dark:text-gray-400">Velocidad crítica (≈ ritmo umbral):</span>{' '}
+                      <span class="font-semibold tabular-nums">{pace(1000 / cs.csMs)} /km</span>
+                    </p>
+                  )}
+                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Predicciones de mejores tramos dentro de entrenos, no de carreras. Hasta la media suelen acertar; la maratón tiende a salir
+                    más lenta si el volumen es bajo (llevas {km(weeklyKm8)} km/semana de media en 8 semanas).
+                  </p>
+                </>
+              ) : (
+                <p class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Hace falta una marca de 5 km o más en los últimos 12 meses.</p>
+              )}
+            </section>
+          </div>
+
+          {curveDistances.length >= 2 && (
+            <ChartCard
+              title="Curva de marcas"
+              subtitle="Ritmo de tu mejor tramo en cada distancia: cuanto más plana, mejor aguantas el ritmo al alargar la distancia."
+              spec={curveSpec}
+              table={{
+                headers: ['Distancia', 'Últimos 12 meses', 'Histórico'],
+                rows: curveDistances.map((d) => [
+                  DIST_LABEL[d],
+                  periodByDist.get(d) ? `${duration(periodByDist.get(d)!.timeS)} (${pace(periodByDist.get(d)!.timeS / (d / 1000))} /km)` : '—',
+                  allTime.get(d) ? `${duration(allTime.get(d)!.timeS)} (${pace(allTime.get(d)!.timeS / (d / 1000))} /km)` : '—',
+                ]),
+              }}
+            />
+          )}
+        </section>
       </div>
     )
   }
