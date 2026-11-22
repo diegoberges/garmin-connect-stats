@@ -6,7 +6,7 @@
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
-import Trophy from '../components/Trophy.astro';
+import TrophyTip from '../components/TrophyTip.astro';
 import { clientFor, getRaces, type Activity } from '../lib/garmin';
 import { isoDate } from '../lib/dates';
 import { bestRaceIds, raceCategory, type RaceCategory } from '../lib/races';
@@ -131,10 +131,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
                           <td class="px-3 py-2.5 text-right sm:px-4">
                             <span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                               {bestRaces.has(r.id) && (
-                                <span class="trophy-tip relative inline-flex cursor-help" tabindex="0">
-                                  <Trophy class="h-4 w-4" />
-                                  <span role="tooltip" class="trophy-tip-text">Mejor {cat}</span>
-                                </span>
+                                <TrophyTip label={`Mejor ${cat}`} />
                               )}
                               <span class="font-semibold">{duration(r.durationS)}</span>
                             </span>
@@ -179,35 +176,4 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
   :global(.dark) .cat-half { background: rgb(154 52 18 / 0.45); color: #fdba74; }
   :global(.dark) .cat-marathon { background: #dc2626; color: #fff; }
 
-  /* Trofeo: color fijo (ámbar) y aviso propio al pasar el ratón o al enfocar/tocar */
-  .trophy-tip {
-    color: #f59e0b;
-  }
-  :global(.dark) .trophy-tip {
-    color: #fbbf24;
-  }
-  .trophy-tip-text {
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 2px 8px;
-    border-radius: 6px;
-    background: #111827;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.12s;
-    z-index: 10;
-  }
-  .trophy-tip:hover .trophy-tip-text,
-  .trophy-tip:focus .trophy-tip-text {
-    opacity: 1;
-  }
-  .trophy-tip:focus {
-    outline: none;
-  }
 </style>

@@ -3,6 +3,7 @@
 import type { Activity } from '../lib/garmin/types';
 import { hasDistance, kindOf, speedUnit, speedValue } from '../lib/activity-kinds';
 import { activityLabel, dayLabel, duration, int, km, pace, speed } from '../lib/format';
+import TrophyTip from './TrophyTip.astro';
 
 interface Props {
   activities: Activity[];
@@ -54,6 +55,11 @@ const distanceText = (a: Activity, i: number) =>
               <a href={`/actividades/${a.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
                 {a.name}
               </a>
+              {a.isPr && (
+                <span class="ml-1.5">
+                  <TrophyTip label="Récord personal en Garmin" />
+                </span>
+              )}
               {showType && (
                 <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                   {activityLabel(a.typeKey)}

@@ -16,6 +16,7 @@ const run = (date: string, km: number, movingS: number, avgHr?: number): Activit
   avgHr,
   hrZonesS: [0, 0, 0, 0, 0],
   bestEfforts: {},
+  isPr: false,
 });
 
 describe('fechas', () => {

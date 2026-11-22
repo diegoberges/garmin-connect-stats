@@ -13,6 +13,7 @@ const act = (date: string, over: Partial<Activity> = {}): Activity => ({
   movingS: 3000,
   hrZonesS: [600, 1200, 600, 600, 0],
   bestEfforts: {},
+  isPr: false,
   ...over,
 });
 
