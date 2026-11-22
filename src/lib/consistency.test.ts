@@ -48,14 +48,14 @@ describe('rachas', () => {
     const s = streaks(acts, '2026-11-12');
     expect(s.currentDays).toEqual({ length: 2, from: '2026-11-10', to: '2026-11-11' });
     expect(s.longestDays).toEqual({ length: 3, from: '2026-11-01', to: '2026-11-03' });
-    expect(streaks(acts, '2026-11-14').currentDays.length).toBe(0);
+    expect(streaks(acts, '2026-11-14').currentDays).toHaveLength(0);
   });
   it('semanas seguidas corriendo', () => {
     // Semanas del 2, 9 y 16 de noviembre con carrera; la del 23 todavía no
     const acts = ['2026-11-03', '2026-11-12', '2026-11-20'].map((d) => act(d));
     const s = streaks(acts, '2026-11-24');
     expect(s.currentWeeks).toEqual({ length: 3, from: '2026-11-02', to: '2026-11-16' });
-    expect(s.longestWeeks.length).toBe(3);
+    expect(s.longestWeeks).toHaveLength(3);
   });
 });
 

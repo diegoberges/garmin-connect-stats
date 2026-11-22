@@ -70,6 +70,19 @@ export interface PredictionPoint {
 /** Mejores marcas a considerar: las de 5 km o más (las cortas sobrestiman la resistencia). */
 const PREDICT_FROM = [5000, 10000, 21098, 42195] as const;
 
+/** Mayor VDOT de las mejores marcas (≥ 5 km) de las carreras entre dos fechas. */
+function bestVdot(runs: Activity[], from: string, to: string): number | undefined {
+  let best: number | undefined;
+  for (const r of runs) {
+    if (r.date < from || r.date > to) continue;
+    for (const d of PREDICT_FROM) {
+      const t = r.bestEfforts[d];
+      if (t && t > 0) best = Math.max(best ?? 0, vdot(d, t));
+    }
+  }
+  return best;
+}
+
 /**
  * Pronóstico de 10K y media semana a semana: VDOT de la mejor marca (≥ 5 km) de los 90 días que acaban
  * en cada semana. Sin marcas en la ventana, sin pronóstico.
@@ -80,15 +93,7 @@ export function predictionTrend(runs: Activity[], weeks: number, today: string, 
   for (let i = weeks - 1; i >= 0; i--) {
     const week = addDays(current, -7 * i);
     const end = i === 0 ? today : addDays(week, 6);
-    const from = addDays(end, -(windowDays - 1));
-    let best: number | undefined;
-    for (const r of runs) {
-      if (r.date < from || r.date > end) continue;
-      for (const d of PREDICT_FROM) {
-        const t = r.bestEfforts[d];
-        if (t && t > 0) best = Math.max(best ?? 0, vdot(d, t));
-      }
-    }
+    const best = bestVdot(runs, addDays(end, -(windowDays - 1)), end);
     out.push(
       best === undefined
         ? { week }
