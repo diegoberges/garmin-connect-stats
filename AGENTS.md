@@ -14,17 +14,17 @@ Idioma: **toda la interfaz, los textos, los comentarios y los commits van en esp
 
 ## Stack
 
-| Pieza | Uso |
-|---|---|
-| **Astro 7** (`output: 'server'`) | Páginas SSR: la key y el token nunca llegan al navegador |
-| **@astrojs/vercel** | Despliegue en Vercel (funciones serverless) |
-| **Tailwind CSS v4** (`@tailwindcss/vite`) + **Flowbite 4** | Estilos y componentes (desplegables, etc.) |
-| **ApexCharts 8** | Gráficas, siempre a través de `ChartSpec` (ver abajo) |
-| **Leaflet** + **OpenStreetMap / OpenTopoMap** | Mapa del recorrido |
-| **openapi-fetch** + **openapi-typescript** | Cliente tipado generado desde la spec OpenAPI de Garmin |
-| **@garmin/fitsdk** + **fflate** | Descomprimir y decodificar el archivo `.FIT` de cada actividad |
-| **@vercel/analytics** | Analítica web (`<Analytics />` en el layout) |
-| **TypeScript 6**, **Vitest 5** | Tipos y tests |
+| Pieza                                                      | Uso                                                            |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| **Astro 7** (`output: 'server'`)                           | Páginas SSR: la key y el token nunca llegan al navegador       |
+| **@astrojs/vercel**                                        | Despliegue en Vercel (funciones serverless)                    |
+| **Tailwind CSS v4** (`@tailwindcss/vite`) + **Flowbite 4** | Estilos y componentes (desplegables, etc.)                     |
+| **ApexCharts 8**                                           | Gráficas, siempre a través de `ChartSpec` (ver abajo)          |
+| **Leaflet** + **OpenStreetMap / OpenTopoMap**              | Mapa del recorrido                                             |
+| **openapi-fetch** + **openapi-typescript**                 | Cliente tipado generado desde la spec OpenAPI de Garmin        |
+| **@garmin/fitsdk** + **fflate**                            | Descomprimir y decodificar el archivo `.FIT` de cada actividad |
+| **@vercel/analytics**                                      | Analítica web (`<Analytics />` en el layout)                   |
+| **TypeScript 6**, **Vitest 5**                             | Tipos y tests                                                  |
 
 Sin base de datos: todo se pide en directo a la API, con cachés en memoria.
 
@@ -39,6 +39,10 @@ pnpm dev             # servidor de desarrollo (ver "Servidor de desarrollo")
 pnpm build           # build de producción (salida en .vercel/output)
 pnpm check           # astro check: tipos de .astro y .ts
 pnpm test            # vitest run
+pnpm lint            # Biome lint (incluye frontmatter y plantilla de los .astro); pnpm lint:fix corrige lo automático
+pnpm fmt             # Biome format: ts/js/json/css y .astro completos; pnpm fmt:check solo comprueba
+pnpm fix             # biome check --write: formato + correcciones seguras de lint de una vez
+pnpm verify          # biome check + astro check + vitest (lo que hay que pasar antes de subir)
 pnpm gen:api         # regenera src/lib/garmin/schema.d.ts desde docs/garmin-personal-api.json
 ```
 
@@ -48,7 +52,26 @@ actualizar una, usa `pnpm add <paquete>@<versión exacta>` (o `pnpm add -E`) y d
 `gen:api` usa `openapi-typescript@7.13.0` con TypeScript 5.9.3 vía `pnpm dlx`, porque su dependencia
 choca con TypeScript 6 del proyecto. No lo instales como dependencia.
 
-**Antes de dar algo por terminado:** `pnpm check` sin errores, `pnpm test` en verde y `pnpm build` OK.
+**Antes de dar algo por terminado:** `pnpm verify` en verde y `pnpm build` OK.
+
+**CI** (`.github/workflows/ci.yml`): en cada PR y en cada push a `main`, GitHub Actions instala con
+`pnpm install --frozen-lockfile` y ejecuta `biome ci`, `pnpm check`, `pnpm test` y `pnpm build`. Si algo
+falla, el PR queda en rojo: no se fusiona hasta que pase.
+El repo es privado sin GitHub Pro, así que GitHub **no puede bloquear** la fusión (ni protección de rama ni
+rulesets). La norma es de proceso: **antes de `gh pr merge`, comprueba `gh pr checks <n>` y fusiona solo si
+"Formato, lint, tipos, tests y build" está en verde.**
+
+**Estilo de código**: lo marca **Biome** (`biome.json`): 2 espacios, comillas simples, punto y coma, comas
+finales y 120 columnas.
+
+- En `.astro` está activado el **modo completo de HTML** de Biome (`html.experimentalFullSupportEnabled`):
+  formatea y revisa el frontmatter **y la plantilla** (incluidas reglas de accesibilidad), con
+  `indentScriptAndStyle` para mantener la sangría de `<script>` y `<style>`. Al ser experimental, si un
+  formateo cambia algo visible, compara el texto renderizado antes/después y repórtalo.
+- Como Biome ve la plantilla, `noUnusedImports`/`noUnusedVariables` funcionan también en `.astro`.
+- `noNonNullAssertion` está desactivada: el código usa `!` a propósito tras comprobaciones previas.
+- Para saltarse una regla, `// biome-ignore lint/<grupo>/<regla>: motivo` con el motivo explicado.
+- Excluidos: `schema.d.ts` (generado), la spec OpenAPI y el lockfile.
 
 ### Servidor de desarrollo
 
@@ -150,6 +173,7 @@ docs/garmin-personal-api.json # spec OpenAPI (la fuente de verdad de rutas y tip
 
 `/dev/capture` (solo en dev) llama a los endpoints con la key de la cookie y guarda las respuestas en
 `.data/raw/`, incluido el FIT de la última carrera. Se usan para:
+
 - modelar tipos y comprobar desviaciones de la spec;
 - el modo `GARMIN_FIXTURES=1`, que repite las series diarias para cubrir el rango pedido;
 - los tests de `mappers.test.ts`, que se saltan si no hay capturas.
@@ -180,6 +204,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 `efficiency.ts`: cámbialos ahí, no en las páginas. La interfaz debe decir cuándo algo es orientativo.
 
 ### Salud (`/salud`)
+
 - **Hoy**: cada señal se compara con el **propio rango del usuario**, no con valores absolutos.
   - HRV: media de 7 días de ln(HRV) frente a una banda de 60 días (μ ± 0,75σ). Hacen falta 21 noches.
   - FC en reposo: frente a la mediana de 60 días; alerta a partir de +5 ppm.
@@ -196,6 +221,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 - **Contexto** (evidencia limitada): Body Battery, estrés (se muestra como "activación fisiológica") y fases del sueño.
 
 ### Rendimiento (`/rendimiento`)
+
 - **Carga**:
   - Por sesión, la `activityTrainingLoad` de Garmin; si falta, TRIMP de Edwards con las zonas.
   - Forma física (media exponencial de 42 días), fatiga (7 días) y forma en % de la forma física, con zonas orientativas.
@@ -212,6 +238,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Predicción con VDOT de Daniels, velocidad crítica y curva de marcas.
 
 ### Actividades
+
 - `/actividades`: el título es un desplegable con los tipos del periodo. Indicadores, gráficas y tabla
   se adaptan a la familia (`activity-kinds.ts`):
   - a pie: ritmo en min/km;
@@ -220,6 +247,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - resto: tiempo, FC y calorías.
 
   La tabla se pagina de 20 en 20 (`?pagina=`).
+
 - `/actividades/[id]`:
   - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave;
   - ritmo, FC y altitud con el cursor sincronizado;
@@ -267,7 +295,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 
 1. **Rama nueva desde `main`** para cada cambio (`feat/…`, `fix/…`).
 2. Implementa, con tests en `src/lib/*.test.ts` para toda lógica de cálculo nueva.
-3. Verifica: `pnpm check`, `pnpm test` y `pnpm build`.
+3. Verifica: `pnpm verify` y `pnpm build` (ejecuta antes `pnpm fix` si has tocado código).
 4. **Revisa la interfaz** con el servidor de fixtures (puerto 4322) y capturas con Chrome headless,
    en escritorio y móvil (500 px), modo claro y oscuro:
 
@@ -279,9 +307,11 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 
    - Para el modo claro, añade `--blink-settings=preferredColorScheme=1`.
    - Guarda las capturas en `.data/` y bórralas al terminar.
+
 5. **Subir y desplegar solo cuando el usuario lo pida**:
    - commit en español con la línea `Co-Authored-By` indicada;
    - PR con `gh`, con resumen y pruebas en español, terminado con la línea de Claude Code;
+   - espera a la CI (`gh pr checks <n>`) y **no fusiones si no está en verde**;
    - `gh pr merge --merge --delete-branch`;
    - Vercel despliega `main` solo: espera al estado del commit con
      `gh api repos/<owner>/<repo>/commits/<sha>/status`.

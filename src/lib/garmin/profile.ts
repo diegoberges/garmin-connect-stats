@@ -14,7 +14,9 @@ export async function getProfile(client: GarminClient): Promise<UserProfile> {
       connectionError = err instanceof Error ? err.message : 'No se pudo conectar con Garmin.';
       return undefined;
     }),
-    unwrap(client.GET('/activitylist-service/activities/search/activities', { params: { query: { start: 0, limit: 1 } } }))
+    unwrap(
+      client.GET('/activitylist-service/activities/search/activities', { params: { query: { start: 0, limit: 1 } } }),
+    )
       .then((list) => (Array.isArray(list) ? (list[0] as ApiActivity | undefined) : undefined))
       .catch(() => undefined),
   ]);

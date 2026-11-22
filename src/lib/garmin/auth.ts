@@ -5,8 +5,7 @@
  */
 import { createHash } from 'node:crypto';
 
-const TOKEN_URL =
-  'https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token';
+const TOKEN_URL = 'https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token';
 
 /** Margen para renovar antes de que caduque. */
 const SAFETY_MS = 5 * 60 * 1000;
@@ -59,10 +58,7 @@ async function requestToken(apiKey: string): Promise<CachedToken> {
   if (!res.ok) {
     const detail = (await res.text().catch(() => '')).slice(0, 300);
     console.error(`[garmin] token ${res.status} ${res.headers.get('content-type') ?? ''}: ${detail}`);
-    throw new GarminAuthError(
-      `Error al obtener el token (${res.status})${detail ? `: ${detail}` : ''}`,
-      res.status,
-    );
+    throw new GarminAuthError(`Error al obtener el token (${res.status})${detail ? `: ${detail}` : ''}`, res.status);
   }
   const text = await res.text();
   let body: unknown;

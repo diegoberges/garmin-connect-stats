@@ -29,49 +29,67 @@ for (let n = 1; n <= pages; n++) {
 }
 const first = (page - 1) * pageSize + 1;
 const last = Math.min(page * pageSize, total);
-const base = 'flex h-8 min-w-8 items-center justify-center border border-gray-300 px-3 leading-tight dark:border-gray-700';
-const idle = 'bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white';
+const base =
+  'flex h-8 min-w-8 items-center justify-center border border-gray-300 px-3 leading-tight dark:border-gray-700';
+const idle =
+  'bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white';
 ---
 
-{
-  pages > 1 && (
-    <nav class="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Paginación de sesiones">
-      <span class="text-sm text-gray-500 dark:text-gray-400">
-        <span class="font-semibold text-gray-900 tabular-nums dark:text-white">{first}–{last}</span> de{' '}
-        <span class="font-semibold text-gray-900 tabular-nums dark:text-white">{total}</span>
-      </span>
-      <ul class="inline-flex -space-x-px text-sm tabular-nums">
+{pages > 1 && (
+  <nav class="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Paginación de sesiones">
+    <span class="text-sm text-gray-500 dark:text-gray-400">
+      <span class="font-semibold text-gray-900 tabular-nums dark:text-white">
+        {first}–{last}
+      </span>{' '}
+      de <span class="font-semibold text-gray-900 tabular-nums dark:text-white">{total}</span>
+    </span>
+    <ul class="inline-flex -space-x-px text-sm tabular-nums">
+      <li>
+        {page > 1 ? (
+          <a href={href(page - 1)} class:list={[base, idle, 'rounded-s-lg']} aria-label="Página anterior">
+            ‹
+          </a>
+        ) : (
+          <span
+            class:list={[base, 'rounded-s-lg bg-white text-gray-300 dark:bg-gray-800 dark:text-gray-600']}
+            aria-hidden="true"
+          >
+            ‹
+          </span>
+        )}
+      </li>
+      {items.map((n) => (
         <li>
-          {page > 1 ? (
-            <a href={href(page - 1)} class:list={[base, idle, 'rounded-s-lg']} aria-label="Página anterior">‹</a>
+          {n === '…' ? (
+            <span class:list={[base, 'bg-white text-gray-400 dark:bg-gray-800 dark:text-gray-500']}>…</span>
+          ) : n === page ? (
+            <span
+              class:list={[base, 'bg-blue-50 font-semibold text-blue-700 dark:bg-gray-700 dark:text-white']}
+              aria-current="page"
+            >
+              {n}
+            </span>
           ) : (
-            <span class:list={[base, 'rounded-s-lg bg-white text-gray-300 dark:bg-gray-800 dark:text-gray-600']} aria-hidden="true">‹</span>
+            <a href={href(n)} class:list={[base, idle]}>
+              {n}
+            </a>
           )}
         </li>
-        {items.map((n) => (
-          <li>
-            {n === '…' ? (
-              <span class:list={[base, 'bg-white text-gray-400 dark:bg-gray-800 dark:text-gray-500']}>…</span>
-            ) : n === page ? (
-              <span
-                class:list={[base, 'bg-blue-50 font-semibold text-blue-700 dark:bg-gray-700 dark:text-white']}
-                aria-current="page"
-              >
-                {n}
-              </span>
-            ) : (
-              <a href={href(n)} class:list={[base, idle]}>{n}</a>
-            )}
-          </li>
-        ))}
-        <li>
-          {page < pages ? (
-            <a href={href(page + 1)} class:list={[base, idle, 'rounded-e-lg']} aria-label="Página siguiente">›</a>
-          ) : (
-            <span class:list={[base, 'rounded-e-lg bg-white text-gray-300 dark:bg-gray-800 dark:text-gray-600']} aria-hidden="true">›</span>
-          )}
-        </li>
-      </ul>
-    </nav>
-  )
-}
+      ))}
+      <li>
+        {page < pages ? (
+          <a href={href(page + 1)} class:list={[base, idle, 'rounded-e-lg']} aria-label="Página siguiente">
+            ›
+          </a>
+        ) : (
+          <span
+            class:list={[base, 'rounded-e-lg bg-white text-gray-300 dark:bg-gray-800 dark:text-gray-600']}
+            aria-hidden="true"
+          >
+            ›
+          </span>
+        )}
+      </li>
+    </ul>
+  </nav>
+)}

@@ -18,7 +18,8 @@ export const WEEKLY_SPIKE_PCT = 25;
 /** TRIMP de Edwards: minutos en zona × número de zona (1–5). */
 export const edwardsTrimp = (zonesS: number[]) => zonesS.reduce((acc, s, i) => acc + (s / 60) * (i + 1), 0);
 
-export const sessionLoad = (a: Activity) => a.trainingLoad ?? (a.hrZonesS.some((s) => s > 0) ? edwardsTrimp(a.hrZonesS) : 0);
+export const sessionLoad = (a: Activity) =>
+  a.trainingLoad ?? (a.hrZonesS.some((s) => s > 0) ? edwardsTrimp(a.hrZonesS) : 0);
 
 /** Carga total por día en [from, to] (días sin actividad = 0). */
 export function dailyLoad(activities: Activity[], from: string, to: string): { date: string; load: number }[] {
@@ -57,11 +58,26 @@ export function pmc(days: { date: string; load: number }[]): PmcPoint[] {
 
 export type FormZone = 'transition' | 'fresh' | 'neutral' | 'optimal' | 'risk';
 export const FORM_ZONES: { zone: FormZone; min: number; label: string; text: string }[] = [
-  { zone: 'transition', min: 20, label: 'Muy descansado', text: 'Llevas tiempo con poca carga: estás fresco, pero puedes estar perdiendo forma.' },
+  {
+    zone: 'transition',
+    min: 20,
+    label: 'Muy descansado',
+    text: 'Llevas tiempo con poca carga: estás fresco, pero puedes estar perdiendo forma.',
+  },
   { zone: 'fresh', min: 5, label: 'Fresco', text: 'Buen momento para competir o para un entreno exigente.' },
   { zone: 'neutral', min: -10, label: 'Neutral', text: 'Carga en equilibrio: mantienes la forma.' },
-  { zone: 'optimal', min: -30, label: 'Productivo', text: 'Estás acumulando carga a un ritmo que suele mejorar la forma.' },
-  { zone: 'risk', min: -Infinity, label: 'Sobrecarga', text: 'La fatiga supera con mucho a tu forma: prioriza recuperar.' },
+  {
+    zone: 'optimal',
+    min: -30,
+    label: 'Productivo',
+    text: 'Estás acumulando carga a un ritmo que suele mejorar la forma.',
+  },
+  {
+    zone: 'risk',
+    min: -Infinity,
+    label: 'Sobrecarga',
+    text: 'La fatiga supera con mucho a tu forma: prioriza recuperar.',
+  },
 ];
 export const formZone = (pct: number) => FORM_ZONES.find((z) => pct >= z.min)!;
 

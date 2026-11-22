@@ -16,8 +16,12 @@ const { route, style = 'street' } = Astro.props;
   <div class="flex items-baseline justify-between gap-3 px-4 pt-4 pb-3">
     <h2 class="text-base font-semibold">Recorrido</h2>
     <span class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-      <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Salida</span>
-      <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-full bg-red-500"></span>Llegada</span>
+      <span class="flex items-center gap-1"
+        ><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Salida</span
+      >
+      <span class="flex items-center gap-1"
+        ><span class="inline-block h-2.5 w-2.5 rounded-full bg-red-500"></span>Llegada</span
+      >
     </span>
   </div>
   <div
@@ -27,8 +31,7 @@ const { route, style = 'street' } = Astro.props;
     class="route-map h-80 w-full sm:h-96"
     role="img"
     aria-label={style === 'topo' ? 'Mapa topográfico del recorrido' : 'Mapa del recorrido'}
-  >
-  </div>
+  ></div>
 </section>
 
 <script>

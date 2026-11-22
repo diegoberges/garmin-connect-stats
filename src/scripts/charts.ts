@@ -112,7 +112,12 @@ function options(spec: ChartSpec, width = window.innerWidth): ApexCharts.ApexOpt
       background: 'transparent',
       animations: { enabled: false },
       parentHeightOffset: 0,
-      ...(spec.group ? { group: spec.group, id: `${spec.group}-${spec.series[0]?.name ?? ''}-${Math.random().toString(36).slice(2, 7)}` } : {}),
+      ...(spec.group
+        ? {
+            group: spec.group,
+            id: `${spec.group}-${spec.series[0]?.name ?? ''}-${Math.random().toString(36).slice(2, 7)}`,
+          }
+        : {}),
     },
     colors: allColors,
     series: series as ApexCharts.ApexOptions['series'],
@@ -147,7 +152,13 @@ function options(spec: ChartSpec, width = window.innerWidth): ApexCharts.ApexOpt
     xaxis: {
       categories: spec.type === 'rangeBar' || band ? undefined : spec.categories,
       type: 'category',
-      labels: { show: !spec.hideXLabels, style: { colors: muted }, rotate: 0, hideOverlappingLabels: true, trim: false },
+      labels: {
+        show: !spec.hideXLabels,
+        style: { colors: muted },
+        rotate: 0,
+        hideOverlappingLabels: true,
+        trim: false,
+      },
       // Una etiqueta cada ~90 px del ancho real de la gráfica, para que no se monten
       tickAmount: dense || narrow ? Math.max(3, Math.min(8, Math.floor(width / 90))) : undefined,
       axisBorder: { color: css('--viz-axis') },
@@ -161,7 +172,12 @@ function options(spec: ChartSpec, width = window.innerWidth): ApexCharts.ApexOpt
       tickAmount: time?.tickAmount ?? paceAxis?.tickAmount,
       forceNiceScale: !time && !paceAxis,
       // Ancho fijo en gráficas agrupadas para que los ejes x queden alineados
-      labels: { minWidth: spec.group ? 56 : undefined, maxWidth: spec.group ? 56 : undefined, style: { colors: muted }, formatter: (v: number) => fmt(spec.format, v).replace(/ \/(km|100 m)$/, '') },
+      labels: {
+        minWidth: spec.group ? 56 : undefined,
+        maxWidth: spec.group ? 56 : undefined,
+        style: { colors: muted },
+        formatter: (v: number) => fmt(spec.format, v).replace(/ \/(km|100 m)$/, ''),
+      },
     },
     legend: {
       // Con banda también: si no, la franja sombreada aparece sin explicación

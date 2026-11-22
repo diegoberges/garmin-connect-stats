@@ -1,0 +1,46 @@
+# Comprobaciones obligatorias: si alguna falla, el PR queda en rojo.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Un push nuevo a la misma rama cancela la ejecución anterior
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Formato, lint, tipos, tests y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Instala la versión de pnpm fijada en "packageManager" de package.json
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependencias (exactas del lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome (formato y lint, sin escribir)
+        run: pnpm biome ci --reporter=github
+
+      - name: Tipos (astro check)
+        run: pnpm check
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

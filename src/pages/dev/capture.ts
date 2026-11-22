@@ -22,8 +22,16 @@ export const GET: APIRoute = async ({ locals }) => {
   const targets: [string, string, Record<string, string | number>?][] = [
     ['profile', '/userprofile-service/userprofile/settings'],
     ['activity-types', '/activity-service/activity/activityTypes/simple'],
-    ['activities-running', '/activitylist-service/activities/search/activities', { activityType: 'running', start: 0, limit: 20 }],
-    ['activities-30d', '/activitylist-service/activities/search/activities', { startDate: d30, endDate: today, limit: 50 }],
+    [
+      'activities-running',
+      '/activitylist-service/activities/search/activities',
+      { activityType: 'running', start: 0, limit: 20 },
+    ],
+    [
+      'activities-30d',
+      '/activitylist-service/activities/search/activities',
+      { startDate: d30, endDate: today, limit: 50 },
+    ],
     ['hr-zones', '/biometric-service/heartRateZones/v2'],
     ['vo2max-30d', `/metrics-service/metrics/maxmet/daily/${d30}/${today}`],
     ['daily-summary', '/usersummary-service/usersummary/daily', { calendarDate: yesterday }],
@@ -41,6 +49,7 @@ export const GET: APIRoute = async ({ locals }) => {
   // Llamada sin tipar a propósito: queremos la respuesta tal cual para contrastarla con la spec.
   const client = createGarminClient(apiKey, { fresh: true });
   const rawGet = async (path: string, query?: Record<string, string | number>) => {
+    // biome-ignore lint/suspicious/noExplicitAny: llamada sin tipar a propósito, para capturar la respuesta tal cual
     const { data, error, response } = await (client.GET as any)(path, { params: { query } });
     if (!response.ok) throw new Error(`${response.status} ${JSON.stringify(error ?? '')}`.slice(0, 200));
     return data as unknown;
@@ -77,6 +86,7 @@ export const GET: APIRoute = async ({ locals }) => {
     }
     // Archivo original (ZIP con el .FIT): de aquí salen el recorrido GPS y las series por segundo
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: descarga binaria sin tipar (solo desarrollo)
       const { data, response } = await (client.GET as any)('/download-service/files/activity/{activityId}', {
         params: { path: { activityId: first.activityId } },
         parseAs: 'arrayBuffer',

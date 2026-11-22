@@ -67,10 +67,26 @@ const offset = all.length - view.length;
 // ---------- Hoy ----------
 const status = todayStatus(all, { ms: (x) => `${Math.round(x)} ms`, hm: (s) => hoursMinutes(s) });
 const STATE_TEXT = {
-  normal: { title: 'Todo dentro de tu rango normal', text: 'Ninguna señal de recuperación se sale de lo habitual para ti.', tone: 'ok' },
-  attention: { title: 'Atención: 2 señales fuera de rango', text: 'Puede ser cansancio, mal descanso o el inicio de algo. Valora un día más suave.', tone: 'warn' },
-  alert: { title: 'Posible enfermedad o mala recuperación', text: 'Varias señales se salen a la vez de tu rango. Prioriza descansar.', tone: 'alert' },
-  calibrating: { title: 'Calibrando tu rango normal', text: 'Hacen falta unas 3 semanas de datos nocturnos para comparar contigo mismo.', tone: 'muted' },
+  normal: {
+    title: 'Todo dentro de tu rango normal',
+    text: 'Ninguna señal de recuperación se sale de lo habitual para ti.',
+    tone: 'ok',
+  },
+  attention: {
+    title: 'Atención: 2 señales fuera de rango',
+    text: 'Puede ser cansancio, mal descanso o el inicio de algo. Valora un día más suave.',
+    tone: 'warn',
+  },
+  alert: {
+    title: 'Posible enfermedad o mala recuperación',
+    text: 'Varias señales se salen a la vez de tu rango. Prioriza descansar.',
+    tone: 'alert',
+  },
+  calibrating: {
+    title: 'Calibrando tu rango normal',
+    text: 'Hacen falta unas 3 semanas de datos nocturnos para comparar contigo mismo.',
+    tone: 'muted',
+  },
 } as const;
 const state = STATE_TEXT[status.state];
 const DOT: Record<SignalState, string> = {
@@ -93,7 +109,10 @@ const hrv = hrvTrend(all).slice(offset);
 const hrvSpec: ChartSpec = {
   type: 'line',
   categories: cats,
-  band: { name: 'Tu rango normal', data: hrv.map((p) => (p.low !== undefined ? [Math.round(p.low), Math.round(p.high!)] : null)) },
+  band: {
+    name: 'Tu rango normal',
+    data: hrv.map((p) => (p.low !== undefined ? [Math.round(p.low), Math.round(p.high!)] : null)),
+  },
   series: [
     { name: 'Media 7 días', data: hrv.map((p) => r(p.avg7)), color: 1 },
     { name: 'Cada noche', data: hrv.map((p) => v(p.daily)), color: 1, faint: true },
@@ -106,7 +125,9 @@ const rhrSpec: ChartSpec = {
   categories: cats,
   band: {
     name: `Habitual ±${RHR_ALERT_BPM} ppm`,
-    data: rhr.map((p) => (p.base !== undefined ? [Math.round(p.base - RHR_ALERT_BPM), Math.round(p.base + RHR_ALERT_BPM)] : null)),
+    data: rhr.map((p) =>
+      p.base !== undefined ? [Math.round(p.base - RHR_ALERT_BPM), Math.round(p.base + RHR_ALERT_BPM)] : null,
+    ),
   },
   series: [{ name: 'FC en reposo', data: rhr.map((p) => v(p.value)), color: 2 }],
   format: 'bpm',
@@ -123,14 +144,19 @@ const sleepSpec: ChartSpec = {
 const debt = sleepDebt(all);
 const sleptNights = view.filter((d) => d.sleepS !== undefined);
 const avgSleep = sleptNights.length ? mean(sleptNights.map((d) => d.sleepS!)) : undefined;
-const pct7h = sleptNights.length ? (sleptNights.filter((d) => d.sleepS! >= 7 * 3600).length / sleptNights.length) * 100 : undefined;
+const pct7h = sleptNights.length
+  ? (sleptNights.filter((d) => d.sleepS! >= 7 * 3600).length / sleptNights.length) * 100
+  : undefined;
 
 // ---------- Vida sana ----------
 const lastVo2 = vo2.at(-1);
 const vo2Spec: ChartSpec = {
   type: 'line',
   categories: vo2.map((p) => shortDate(p.date)),
-  band: { name: 'Margen de error del reloj (±5 %)', data: vo2.map((p) => [Math.round(p.value * 0.95 * 10) / 10, Math.round(p.value * 1.05 * 10) / 10]) },
+  band: {
+    name: 'Margen de error del reloj (±5 %)',
+    data: vo2.map((p) => [Math.round(p.value * 0.95 * 10) / 10, Math.round(p.value * 1.05 * 10) / 10]),
+  },
   series: [{ name: 'VO2máx', data: vo2.map((p) => p.value), color: 3 }],
   format: 'dec1',
   height: 220,
@@ -192,7 +218,9 @@ const bbSpec: ChartSpec = {
   series: [
     {
       name: 'Body Battery (mín–máx)',
-      data: view.map((d) => (d.bodyBatteryMin !== undefined && d.bodyBatteryMax !== undefined ? [d.bodyBatteryMin, d.bodyBatteryMax] : null)),
+      data: view.map((d) =>
+        d.bodyBatteryMin !== undefined && d.bodyBatteryMax !== undefined ? [d.bodyBatteryMin, d.bodyBatteryMax] : null,
+      ),
       color: 1,
     },
   ],
@@ -240,229 +268,301 @@ const TONE = {
   <h1 class="text-2xl font-bold">Salud</h1>
   <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">{dayLabel(today)}</p>
 
-  {
-    !client ? (
-      <ConnectPrompt />
-    ) : error ? (
-      <ErrorState error={error} />
-    ) : (
-      <div class="space-y-8">
-        {/* ---------- Hoy ---------- */}
-        <section class:list={[card, 'border-l-4 p-5', TONE[state.tone]]} aria-labelledby="hoy">
-          <div class="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-            <div>
-              <h2 id="hoy" class={sectionTitle}>Hoy</h2>
-              <p class="mt-2 text-xl font-bold">{state.title}</p>
-              <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{state.text}</p>
-              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Cada señal se compara con tu propio rango de los últimos 1–2 meses, no con valores de referencia.
-              </p>
-            </div>
-            <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-              {status.signals.map((s) => (
-                <li class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-                  <span class:list={['mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', DOT[s.state]]} title={DOT_LABEL[s.state]} />
-                  <span class="sr-only">{DOT_LABEL[s.state]}:</span>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-baseline justify-between gap-3">
-                      <p class="text-sm font-medium">{s.label}</p>
-                      <p class="text-sm font-semibold tabular-nums">{s.value}</p>
-                    </div>
-                    <p class:list={['text-xs', s.state === 'warn' ? 'text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400']}>
-                      {s.detail}
-                    </p>
+  {!client ? (
+    <ConnectPrompt />
+  ) : error ? (
+    <ErrorState error={error} />
+  ) : (
+    <div class="space-y-8">
+      {/* ---------- Hoy ---------- */}
+      <section class:list={[card, 'border-l-4 p-5', TONE[state.tone]]} aria-labelledby="hoy">
+        <div class="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+          <div>
+            <h2 id="hoy" class={sectionTitle}>
+              Hoy
+            </h2>
+            <p class="mt-2 text-xl font-bold">{state.title}</p>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{state.text}</p>
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              Cada señal se compara con tu propio rango de los últimos 1–2 meses, no con valores de referencia.
+            </p>
+          </div>
+          <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+            {status.signals.map((s) => (
+              <li class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                <span
+                  class:list={['mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', DOT[s.state]]}
+                  title={DOT_LABEL[s.state]}
+                />
+                <span class="sr-only">{DOT_LABEL[s.state]}:</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-baseline justify-between gap-3">
+                    <p class="text-sm font-medium">{s.label}</p>
+                    <p class="text-sm font-semibold tabular-nums">{s.value}</p>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* ---------- Recuperación ---------- */}
-        <section class="space-y-4" aria-labelledby="recuperacion">
-          <h2 id="recuperacion" class={sectionTitle}>Recuperación · últimos {VIEW_DAYS} días</h2>
-          <div class="grid gap-6 lg:grid-cols-2">
-            <ChartCard
-              title="Variabilidad de la FC (HRV)"
-              subtitle="Media de 7 días frente a tu rango normal (60 días). Por debajo suele indicar fatiga o enfermedad."
-              spec={hrvSpec}
-              table={{
-                headers: ['Día', 'Noche', 'Media 7 d', 'Rango'],
-                rows: hrv.map((p) => [shortDate(p.date), int(p.daily), int(p.avg7), p.low !== undefined ? `${int(p.low)}–${int(p.high)}` : '—']),
-              }}
-            />
-            <ChartCard
-              title="FC en reposo"
-              subtitle={`Frente a tu habitual (mediana de ${RHR_WINDOW} días). +${RHR_ALERT_BPM} ppm o más es una señal de alerta.`}
-              spec={rhrSpec}
-              table={{
-                headers: ['Día', 'ppm', 'Habitual', 'Diferencia'],
-                rows: rhr.map((p) => [shortDate(p.date), int(p.value), int(p.base), p.delta !== undefined ? `${p.delta > 0 ? '+' : ''}${Math.round(p.delta)}` : '—']),
-              }}
-            />
-          </div>
-          <div class:list={[card, 'grid gap-6 p-4 lg:grid-cols-[14rem_1fr]']}>
-            <dl class="grid grid-cols-3 gap-4 lg:grid-cols-1">
-              <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Deuda de sueño (7 noches)</dt>
-                <dd class="text-xl font-bold tabular-nums">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Media por noche</dt>
-                <dd class="text-xl font-bold tabular-nums">{hoursMinutes(avgSleep)}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Noches de 7 h o más</dt>
-                <dd class="text-xl font-bold tabular-nums">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
-              </div>
-            </dl>
-            <div class="min-w-0">
-              <h3 class="text-base font-semibold">Horas de sueño</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                La duración pesa más que las fases, que en reloj de muñeca son poco fiables. La línea es la necesidad que calcula Garmin.
-              </p>
-              <div class="mt-2 w-full min-w-0" data-chart={JSON.stringify(sleepSpec)} role="img" aria-label="Horas de sueño" style="min-height:260px" />
-            </div>
-          </div>
-        </section>
-
-        {/* ---------- Vida sana ---------- */}
-        <section class="space-y-4" aria-labelledby="vida-sana">
-          <h2 id="vida-sana" class={sectionTitle}>Vida sana · tendencia a largo plazo</h2>
-          <div class:list={['grid gap-6', fitness?.fitnessAge !== undefined && lastVo2 && 'lg:grid-cols-2']}>
-            {fitness?.fitnessAge !== undefined && (
-              <section class:list={[card, 'p-5']}>
-                <h3 class="text-base font-semibold">Edad física</h3>
-                <p class="mt-2 flex items-baseline gap-2">
-                  <span class="text-4xl font-bold tabular-nums">{km(fitness.fitnessAge)}</span>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">años</span>
-                </p>
-                {ageDiff !== undefined && (
-                  <p class:list={['text-sm font-medium', ageDiff >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400']}>
-                    {ageDiff >= 0 ? `${km(ageDiff)} años menos` : `${km(-ageDiff)} años más`} que tu edad ({age})
+                  <p
+                    class:list={[
+                      'text-xs',
+                      s.state === 'warn' ? 'text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400',
+                    ]}
+                  >
+                    {s.detail}
                   </p>
-                )}
-                {fitness.achievable !== undefined && fitness.achievable < fitness.fitnessAge && (
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Podrías llegar a {km(fitness.achievable)} años con estas palancas:</p>
-                )}
-                {fitness.levers.length > 0 && (
-                  <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-700">
-                    {fitness.levers.map((l) => (
-                      <li class="flex items-baseline justify-between gap-3 py-2">
-                        <span>{l.label}{l.stale && <span class="ml-1 text-xs text-gray-400">(dato antiguo)</span>}</span>
-                        <span class="text-right tabular-nums">
-                          <span class="font-semibold">{l.value !== undefined ? leverFmt(l.value) : '—'}</span>
-                          {l.target !== undefined && <span class="text-gray-500 dark:text-gray-400"> → {leverFmt(l.target)}</span>}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  Cálculo de Garmin a partir de VO2máx, actividad vigorosa, FC en reposo e IMC.
-                </p>
-              </section>
-            )}
-
-            {lastVo2 && (
-              <section class:list={[card, 'min-w-0 p-5']}>
-                <div class="flex items-baseline justify-between gap-3">
-                  <h3 class="text-base font-semibold">VO2máx</h3>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">a {shortDate(lastVo2.date)}</span>
                 </div>
-                <p class="mt-2 flex items-baseline gap-2">
-                  <span class="text-4xl font-bold tabular-nums">{km(lastVo2.value)}</span>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">ml/kg/min</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ---------- Recuperación ---------- */}
+      <section class="space-y-4" aria-labelledby="recuperacion">
+        <h2 id="recuperacion" class={sectionTitle}>
+          Recuperación · últimos {VIEW_DAYS} días
+        </h2>
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard
+            title="Variabilidad de la FC (HRV)"
+            subtitle="Media de 7 días frente a tu rango normal (60 días). Por debajo suele indicar fatiga o enfermedad."
+            spec={hrvSpec}
+            table={{
+              headers: ['Día', 'Noche', 'Media 7 d', 'Rango'],
+              rows: hrv.map((p) => [
+                shortDate(p.date),
+                int(p.daily),
+                int(p.avg7),
+                p.low !== undefined ? `${int(p.low)}–${int(p.high)}` : '—',
+              ]),
+            }}
+          />
+          <ChartCard
+            title="FC en reposo"
+            subtitle={`Frente a tu habitual (mediana de ${RHR_WINDOW} días). +${RHR_ALERT_BPM} ppm o más es una señal de alerta.`}
+            spec={rhrSpec}
+            table={{
+              headers: ['Día', 'ppm', 'Habitual', 'Diferencia'],
+              rows: rhr.map((p) => [
+                shortDate(p.date),
+                int(p.value),
+                int(p.base),
+                p.delta !== undefined ? `${p.delta > 0 ? '+' : ''}${Math.round(p.delta)}` : '—',
+              ]),
+            }}
+          />
+        </div>
+        <div class:list={[card, 'grid gap-6 p-4 lg:grid-cols-[14rem_1fr]']}>
+          <dl class="grid grid-cols-3 gap-4 lg:grid-cols-1">
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Deuda de sueño (7 noches)</dt>
+              <dd class="text-xl font-bold tabular-nums">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Media por noche</dt>
+              <dd class="text-xl font-bold tabular-nums">{hoursMinutes(avgSleep)}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-gray-500 dark:text-gray-400">Noches de 7 h o más</dt>
+              <dd class="text-xl font-bold tabular-nums">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
+            </div>
+          </dl>
+          <div class="min-w-0">
+            <h3 class="text-base font-semibold">Horas de sueño</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              La duración pesa más que las fases, que en reloj de muñeca son poco fiables. La línea es la necesidad que
+              calcula Garmin.
+            </p>
+            <div
+              class="mt-2 w-full min-w-0"
+              data-chart={JSON.stringify(sleepSpec)}
+              role="img"
+              aria-label="Horas de sueño"
+              style="min-height:260px"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- Vida sana ---------- */}
+      <section class="space-y-4" aria-labelledby="vida-sana">
+        <h2 id="vida-sana" class={sectionTitle}>
+          Vida sana · tendencia a largo plazo
+        </h2>
+        <div class:list={['grid gap-6', fitness?.fitnessAge !== undefined && lastVo2 && 'lg:grid-cols-2']}>
+          {fitness?.fitnessAge !== undefined && (
+            <section class:list={[card, 'p-5']}>
+              <h3 class="text-base font-semibold">Edad física</h3>
+              <p class="mt-2 flex items-baseline gap-2">
+                <span class="text-4xl font-bold tabular-nums">{km(fitness.fitnessAge)}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">años</span>
+              </p>
+              {ageDiff !== undefined && (
+                <p
+                  class:list={[
+                    'text-sm font-medium',
+                    ageDiff >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400',
+                  ]}
+                >
+                  {ageDiff >= 0 ? `${km(ageDiff)} años menos` : `${km(-ageDiff)} años más`} que tu edad ({age})
                 </p>
-                {vo2Change !== undefined && (
-                  <p class="text-sm text-gray-600 dark:text-gray-300">
-                    {Math.abs(vo2Change) < lastVo2.value * 0.05
-                      ? 'Estable en 90 días (los cambios menores del 5 % están dentro del margen del reloj).'
-                      : `${vo2Change > 0 ? '+' : '−'}${km(Math.abs(vo2Change))} en 90 días.`}
-                  </p>
-                )}
-                {vo2Pct ? (
-                  <div class="mt-4">
-                    <p class="text-sm">
-                      <span class="font-semibold">
-                        {vo2Pct.bound === 'above' ? 'Por encima del percentil 95' : vo2Pct.bound === 'below' ? 'Por debajo del percentil 5' : `Percentil ${vo2Pct.percentile}`}
+              )}
+              {fitness.achievable !== undefined && fitness.achievable < fitness.fitnessAge && (
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Podrías llegar a {km(fitness.achievable)} años con estas palancas:
+                </p>
+              )}
+              {fitness.levers.length > 0 && (
+                <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-700">
+                  {fitness.levers.map((l) => (
+                    <li class="flex items-baseline justify-between gap-3 py-2">
+                      <span>
+                        {l.label}
+                        {l.stale && <span class="ml-1 text-xs text-gray-400">(dato antiguo)</span>}
                       </span>
-                      <span class="text-gray-500 dark:text-gray-400"> · {sex === 'male' ? 'hombres' : 'mujeres'} de {vo2Pct.group} años</span>
-                    </p>
-                    <div class="relative mt-6 mb-5 h-2 rounded-full bg-gradient-to-r from-gray-200 to-blue-500 dark:from-gray-700 dark:to-blue-500" aria-hidden="true">
-                      {vo2Pct.marks.filter((m) => [25, 50, 75, 90].includes(m.p)).map((m) => (
-                        <span class="absolute top-full mt-1 -translate-x-1/2 text-[10px] text-gray-500 tabular-nums dark:text-gray-400" style={`left:${scalePos(m.value)}%`}>
+                      <span class="text-right tabular-nums">
+                        <span class="font-semibold">{l.value !== undefined ? leverFmt(l.value) : '—'}</span>
+                        {l.target !== undefined && (
+                          <span class="text-gray-500 dark:text-gray-400"> → {leverFmt(l.target)}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                Cálculo de Garmin a partir de VO2máx, actividad vigorosa, FC en reposo e IMC.
+              </p>
+            </section>
+          )}
+
+          {lastVo2 && (
+            <section class:list={[card, 'min-w-0 p-5']}>
+              <div class="flex items-baseline justify-between gap-3">
+                <h3 class="text-base font-semibold">VO2máx</h3>
+                <span class="text-xs text-gray-500 dark:text-gray-400">a {shortDate(lastVo2.date)}</span>
+              </div>
+              <p class="mt-2 flex items-baseline gap-2">
+                <span class="text-4xl font-bold tabular-nums">{km(lastVo2.value)}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">ml/kg/min</span>
+              </p>
+              {vo2Change !== undefined && (
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                  {Math.abs(vo2Change) < lastVo2.value * 0.05
+                    ? 'Estable en 90 días (los cambios menores del 5 % están dentro del margen del reloj).'
+                    : `${vo2Change > 0 ? '+' : '−'}${km(Math.abs(vo2Change))} en 90 días.`}
+                </p>
+              )}
+              {vo2Pct ? (
+                <div class="mt-4">
+                  <p class="text-sm">
+                    <span class="font-semibold">
+                      {vo2Pct.bound === 'above'
+                        ? 'Por encima del percentil 95'
+                        : vo2Pct.bound === 'below'
+                          ? 'Por debajo del percentil 5'
+                          : `Percentil ${vo2Pct.percentile}`}
+                    </span>
+                    <span class="text-gray-500 dark:text-gray-400">
+                      {' '}
+                      · {sex === 'male' ? 'hombres' : 'mujeres'} de {vo2Pct.group} años
+                    </span>
+                  </p>
+                  <div
+                    class="relative mt-6 mb-5 h-2 rounded-full bg-gradient-to-r from-gray-200 to-blue-500 dark:from-gray-700 dark:to-blue-500"
+                    aria-hidden="true"
+                  >
+                    {vo2Pct.marks
+                      .filter((m) => [25, 50, 75, 90].includes(m.p))
+                      .map((m) => (
+                        <span
+                          class="absolute top-full mt-1 -translate-x-1/2 text-[10px] text-gray-500 tabular-nums dark:text-gray-400"
+                          style={`left:${scalePos(m.value)}%`}
+                        >
                           P{m.p}
                         </span>
                       ))}
-                      <span
-                        class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-700 shadow dark:border-gray-800 dark:bg-blue-400"
-                        style={`left:${scalePos(lastVo2.value)}%`}
-                      />
-                    </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                      Referencia FRIEND (pruebas de esfuerzo en cinta, 2015). Orientativo: el VO2máx del reloj tiene un margen de ±5 %.
-                    </p>
+                    <span
+                      class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-700 shadow dark:border-gray-800 dark:bg-blue-400"
+                      style={`left:${scalePos(lastVo2.value)}%`}
+                    />
                   </div>
-                ) : (
-                  <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    {!sex
-                      ? 'Indica tu sexo en el menú de perfil para ver en qué percentil estás para tu edad.'
-                      : 'Falta tu edad (llega con la Edad física de Garmin) para calcular el percentil.'}
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Referencia FRIEND (pruebas de esfuerzo en cinta, 2015). Orientativo: el VO2máx del reloj tiene un
+                    margen de ±5 %.
                   </p>
-                )}
-                {vo2.length > 1 && <div class="mt-2 w-full min-w-0" data-chart={JSON.stringify(vo2Spec)} role="img" aria-label="Evolución del VO2máx" style="min-height:220px" />}
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Es el marcador con más evidencia: cada +3,5 ml/kg/min se asocia a un ~13 % menos de mortalidad.
+                </div>
+              ) : (
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  {!sex
+                    ? 'Indica tu sexo en el menú de perfil para ver en qué percentil estás para tu edad.'
+                    : 'Falta tu edad (llega con la Edad física de Garmin) para calcular el percentil.'}
                 </p>
-              </section>
-            )}
-          </div>
+              )}
+              {vo2.length > 1 && (
+                <div
+                  class="mt-2 w-full min-w-0"
+                  data-chart={JSON.stringify(vo2Spec)}
+                  role="img"
+                  aria-label="Evolución del VO2máx"
+                  style="min-height:220px"
+                />
+              )}
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Es el marcador con más evidencia: cada +3,5 ml/kg/min se asocia a un ~13 % menos de mortalidad.
+              </p>
+            </section>
+          )}
+        </div>
 
-          <div class="grid gap-6 lg:grid-cols-2">
-            <ChartCard
-              title="Minutos de intensidad por semana"
-              subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas`}
-              spec={intensitySpec}
-              table={{
-                headers: ['Semana', 'Moderados', 'Vigorosos ×2', 'Total'],
-                rows: intensity.map((w) => [shortDate(w.week), int(w.moderate), int(w.vigorousX2), int(w.total)]),
-              }}
-            />
-            <ChartCard
-              title="Pasos"
-              subtitle={`Media 7 días ${int(steps7)} · 30 días ${int(steps30)} · meta por edad ${int(target)} (el beneficio se estabiliza hacia ahí)`}
-              spec={stepsSpec}
-              table={{ headers: ['Día', 'Pasos'], rows: view.map((d) => [shortDate(d.date), int(d.steps)]) }}
-            />
-          </div>
-        </section>
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartCard
+            title="Minutos de intensidad por semana"
+            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas`}
+            spec={intensitySpec}
+            table={{
+              headers: ['Semana', 'Moderados', 'Vigorosos ×2', 'Total'],
+              rows: intensity.map((w) => [shortDate(w.week), int(w.moderate), int(w.vigorousX2), int(w.total)]),
+            }}
+          />
+          <ChartCard
+            title="Pasos"
+            subtitle={`Media 7 días ${int(steps7)} · 30 días ${int(steps30)} · meta por edad ${int(target)} (el beneficio se estabiliza hacia ahí)`}
+            spec={stepsSpec}
+            table={{ headers: ['Día', 'Pasos'], rows: view.map((d) => [shortDate(d.date), int(d.steps)]) }}
+          />
+        </div>
+      </section>
 
-        {/* ---------- Contexto ---------- */}
-        <section class="space-y-4" aria-labelledby="contexto">
-          <div>
-            <h2 id="contexto" class={sectionTitle}>Contexto</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Métricas de Garmin con evidencia limitada: útiles para contexto, no para decidir.
-            </p>
-          </div>
-          <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            <ChartCard title="Body Battery" subtitle="Rango diario mínimo–máximo (algoritmo propietario)" spec={bbSpec} />
-            <ChartCard
-              title="Activación fisiológica"
-              subtitle="El «estrés» de Garmin mide activación, no estrés psicológico. Lo más útil es el valor durante el sueño."
-              spec={stressSpec}
-            />
-            <ChartCard title="Fases del sueño" subtitle="Orientativas: el reloj de muñeca las estima con poca precisión" spec={phasesSpec} />
-          </div>
-        </section>
+      {/* ---------- Contexto ---------- */}
+      <section class="space-y-4" aria-labelledby="contexto">
+        <div>
+          <h2 id="contexto" class={sectionTitle}>
+            Contexto
+          </h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Métricas de Garmin con evidencia limitada: útiles para contexto, no para decidir.
+          </p>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <ChartCard title="Body Battery" subtitle="Rango diario mínimo–máximo (algoritmo propietario)" spec={bbSpec} />
+          <ChartCard
+            title="Activación fisiológica"
+            subtitle="El «estrés» de Garmin mide activación, no estrés psicológico. Lo más útil es el valor durante el sueño."
+            spec={stressSpec}
+          />
+          <ChartCard
+            title="Fases del sueño"
+            subtitle="Orientativas: el reloj de muñeca las estima con poca precisión"
+            spec={phasesSpec}
+          />
+        </div>
+      </section>
 
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Estimaciones de bienestar basadas en estudios observacionales y en los sensores del reloj. No es un diagnóstico médico.
-        </p>
-      </div>
-    )
-  }
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Estimaciones de bienestar basadas en estudios observacionales y en los sensores del reloj. No es un diagnóstico
+        médico.
+      </p>
+    </div>
+  )}
 </Base>
 
 <script>

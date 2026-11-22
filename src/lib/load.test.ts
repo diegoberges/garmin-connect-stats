@@ -25,7 +25,11 @@ describe('carga por sesión', () => {
     expect(sessionLoad(act('2026-11-02'))).toBe(120);
   });
   it('suma por día y rellena con ceros', () => {
-    const d = dailyLoad([act('2026-11-02', { trainingLoad: 50 }), act('2026-11-02', { trainingLoad: 30 })], '2026-11-01', '2026-11-03');
+    const d = dailyLoad(
+      [act('2026-11-02', { trainingLoad: 50 }), act('2026-11-02', { trainingLoad: 30 })],
+      '2026-11-01',
+      '2026-11-03',
+    );
     expect(d.map((x) => x.load)).toEqual([0, 80, 0]);
   });
 });
@@ -41,7 +45,12 @@ describe('pmc', () => {
   it('tras un bloque duro la forma es negativa y tras descansar positiva', () => {
     const block = [...Array(60).fill(60), ...Array(14).fill(150)].map((load, i) => ({ date: `d${i}`, load }));
     expect(pmc(block).at(-1)!.form).toBeLessThan(0);
-    const rest = [...block, ...Array(10).fill(0).map((load, i) => ({ date: `r${i}`, load }))];
+    const rest = [
+      ...block,
+      ...Array(10)
+        .fill(0)
+        .map((load, i) => ({ date: `r${i}`, load })),
+    ];
     expect(pmc(rest).at(-1)!.form).toBeGreaterThan(0);
   });
   it('no da forma en % hasta tener 42 días desde la primera carga', () => {

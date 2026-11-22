@@ -48,13 +48,18 @@ const LABELS: Record<string, string> = {
   vo2Max: 'VO2máx',
 };
 const humanize = (k: string) => {
-  const t = k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
+  const t = k
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
 
 export async function getFitnessAge(client: GarminClient): Promise<FitnessAge | undefined> {
   const f = pickFitnessAge(
-    await unwrap(client.GET('/fitnessage-service/fitnessage/v2/{calendarDate}', { params: { path: { calendarDate: isoDate() } } })),
+    await unwrap(
+      client.GET('/fitnessage-service/fitnessage/v2/{calendarDate}', { params: { path: { calendarDate: isoDate() } } }),
+    ),
   );
   if (!f || f.invalidReason) return undefined;
   const levers = Object.entries(f.components ?? {})

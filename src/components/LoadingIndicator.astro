@@ -33,11 +33,13 @@
   function messageFor(url: URL): string {
     const p = url.pathname;
     if (p.startsWith('/salud')) return 'Cargando tu salud de los últimos 90 días…';
-    if (p.startsWith('/rendimiento')) return 'Calculando tu carga, marcas y eficiencia (incluye tus últimas tiradas largas)…';
+    if (p.startsWith('/rendimiento'))
+      return 'Calculando tu carga, marcas y eficiencia (incluye tus últimas tiradas largas)…';
     if (/^\/actividades\/\d+/.test(p)) return 'Descargando la actividad y su recorrido…';
     if (p.startsWith('/actividades')) return 'Cargando tus actividades…';
     if (p.startsWith('/competiciones')) return 'Buscando tus competiciones en todo tu historial…';
-    if (p.startsWith('/comparador')) return 'Descargando tu historial completo de actividades… la primera vez puede tardar.';
+    if (p.startsWith('/comparador'))
+      return 'Descargando tu historial completo de actividades… la primera vez puede tardar.';
     return 'Cargando…';
   }
 

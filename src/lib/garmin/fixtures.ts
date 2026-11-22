@@ -54,19 +54,29 @@ export function createFixtureClient() {
         const base = JSON.parse(readFileSync('.data/raw/activities-30d.json', 'utf8')) as Record<string, unknown>[];
         const shift = (a: Record<string, unknown>, years: number, f: number) => {
           const st = String(a.startTimeLocal);
-          return { ...a, activityId: Number(a.activityId) + years, startTimeLocal: `${Number(st.slice(0, 4)) - years}${st.slice(4)}`, distance: Number(a.distance) * f };
+          return {
+            ...a,
+            activityId: Number(a.activityId) + years,
+            startTimeLocal: `${Number(st.slice(0, 4)) - years}${st.slice(4)}`,
+            distance: Number(a.distance) * f,
+          };
         };
         const history = [...base, ...base.map((a) => shift(a, 1, 0.85)), ...base.map((a) => shift(a, 2, 0.7))];
         const start = Number(searchParams.get('start') ?? 0);
         const limit = Number(searchParams.get('limit') ?? 100);
-        return new Response(JSON.stringify(history.slice(start, start + limit)), { headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify(history.slice(start, start + limit)), {
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
       // Cualquier descarga de actividad sirve el mismo FIT capturado
       if (/\/download-service\/files\/activity\//.test(pathname)) {
         if (!existsSync('.data/raw/activity-fit.zip')) return new Response(null, { status: 404 });
-        return new Response(readFileSync('.data/raw/activity-fit.zip'), { headers: { 'Content-Type': 'application/x-zip-compressed' } });
+        return new Response(readFileSync('.data/raw/activity-fit.zip'), {
+          headers: { 'Content-Type': 'application/x-zip-compressed' },
+        });
       }
-      if (!file || !existsSync(`.data/raw/${file}.json`)) return new Response('"sin captura"', { status: 404, headers: { 'Content-Type': 'application/json' } });
+      if (!file || !existsSync(`.data/raw/${file}.json`))
+        return new Response('"sin captura"', { status: 404, headers: { 'Content-Type': 'application/json' } });
       const body = readFileSync(`.data/raw/${file}.json`, 'utf8');
       const json = (v: unknown) => new Response(JSON.stringify(v), { headers: { 'Content-Type': 'application/json' } });
       // Series diarias: las capturas tienen 7 días; se repiten desplazando la fecha para cubrir el rango pedido

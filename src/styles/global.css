@@ -35,7 +35,6 @@
   --viz-seq-light: #1c5cab;
 }
 
-
 /* Modo oscuro en zinc (gris sin el tinte azul de `gray`): todas las clases gray-* pasan a zinc.
    El modo claro mantiene la paleta gray original. */
 .dark {

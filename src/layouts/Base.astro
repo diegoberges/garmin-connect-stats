@@ -30,7 +30,8 @@ const nav: NavItem[] = [
   },
 ];
 const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
-const itemActive = (item: NavItem) => (item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href));
+const itemActive = (item: NavItem) =>
+  item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href);
 const linkClass = (active: boolean) => [
   'rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap',
   active
@@ -43,9 +44,9 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
 
 <html lang="es">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <title>{title} · Garmin Stats</title>
     <script is:inline>
       // Aplica el tema antes de pintar para evitar parpadeo
@@ -61,28 +62,36 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
         <ProfileMenu />
         <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
-          {
-            nav.map((item) =>
-              item.children ? (
-                <button
-                  type="button"
-                  data-dropdown-toggle={menuId(item)}
-                  data-dropdown-placement="bottom-end"
-                  class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
-                  aria-haspopup="menu"
-                >
-                  {item.children.find((c) => isActive(c.href))?.label ?? item.label}
-                  <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4" />
-                  </svg>
-                </button>
-              ) : (
-                <a href={item.href} class:list={linkClass(isActive(item.href))} aria-current={isActive(item.href) ? 'page' : undefined}>
-                  {item.label}
-                </a>
-              ),
-            )
-          }
+          {nav.map((item) =>
+            item.children ? (
+              <button
+                type="button"
+                data-dropdown-toggle={menuId(item)}
+                data-dropdown-placement="bottom-end"
+                class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
+                aria-haspopup="menu"
+              >
+                {item.children.find((c) => isActive(c.href))?.label ?? item.label}
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+                  <path
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="m1 1 4 4 4-4"
+                  />
+                </svg>
+              </button>
+            ) : (
+              <a
+                href={item.href}
+                class:list={linkClass(isActive(item.href))}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            ),
+          )}
           <button
             id="theme-toggle"
             type="button"
@@ -93,32 +102,37 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
               <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
             </svg>
             <svg class="hidden h-5 w-5 dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+              <path
+                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+              ></path>
             </svg>
           </button>
         </div>
       </div>
-      {
-        dropdowns.map((item) => (
-          <div
-            id={menuId(item)}
-            class="z-50 hidden w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-            role="menu"
-          >
-            {item.children!.map((c) => (
-              <a
-                href={c.href}
-                role="menuitem"
-                aria-current={isActive(c.href) ? 'page' : undefined}
-                class:list={['block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700', isActive(c.href) && 'bg-blue-50 dark:bg-gray-700']}
-              >
-                <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-blue-700 dark:text-white']}>{c.label}</span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">{c.description}</span>
-              </a>
-            ))}
-          </div>
-        ))
-      }
+      {dropdowns.map((item) => (
+        <div
+          id={menuId(item)}
+          class="z-50 hidden w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          role="menu"
+        >
+          {item.children!.map((c) => (
+            <a
+              href={c.href}
+              role="menuitem"
+              aria-current={isActive(c.href) ? 'page' : undefined}
+              class:list={[
+                'block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
+                isActive(c.href) && 'bg-blue-50 dark:bg-gray-700',
+              ]}
+            >
+              <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-blue-700 dark:text-white']}>
+                {c.label}
+              </span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400">{c.description}</span>
+            </a>
+          ))}
+        </div>
+      ))}
     </nav>
 
     <main class="mx-auto max-w-6xl px-4 py-6">
