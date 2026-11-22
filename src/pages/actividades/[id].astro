@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import ConnectPrompt from '../../components/ConnectPrompt.astro';
 import ErrorState from '../../components/ErrorState.astro';
 import RouteMap from '../../components/RouteMap.astro';
+import TrophyTip from '../../components/TrophyTip.astro';
 import {
   clientFor,
   getActivity,
@@ -207,7 +208,10 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
             <span class="rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
               {activityLabel(run.typeKey)}
             </span>
-            <h1 class="mt-2 text-2xl font-bold">{run.name}</h1>
+            <h1 class="mt-2 flex items-center gap-2 text-2xl font-bold">
+              {run.name}
+              {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
+            </h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">
               {dayLabel(run.date)} · {run.startLocal.slice(11, 16)}
             </p>

@@ -55,6 +55,8 @@ export interface Activity {
   calories?: number;
   /** mejor tiempo (s) en cada distancia estándar dentro de la actividad, según Garmin */
   bestEfforts: Partial<Record<BestEffortDistance, number>>;
+  /** Garmin marcó la actividad como récord personal (no dice cuál) */
+  isPr: boolean;
 }
 
 export const BEST_EFFORT_DISTANCES = [1000, 1609, 5000, 10000, 21098, 42195] as const;

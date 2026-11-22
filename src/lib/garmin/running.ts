@@ -31,6 +31,7 @@ export function mapActivity(a: ApiActivity): Activity {
       (z) => num(z) ?? 0,
     ),
     calories: num(a.calories),
+    isPr: a.pr === true,
     bestEfforts: Object.fromEntries(
       BEST_EFFORT_DISTANCES.map((m) => [m, num((a as Record<string, unknown>)[`fastestSplit_${m}`])]).filter(([, s]) => s !== undefined),
     ),
@@ -95,6 +96,8 @@ export async function getActivity(
   if (!activity) return undefined;
   return {
     ...activity,
+    // El detalle trae su propia marca; vale cualquiera de las dos
+    isPr: activity.isPr || detail.metadataDTO?.personalRecord === true,
     extra: {
       elevationLossM: num(s.elevationLoss),
       minElevationM: num(s.minElevation),
