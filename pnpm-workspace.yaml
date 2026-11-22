@@ -1,0 +1,3 @@
+# Configuración de pnpm
+# Toda dependencia nueva se guarda con versión exacta (sin ^ ni ~)
+saveExact: true
