@@ -7,8 +7,8 @@ Panel personal hecho con Astro (SSR, Node), Tailwind v4, Flowbite y ApexCharts, 
 ## Puesta en marcha
 
 ```sh
-npm install
-npm run dev        # http://localhost:4321
+pnpm install
+pnpm dev           # http://localhost:4321
 ```
 
 1. Crea tu Personal API Key en [Garmin Connect → Personal API Key](https://connect.garmin.com/app/settings/personalApiToken)
@@ -32,11 +32,11 @@ Notas: las cachés de token y respuestas son en memoria por instancia (se pierde
 impacto funcional). `/dev/capture` y el modo `GARMIN_FIXTURES` no existen en producción.
 
 ## Scripts
-- `npm run dev` — servidor de desarrollo
-- `npm run build` / `npm run preview` — build de producción
-- `npm run check` — comprobación de tipos
-- `npm test` — tests (Vitest)
-- `npm run gen:api` — regenera `src/lib/garmin/schema.d.ts` desde `docs/garmin-personal-api.json`
+- `pnpm dev` — servidor de desarrollo
+- `pnpm build` / `pnpm preview` — build de producción
+- `pnpm check` — comprobación de tipos
+- `pnpm test` — tests (Vitest)
+- `pnpm gen:api` — regenera `src/lib/garmin/schema.d.ts` desde `docs/garmin-personal-api.json`
 
 ## API de Garmin
 La spec OpenAPI (`docs/garmin-personal-api.json`, extraída de las
@@ -47,4 +47,4 @@ Las desviaciones detectadas frente a respuestas reales están documentadas en `s
 ### Utilidades de desarrollo
 - `/dev/capture` (solo dev): guarda respuestas reales en `.data/raw/` (ignorado por git) para contrastarlas con
   la spec. Los tests de mapeadores las usan si existen.
-- `GARMIN_FIXTURES=1 npm run dev`: sirve esas capturas en lugar de llamar a Garmin, para revisar la UI sin key.
+- `GARMIN_FIXTURES=1 pnpm dev`: sirve esas capturas en lugar de llamar a Garmin, para revisar la UI sin key.
