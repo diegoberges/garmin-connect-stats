@@ -11,6 +11,8 @@ export interface UserSettings {
   garminApiKey?: string;
   /** Para comparar el VO2máx con tablas de referencia por sexo y edad. */
   sex?: 'male' | 'female';
+  /** Altura en cm, para el IMC (la API de Garmin no la da). */
+  heightCm?: number;
   /** Umbrales propios de la alerta de fatiga por sueño (los que falten, por defecto). */
   alert?: Partial<AlertThresholds>;
 }

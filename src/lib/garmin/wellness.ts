@@ -12,27 +12,36 @@ async function inChunks<T>(from: string, to: string, fn: (s: string, e: string) 
   return parts.flat();
 }
 
+const fetchSummaries = (client: GarminClient, from: string, to: string) =>
+  inChunks(from, to, async (startDate, endDate) => {
+    const res = (await unwrap(
+      client.GET('/usersummary-service/v2/dailysummaries', { params: { query: { startDate, endDate } } }),
+    )) as ApiDailySummaries;
+    return res?.data ?? [];
+  });
+
+const fetchSleeps = (client: GarminClient, from: string, to: string) =>
+  inChunks(from, to, async (startDate, endDate) => {
+    const res = await unwrap(
+      client.GET('/sleep-service/sleep/dailySleepSummariesByDate', { params: { query: { startDate, endDate } } }),
+    );
+    return (Array.isArray(res) ? res : []) as ApiSleep[];
+  });
+
+const fetchHrvs = (client: GarminClient, from: string, to: string) =>
+  inChunks(from, to, async (fromDate, toDate) => {
+    const res = (await unwrap(
+      client.GET('/hrv-service/hrv/daily/{fromDate}/{toDate}', { params: { path: { fromDate, toDate } } }),
+    )) as ApiHrv;
+    return res?.hrvSummaries ?? [];
+  });
+
 /** Salud diaria combinando resúmenes (pasos, FC reposo, estrés, Body Battery), sueño y HRV. */
 export async function getDailyHealth(client: GarminClient, from: string, to: string): Promise<DayHealth[]> {
   const [summaries, sleeps, hrvs] = await Promise.all([
-    inChunks(from, to, async (startDate, endDate) => {
-      const res = (await unwrap(
-        client.GET('/usersummary-service/v2/dailysummaries', { params: { query: { startDate, endDate } } }),
-      )) as ApiDailySummaries;
-      return res?.data ?? [];
-    }),
-    inChunks(from, to, async (startDate, endDate) => {
-      const res = await unwrap(
-        client.GET('/sleep-service/sleep/dailySleepSummariesByDate', { params: { query: { startDate, endDate } } }),
-      );
-      return (Array.isArray(res) ? res : []) as ApiSleep[];
-    }),
-    inChunks(from, to, async (fromDate, toDate) => {
-      const res = (await unwrap(
-        client.GET('/hrv-service/hrv/daily/{fromDate}/{toDate}', { params: { path: { fromDate, toDate } } }),
-      )) as ApiHrv;
-      return res?.hrvSummaries ?? [];
-    }),
+    fetchSummaries(client, from, to),
+    fetchSleeps(client, from, to),
+    fetchHrvs(client, from, to),
   ]);
 
   const byDate = new Map<string, DayHealth>(dateRange(from, to).map((d) => [d, { date: d }]));
@@ -77,6 +86,28 @@ export async function getDailyHealth(client: GarminClient, from: string, to: str
   }
 
   return [...byDate.values()];
+}
+
+const HISTORY_TTL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * FC en reposo y VFC de un rango largo (12 meses): solo los resúmenes y la VFC, sin el sueño, para pedir
+ * menos. Se guarda 6 h: son tendencias lentas.
+ */
+export function getHeartHistory(client: GarminClient, from: string, to: string): Promise<DayHealth[]> {
+  return client.memo(`heart:${from}:${to}`, HISTORY_TTL_MS, async () => {
+    const [summaries, hrvs] = await Promise.all([fetchSummaries(client, from, to), fetchHrvs(client, from, to)]);
+    const byDate = new Map<string, DayHealth>(dateRange(from, to).map((d) => [d, { date: d }]));
+    for (const s of summaries) {
+      const day = s.calendarDate && byDate.get(s.calendarDate);
+      if (day) day.restingHr = num(s.heartRate?.restingValue);
+    }
+    for (const h of hrvs) {
+      const day = h.calendarDate && byDate.get(h.calendarDate);
+      if (day) day.hrvLastNight = num(h.lastNightAvg);
+    }
+    return [...byDate.values()];
+  });
 }
 
 /** Peso diario (kg). Garmin lo da en gramos; si llega un valor que ya parece kg, se respeta. */
