@@ -97,6 +97,16 @@
   }
 }
 
+/* Anclas (índice de página, "Ver todo"): que la barra fija no tape el título. En móvil la barra tiene dos filas */
+html {
+  scroll-padding-top: 7.5rem;
+}
+@media (width >= 40rem) {
+  html {
+    scroll-padding-top: 4.5rem;
+  }
+}
+
 /* Transición suave entre páginas (fundido); sin ella, donde no hay soporte, se navega igual */
 @view-transition {
   navigation: auto;
@@ -225,6 +235,12 @@ body::before {
   z-index: 60;
   pointer-events: none;
   background: repeating-linear-gradient(to bottom, oklch(0 0 0 / 12%) 0 1px, transparent 1px 3px);
+}
+/* Sin líneas de barrido si el sistema pide más contraste, ni al imprimir: oscurecen un poco el texto */
+@media (prefers-contrast: more), print {
+  .dark body::after {
+    display: none;
+  }
 }
 
 /* Tipografía por papel (ver DESIGN.md › Typography). Cada texto usa la clase de su papel, no un tamaño

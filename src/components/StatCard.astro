@@ -18,12 +18,17 @@ const flat = hasDelta && Math.abs(delta!) < 1;
 const good = hasDelta && !flat && delta! > 0 === higherIsBetter;
 const arrow = !hasDelta || flat ? '→' : delta! > 0 ? '↑' : '↓';
 const deltaText = hasDelta ? `${delta! > 0 ? '+' : ''}${Math.round(delta!)} %` : '';
+/** Unidades dentro del valor ("68 h 45 min"): van pequeñas, como `unit`, para que la cifra quepa en una línea. */
+const parts = value.split(/\s*([A-Za-zÀ-ÿ]+)\s*/).map((text, i) => ({ text, isUnit: i % 2 === 1 }));
+const unitClass = 'ml-1 mr-1.5 text-base font-normal text-muted-foreground last:mr-0';
 ---
 
 <div class="border border-border bg-card p-5 text-card-foreground">
   <p class="type-label">{label}</p>
   <p class="mt-1 type-kpi">
-    {value}{unit && <span class="ml-1 text-base font-normal text-muted-foreground">{unit}</span>}
+    {parts.map((p) => (p.isUnit ? <span class={unitClass}>{p.text}</span> : p.text))}{unit && (
+      <span class="ml-1 text-base font-normal text-muted-foreground">{unit}</span>
+    )}
   </p>
   {hasDelta && (
     <p class="mt-1 text-xs">

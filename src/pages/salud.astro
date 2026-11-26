@@ -5,9 +5,11 @@
  */
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
+import PageIndex from '../components/PageIndex.astro';
 import ErrorState from '../components/ErrorState.astro';
 import ChartCard from '../components/ChartCard.astro';
 import Collapsible from '../components/Collapsible.astro';
+import DataTable from '../components/DataTable.astro';
 import {
   clientFor,
   getActivities,
@@ -403,7 +405,18 @@ const TONE = {
 
 <Base title="Salud">
   <h1 class="type-display">Salud</h1>
-  <p class="mb-6 text-sm text-muted-foreground">{dayLabel(today)}</p>
+  <p class:list={['text-sm text-muted-foreground', client && !error ? 'mb-2' : 'mb-6']}>{dayLabel(today)}</p>
+  {client && !error && (
+    <PageIndex
+      class="mb-4"
+      items={[
+        { href: '#hoy', label: 'Hoy' },
+        { href: '#recuperacion', label: 'Recuperación' },
+        { href: '#vida-sana', label: 'Vida sana' },
+        { href: '#contexto', label: 'Contexto' },
+      ]}
+    />
+  )}
 
   {!client ? (
     <ConnectPrompt />
@@ -658,6 +671,7 @@ const TONE = {
                 aria-label={`Horario de sueño de las últimas ${regularity.nights.length} noches`}
                 style="min-height:240px"
               />
+              <DataTable title="Horario de sueño" spec={regSpec} categoryLabel="Noche" />
             </div>
           </section>
         )}
@@ -774,13 +788,14 @@ const TONE = {
                 </p>
               )}
               {vo2.length > 1 && (
-                <div
-                  class="mt-2 w-full min-w-0"
-                  data-chart={JSON.stringify(vo2Spec)}
-                  role="img"
-                  aria-label="Evolución del VO2máx"
-                  style="min-height:220px"
-                />
+                  <div
+                    class="mt-2 w-full min-w-0"
+                    data-chart={JSON.stringify(vo2Spec)}
+                    role="img"
+                    aria-label="Evolución del VO2máx"
+                    style="min-height:220px"
+                  />
+                  <DataTable title="VO2máx" spec={vo2Spec} categoryLabel="Fecha" />
               )}
               <p class="mt-2 text-xs text-muted-foreground">
                 Es el marcador con más evidencia: cada +3,5 ml/kg/min se asocia a un ~13 % menos de mortalidad.

@@ -6,10 +6,12 @@
  */
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
+import PageIndex from '../components/PageIndex.astro';
 import ErrorState from '../components/ErrorState.astro';
 import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
 import Collapsible from '../components/Collapsible.astro';
+import DataTable from '../components/DataTable.astro';
 import RangeSelector from '../components/RangeSelector.astro';
 import {
   clientFor,
@@ -185,6 +187,15 @@ const loadWarnings = [
 const volumes = periodVolumes(all, today);
 
 const pmcCats = visible.map((p) => shortDate(p.date));
+const pmcTable = {
+  headers: ['Día', 'Forma física', 'Fatiga', 'Forma'],
+  rows: visible.map((p) => [
+    shortDate(p.date),
+    int(p.fitness),
+    int(p.fatigue),
+    p.formPct === undefined ? '—' : `${p.formPct > 0 ? '+' : ''}${Math.round(p.formPct)} %`,
+  ]),
+};
 const fitnessSpec: ChartSpec = {
   type: 'line',
   categories: pmcCats,
@@ -468,10 +479,23 @@ const ZONE_TONE: Record<FormZone, string> = {
 ---
 
 <Base title="Rendimiento">
-  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div class:list={['flex flex-wrap items-center justify-between gap-3', client && !error ? 'mb-2' : 'mb-6']}>
     <h1 class="type-display">Rendimiento</h1>
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
+  {client && !error && (
+    <PageIndex
+      class="mb-4"
+      items={[
+        { href: '#estado', label: 'Estado de forma' },
+        { href: '#constancia', label: 'Constancia' },
+        { href: '#carga', label: 'Carga' },
+        { href: '#volumen', label: 'Volumen' },
+        { href: '#carrera', label: 'Carrera' },
+        { href: '#eficiencia', label: 'Eficiencia' },
+      ]}
+    />
+  )}
 
   {!client ? (
     <ConnectPrompt />
@@ -732,7 +756,8 @@ const ZONE_TONE: Record<FormZone, string> = {
               />
             </>
           )}
-          <details class="mt-2 text-sm">
+          <DataTable title="Forma física, fatiga y forma" table={pmcTable} />
+          <details class="mt-1 text-sm">
             <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground">
               Cómo leer las zonas
             </summary>
@@ -762,6 +787,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                 aria-label="Ratio agudo:crónico"
                 style="min-height:220px"
               />
+              <DataTable title="Ratio agudo:crónico" spec={acwrSpec} categoryLabel="Día" />
             </Collapsible>
           )}
         </section>
@@ -819,7 +845,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                           <th scope="col" class="py-1 pr-3 text-left font-medium">
                             Deporte
                           </th>
-                          <th scope="col" class="py-1 pr-3 text-right font-medium">
+                          <th scope="col" class="hidden py-1 pr-3 text-right font-medium sm:table-cell">
                             Sesiones
                           </th>
                           <th scope="col" class="py-1 pr-3 text-right font-medium">
@@ -842,17 +868,23 @@ const ZONE_TONE: Record<FormZone, string> = {
                               <th scope="row" class="py-2 pr-3 text-left font-medium">
                                 {label}
                               </th>
-                              <td class="py-2 pr-3 text-right whitespace-nowrap">
+                              <td class="hidden py-2 pr-3 text-right whitespace-nowrap sm:table-cell">
                                 {c.sessions}
-                                <span class="text-xs text-muted-foreground">{vs(c.sessions, prevV.sessions)}</span>
+                                <span class="block text-xs text-muted-foreground sm:inline">
+                                  {vs(c.sessions, prevV.sessions)}
+                                </span>
                               </td>
                               <td class="py-2 pr-3 text-right whitespace-nowrap">
                                 {c.km > 0 ? km(c.km) : '—'}
-                                <span class="text-xs text-muted-foreground">{c.km > 0 ? vs(c.km, prevV.km) : ''}</span>
+                                <span class="block text-xs text-muted-foreground sm:inline">
+                                  {c.km > 0 ? vs(c.km, prevV.km) : ''}
+                                </span>
                               </td>
                               <td class="py-2 pr-3 text-right whitespace-nowrap">
                                 {hoursMinutes(c.timeS)}
-                                <span class="text-xs text-muted-foreground">{vs(c.timeS, prevV.timeS)}</span>
+                                <span class="block text-xs text-muted-foreground sm:inline">
+                                  {vs(c.timeS, prevV.timeS)}
+                                </span>
                               </td>
                               <td class="hidden py-2 text-right whitespace-nowrap sm:table-cell">
                                 {c.elevationM > 0 ? `${int(c.elevationM)} m` : '—'}
@@ -974,7 +1006,8 @@ const ZONE_TONE: Record<FormZone, string> = {
                       Distancia
                     </th>
                     <th scope="col" class="py-1 pr-3 text-right font-medium">
-                      Últimos 12 meses
+                      <span class="sm:hidden">12 meses</span>
+                      <span class="hidden sm:inline">Últimos 12 meses</span>
                     </th>
                     <th scope="col" class="py-1 pr-3 text-right font-medium">
                       Histórica
@@ -993,10 +1026,11 @@ const ZONE_TONE: Record<FormZone, string> = {
                           <>
                             <span class="font-semibold">{duration(period.timeS)}</span>
                             <span class="block text-xs text-muted-foreground">
-                              {pace(period.timeS / (distance / 1000))} /km ·{' '}
+                              {pace(period.timeS / (distance / 1000))} /km
+                              <span class="hidden sm:inline"> · </span>
                               <a
                                 href={`/actividades/${period.activityId}`}
-                                class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+                                class="block text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground sm:inline"
                                 title={period.activityName}
                               >
                                 {shortDate(period.date)}
@@ -1012,10 +1046,11 @@ const ZONE_TONE: Record<FormZone, string> = {
                           <>
                             <span class="font-semibold">{duration(best.timeS)}</span>
                             <span class="block text-xs text-muted-foreground">
-                              {pace(best.timeS / (distance / 1000))} /km ·{' '}
+                              {pace(best.timeS / (distance / 1000))} /km
+                              <span class="hidden sm:inline"> · </span>
                               <a
                                 href={`/actividades/${best.activityId}`}
-                                class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+                                class="block text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground sm:inline"
                                 title={best.activityName}
                               >
                                 {yearDate(best.date)}
@@ -1249,6 +1284,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                       aria-label="Curva de marcas"
                       style="min-height:240px"
                     />
+                    <DataTable title="Curva de marcas" spec={curveSpec} categoryLabel="Distancia" />
                   </Collapsible>
                 )}
               </>
@@ -1292,6 +1328,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                   aria-label="Pronóstico de 10K y media maratón"
                   style="min-height:240px"
                 />
+                <DataTable title="Pronóstico de 10K y media maratón" spec={predSpec} categoryLabel="Semana" />
               </Collapsible>
             )}
           </ChartCard>

@@ -73,7 +73,7 @@ const kindItems = [
           </caption>
           <thead class="border-b border-border text-xs text-muted-foreground">
             <tr>
-              <th scope="col" class="px-3 py-3 sm:px-4">
+              <th scope="col" class="hidden px-3 py-3 sm:table-cell sm:px-4">
                 Fecha
               </th>
               <th scope="col" class="px-3 py-3 sm:px-4">
@@ -90,7 +90,7 @@ const kindItems = [
           <tbody class="tabular-nums">
             {pageItems.map((i) => (
               <tr class="border-t border-border">
-                <td class="px-3 py-2.5 whitespace-nowrap sm:px-4">
+                <td class="hidden px-3 py-2.5 whitespace-nowrap sm:table-cell sm:px-4">
                   {shortDate(i.activity.date)} {i.activity.date.slice(0, 4)}
                 </td>
                 <td class="px-3 py-2.5 sm:px-4">
@@ -98,6 +98,9 @@ const kindItems = [
                     {i.activity.name}
                   </a>
                   <span class="block text-xs text-muted-foreground">
+                    <span class="sm:hidden">
+                      {shortDate(i.activity.date)} {i.activity.date.slice(0, 4)} ·{' '}
+                    </span>
                     {activityLabel(i.activity.typeKey)}
                     {i.activity.distanceKm > 0 ? ` · ${km(i.activity.distanceKm, 2)} km` : ''}
                   </span>
