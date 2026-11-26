@@ -146,7 +146,8 @@ function fillOf(spec: ChartSpec, band: Band | undefined): Options['fill'] {
 
 function xAxisOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['xaxis'] {
   const muted = env.css('--viz-muted');
-  const crowded = isDense(spec) || env.viewportWidth < 640;
+  // Muchas categorías, pantalla estrecha o gráfica a media anchura (~70 px por etiqueta de fecha)
+  const crowded = isDense(spec) || env.viewportWidth < 640 || spec.categories.length * 70 > env.width;
   return {
     categories: spec.type === 'rangeBar' || band ? undefined : spec.categories,
     type: 'category',
@@ -221,7 +222,8 @@ function annotationsOf(spec: ChartSpec, env: ChartEnv): Options['annotations'] {
         label: {
           text: spec.reference.label,
           borderWidth: 0,
-          style: { color: env.css('--viz-text'), background: 'transparent' },
+          // Sobre el fondo de la tarjeta: legible aunque caiga encima de las barras
+          style: { color: env.css('--viz-text'), background: env.css('--viz-surface') },
         },
       },
     ],
