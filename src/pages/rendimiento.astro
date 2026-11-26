@@ -47,6 +47,7 @@ import {
   rampRate,
   weeklyChange,
   weeklyLoad,
+  type FormZone,
   type HrParams,
 } from '../lib/load';
 import { LOAD_SCOPES, SPORT_GROUPS, inLoadScope, parseLoadScope, periodVolumes } from '../lib/volume';
@@ -454,11 +455,12 @@ const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.mi
 
 const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
 const sectionTitle = 'text-base font-semibold tracking-tight';
-const ZONE_TONE: Record<string, string> = {
-  transition: 'border-l-muted-foreground',
+// Mismo código de color que la tarjeta "Hoy" de Salud: verde bien, ámbar atención, rojo mal
+const ZONE_TONE: Record<FormZone, string> = {
   fresh: 'border-l-green-500',
-  neutral: 'border-l-blue-500',
-  optimal: 'border-l-blue-700',
+  neutral: 'border-l-green-500',
+  optimal: 'border-l-green-500',
+  transition: 'border-l-amber-400',
   risk: 'border-l-red-500',
 };
 ---
