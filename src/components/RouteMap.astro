@@ -12,10 +12,10 @@ interface Props {
 const { route, style = 'street' } = Astro.props;
 ---
 
-<section class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+<section class="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
   <div class="flex items-baseline justify-between gap-3 px-4 pt-4 pb-3">
     <h2 class="text-base font-semibold">Recorrido</h2>
-    <span class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+    <span class="flex items-center gap-3 text-xs text-muted-foreground">
       <span class="flex items-center gap-1"
         ><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500"></span>Salida</span
       >

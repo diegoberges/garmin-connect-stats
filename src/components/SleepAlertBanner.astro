@@ -63,10 +63,10 @@ function signed(v: number): string {
     <section
       aria-labelledby="alerta-sueno-titulo"
       class:list={[
-        'rounded-lg border border-l-4 bg-white p-4 dark:bg-gray-800',
+        'rounded-xl border border-l-4 p-4 bg-card text-card-foreground shadow-sm',
         high
-          ? 'border-gray-200 border-l-red-600 dark:border-gray-700 dark:border-l-red-500'
-          : 'border-gray-200 border-l-amber-500 dark:border-gray-700 dark:border-l-amber-400',
+          ? 'border-l-red-600 dark:border-l-red-500 border-border'
+          : 'border-l-amber-500 dark:border-l-amber-400 border-border',
       ]}
     >
       <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -84,7 +84,7 @@ function signed(v: number): string {
           </span>
         </h2>
         {alert.date !== today && (
-          <span class="text-xs text-gray-500 dark:text-gray-400">
+          <span class="text-xs text-muted-foreground">
             Noche del {dayLabel(alert.date)} (la de hoy aún no se ha sincronizado)
           </span>
         )}
@@ -97,42 +97,42 @@ function signed(v: number): string {
       </p>
       <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
         <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Anoche</dt>
+          <dt class="text-xs text-muted-foreground">Anoche</dt>
           <dd class="font-semibold tabular-nums">{hoursMinutes(alert.lastNightS)}</dd>
           {(alert.deepS !== undefined || alert.remS !== undefined) && (
-            <dd class="text-xs text-gray-500 tabular-nums dark:text-gray-400">
+            <dd class="text-xs tabular-nums text-muted-foreground">
               profundo {hoursMinutes(alert.deepS)} · REM {hoursMinutes(alert.remS)}
             </dd>
           )}
         </div>
         <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Noches cortas (7 días)</dt>
+          <dt class="text-xs text-muted-foreground">Noches cortas (7 días)</dt>
           <dd class="font-semibold tabular-nums">
             {alert.shortNights} de {alert.nightsWithData}
           </dd>
-          <dd class="text-xs text-gray-500 dark:text-gray-400">
+          <dd class="text-xs text-muted-foreground">
             menos de {hours(t.shortNightH)} h{alert.nightsWithData < 7 && ` · ${7 - alert.nightsWithData} sin dato`}
           </dd>
         </div>
         <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Deuda de sueño (7 días)</dt>
+          <dt class="text-xs text-muted-foreground">Deuda de sueño (7 días)</dt>
           <dd class="font-semibold tabular-nums">{hoursMinutes(alert.debtS)}</dd>
-          <dd class="text-xs text-gray-500 dark:text-gray-400">
+          <dd class="text-xs text-muted-foreground">
             {t.sleepTargetH !== undefined ? `objetivo ${hours(t.sleepTargetH)} h` : 'frente a la necesidad de Garmin'}
           </dd>
         </div>
         <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Ratio agudo:crónico</dt>
+          <dt class="text-xs text-muted-foreground">Ratio agudo:crónico</dt>
           <dd class="font-semibold tabular-nums">{ratio === undefined ? '—' : km(ratio, 2)}</dd>
-          {calibrating && <dd class="text-xs text-gray-500 dark:text-gray-400">Calibrando (42 días)</dd>}
-          {ratio !== undefined && <dd class="text-xs text-gray-500 dark:text-gray-400">{acwrZone(ratio).label}</dd>}
+          {calibrating && <dd class="text-xs text-muted-foreground">Calibrando (42 días)</dd>}
+          {ratio !== undefined && <dd class="text-xs text-muted-foreground">{acwrZone(ratio).label}</dd>}
         </div>
         <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Forma (TSB)</dt>
+          <dt class="text-xs text-muted-foreground">Forma (TSB)</dt>
           <dd class="font-semibold tabular-nums">{form === undefined ? '—' : signed(form)}</dd>
         </div>
         <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">VFC y FC en reposo</dt>
+          <dt class="text-xs text-muted-foreground">VFC y FC en reposo</dt>
           {alert.hrv || alert.rhr ? (
             <>
               {alert.hrv && (
@@ -151,9 +151,12 @@ function signed(v: number): string {
           )}
         </div>
       </dl>
-      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+      <p class="mt-3 text-xs text-muted-foreground">
         Regla orientativa con umbrales configurables en tu perfil ·{' '}
-        <a href="/salud#alertas" class="text-blue-700 underline dark:text-blue-400">
+        <a
+          href="/salud#alertas"
+          class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+        >
           Ver el histórico
         </a>
       </p>

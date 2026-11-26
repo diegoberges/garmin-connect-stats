@@ -381,12 +381,16 @@ const routeSpec: ChartSpec | undefined =
 /** Intensidad creciente de un mismo color para las zonas (escala ordinal) */
 const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
 
-const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
-const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400';
+const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
+const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground';
 ---
 
 <Base title={run?.name ?? 'Actividad'}>
-  <a href="/actividades" class="text-sm text-blue-700 hover:underline dark:text-blue-400">← Actividades</a>
+  <a
+    href="/actividades"
+    class="text-sm text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+    >← Actividades</a
+  >
   {!client ? (
     <ConnectPrompt />
   ) : error ? (
@@ -395,14 +399,14 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
     run && (
       <div class="mt-3 space-y-6">
         <header>
-          <span class="rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+          <span class="rounded-sm px-2 py-0.5 text-xs font-medium text-foreground/80 bg-muted">
             {activityLabel(run.typeKey)}
           </span>
-          <h1 class="mt-2 flex items-center gap-2 text-2xl font-bold">
+          <h1 class="mt-2 flex items-center gap-2 text-3xl font-semibold tracking-tight">
             {run.name}
             {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
           </h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-muted-foreground">
             {dayLabel(run.date)} · {run.startLocal.slice(11, 16)}
           </p>
         </header>
@@ -418,21 +422,19 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
               {headline.map((h) => (
                 <div class="min-w-0">
                   <dt class={label}>{h.label}</dt>
-                  <dd class="mt-1 text-2xl font-bold tabular-nums">
+                  <dd class="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
                     {h.value}
-                    {h.unit && (
-                      <span class="ml-0.5 text-sm font-normal text-gray-500 dark:text-gray-400">{h.unit}</span>
-                    )}
+                    {h.unit && <span class="ml-0.5 text-sm font-normal text-muted-foreground">{h.unit}</span>}
                   </dd>
                 </div>
               ))}
             </dl>
 
             {secondary.length > 0 && (
-              <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t border-gray-200 pt-4 text-sm sm:grid-cols-2 dark:border-gray-700">
+              <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t pt-4 text-sm sm:grid-cols-2 border-border">
                 {secondary.map(([l, v]) => (
                   <div class="flex items-baseline justify-between gap-2">
-                    <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
+                    <dt class="text-muted-foreground">{l}</dt>
                     <dd class="font-semibold tabular-nums">{v}</dd>
                   </div>
                 ))}
@@ -440,7 +442,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
             )}
 
             {te.length > 0 && (
-              <div class="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+              <div class="mt-5 border-t pt-4 border-border">
                 <div class="flex items-baseline justify-between gap-2">
                   <p class={label}>Efecto del entrenamiento</p>
                   <p class="text-sm font-medium">{trainingEffect(run.trainingEffectLabel)}</p>
@@ -448,8 +450,8 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                 <div class="mt-3 space-y-2">
                   {te.map((t, i) => (
                     <div class="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-3 text-sm">
-                      <span class="text-gray-500 dark:text-gray-400">{t.label}</span>
-                      <span class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                      <span class="text-muted-foreground">{t.label}</span>
+                      <span class="h-2 overflow-hidden rounded-full bg-muted">
                         <span
                           class="block h-full rounded-full"
                           style={`width:${Math.min(100, (t.value / 5) * 100)}%;background:var(--viz-${i === 0 ? 1 : 2})`}
@@ -459,7 +461,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                     </div>
                   ))}
                 </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Escala de Garmin de 0 a 5.</p>
+                <p class="mt-2 text-xs text-muted-foreground">Escala de Garmin de 0 a 5.</p>
               </div>
             )}
           </section>
@@ -470,15 +472,15 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
             <div class="flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="text-base font-semibold">A lo largo de la actividad</h2>
               {charts.length > 1 && (
-                <p class="text-xs text-gray-500 dark:text-gray-400">
+                <p class="text-xs text-muted-foreground">
                   Pasa el cursor: las gráficas marcan el mismo punto. Arrastra sobre una para ampliar un tramo en todas
                 </p>
               )}
             </div>
-            <div class="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+            <div class="mt-3 divide-y divide-border">
               {charts.map((c) => (
                 <div class="py-2 first:pt-0">
-                  <p class="mb-1 text-sm text-gray-500 dark:text-gray-400">{c.title}</p>
+                  <p class="mb-1 text-sm text-muted-foreground">{c.title}</p>
                   <div
                     class="w-full min-w-0"
                     data-chart={JSON.stringify(c.spec)}
@@ -501,7 +503,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                   <caption id="tabla-parciales" class="sr-only">
                     Parciales por km
                   </caption>
-                  <thead class="text-xs text-gray-500 dark:text-gray-400">
+                  <thead class="border-b border-border text-xs text-muted-foreground">
                     <tr>
                       <th scope="col" class="py-1 pr-3 text-left font-medium">
                         Km
@@ -530,21 +532,25 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                   </thead>
                   <tbody class="tabular-nums">
                     {splitRows.map((r) => (
-                      <tr class="border-t border-gray-100 dark:border-gray-700">
-                        <td class="py-1.5 pr-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                      <tr class="border-t border-border">
+                        <td class="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
                           {r.distanceM >= 999 ? r.index : km(r.distanceM / 1000, 2)}
                         </td>
                         <td
-                          class:list={['py-1.5 pr-3 font-semibold', r.v === best && 'text-blue-700 dark:text-blue-400']}
+                          class:list={[
+                            'py-1.5 pr-3 font-semibold',
+                            r.v === best &&
+                              'text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground',
+                          ]}
                         >
                           {fmtSpeed(r.v)}
                         </td>
                         {showSplitGap && (
-                          <td class="py-1.5 pr-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                          <td class="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
                             {splitGap(r) === undefined ? '—' : pace(splitGap(r))}
                           </td>
                         )}
-                        <td class="hidden py-1.5 pr-3 text-right whitespace-nowrap text-gray-500 sm:table-cell dark:text-gray-400">
+                        <td class="hidden py-1.5 pr-3 text-right whitespace-nowrap sm:table-cell text-muted-foreground">
                           {r.distanceM >= 999 ? vsMean(r.v) : ''}
                         </td>
                         <td class="py-1.5">
@@ -554,7 +560,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                           />
                         </td>
                         <td class="py-1.5 pl-3 text-right">{int(r.avgHr)}</td>
-                        <td class="py-1.5 pl-3 text-right whitespace-nowrap text-gray-500 dark:text-gray-400">
+                        <td class="py-1.5 pl-3 text-right whitespace-nowrap text-muted-foreground">
                           +{r.elevGainM} / −{r.elevLossM}
                         </td>
                       </tr>
@@ -562,7 +568,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                   </tbody>
                 </table>
               </section>
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-2 text-xs text-muted-foreground">
                 Barra más larga = km más rápido (resaltado en azul). «vs media»: diferencia con la media de los km
                 completos ({cycling ? 'km/h' : 's/km; + es más lento'})
                 {showSplitGap ? '. GAP: ritmo ajustado por pendiente (Minetti)' : ''}.
@@ -579,16 +585,16 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                     <li class="grid grid-cols-[2rem_1fr_3rem_4.5rem] items-center gap-3">
                       <span class="font-semibold">{z.zone}</span>
                       <span class="min-w-0">
-                        <span class="block h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                        <span class="block h-2.5 overflow-hidden rounded-full bg-muted">
                           <span
                             class="block h-full rounded-full"
                             style={`width:${z.pct}%;background:var(--viz-2);opacity:${ZONE_OPACITY[i]}`}
                           />
                         </span>
-                        {z.range && <span class="text-xs text-gray-500 dark:text-gray-400">{z.range}</span>}
+                        {z.range && <span class="text-xs text-muted-foreground">{z.range}</span>}
                       </span>
                       <span class="text-right font-semibold tabular-nums">{Math.round(z.pct)} %</span>
-                      <span class="text-right text-gray-500 tabular-nums dark:text-gray-400">{z.time}</span>
+                      <span class="text-right tabular-nums text-muted-foreground">{z.time}</span>
                     </li>
                   ))}
                 </ul>
@@ -598,7 +604,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
             {paceZoneS && paceZoneTotal > 0 && (
               <section class:list={[card, 'p-4']}>
                 <h2 class="text-base font-semibold">Zonas de ritmo (ajustado por pendiente)</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
+                <p class="text-xs text-muted-foreground">
                   Ritmos de Daniels con tu VDOT de esa fecha ({km(zoneVdot)}, mejores marcas de los 180 días previos):
                   un cambio de forma no reescribe actividades antiguas.
                 </p>
@@ -607,16 +613,16 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                     <li class="grid grid-cols-[7.5rem_1fr_3rem_4.5rem] items-center gap-3">
                       <span class="font-semibold">{z.label}</span>
                       <span class="min-w-0">
-                        <span class="block h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                        <span class="block h-2.5 overflow-hidden rounded-full bg-muted">
                           <span
                             class="block h-full rounded-full"
                             style={`width:${z.pct}%;background:var(--viz-1);opacity:${ZONE_OPACITY[i]}`}
                           />
                         </span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{z.range} /km</span>
+                        <span class="text-xs text-muted-foreground">{z.range} /km</span>
                       </span>
                       <span class="text-right font-semibold tabular-nums">{Math.round(z.pct)} %</span>
-                      <span class="text-right text-gray-500 tabular-nums dark:text-gray-400">{z.time}</span>
+                      <span class="text-right tabular-nums text-muted-foreground">{z.time}</span>
                     </li>
                   ))}
                 </ul>
@@ -628,31 +634,31 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                 <h2 class="text-base font-semibold">Variabilidad de la FC durante la sesión</h2>
                 <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
                   <div>
-                    <dt class="text-gray-500 dark:text-gray-400">RMSSD</dt>
+                    <dt class="text-muted-foreground">RMSSD</dt>
                     <dd class="font-semibold tabular-nums">{km(rr.rmssd)} ms</dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500 dark:text-gray-400">ln RMSSD</dt>
+                    <dt class="text-muted-foreground">ln RMSSD</dt>
                     <dd class="font-semibold tabular-nums">{km(rr.lnRmssd, 2)}</dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500 dark:text-gray-400">SDNN</dt>
+                    <dt class="text-muted-foreground">SDNN</dt>
                     <dd class="font-semibold tabular-nums">{km(rr.sdnn)} ms</dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500 dark:text-gray-400">pNN50</dt>
+                    <dt class="text-muted-foreground">pNN50</dt>
                     <dd class="font-semibold tabular-nums">{km(rr.pnn50)} %</dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500 dark:text-gray-400">Latidos útiles</dt>
+                    <dt class="text-muted-foreground">Latidos útiles</dt>
                     <dd class="font-semibold tabular-nums">{int(rr.count)}</dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500 dark:text-gray-400">Descartados</dt>
+                    <dt class="text-muted-foreground">Descartados</dt>
                     <dd class="font-semibold tabular-nums">{km(rr.artifactPct)} %</dd>
                   </div>
                 </dl>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p class="mt-2 text-xs text-muted-foreground">
                   Intervalos RR del archivo FIT, sin artefactos. En ejercicio la VFC cae mucho: compárala solo con
                   sesiones parecidas, no con la nocturna. Evidencia limitada.
                 </p>
@@ -679,7 +685,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                       <dl class="mt-3 space-y-2 text-sm">
                         {g.rows.map(([l, v]) => (
                           <div class="flex items-baseline justify-between gap-2">
-                            <dt class="text-gray-500 dark:text-gray-400">{l}</dt>
+                            <dt class="text-muted-foreground">{l}</dt>
                             <dd class="font-semibold tabular-nums">{v}</dd>
                           </div>
                         ))}
@@ -696,7 +702,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
             <h2 id="misma-ruta" class="text-base font-semibold">
               En la misma ruta · {routeMatches.length} veces
             </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-muted-foreground">
               Mismo deporte, salida a menos de 250 m y distancia parecida (±5 %).
             </p>
             {routeSpec && (
@@ -713,7 +719,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                 <caption id="tabla-ruta" class="sr-only">
                   Actividades en la misma ruta
                 </caption>
-                <thead class="text-xs text-gray-500 dark:text-gray-400">
+                <thead class="border-b border-border text-xs text-muted-foreground">
                   <tr>
                     <th scope="col" class="py-1 pr-3 text-left font-medium">
                       Fecha
@@ -734,16 +740,17 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                 </thead>
                 <tbody class="tabular-nums">
                   {routeMatches.toReversed().map((a) => (
-                    <tr
-                      class:list={['border-t border-gray-100 dark:border-gray-700', a.id === run.id && 'font-semibold']}
-                    >
+                    <tr class:list={['border-t border-border', a.id === run.id && 'font-semibold']}>
                       <td class="py-1.5 pr-3 whitespace-nowrap">
                         {a.id === run.id ? (
                           <span>
                             {shortDate(a.date)} {a.date.slice(0, 4)} (esta)
                           </span>
                         ) : (
-                          <a href={`/actividades/${a.id}`} class="text-blue-700 hover:underline dark:text-blue-400">
+                          <a
+                            href={`/actividades/${a.id}`}
+                            class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+                          >
                             {shortDate(a.date)} {a.date.slice(0, 4)}
                           </a>
                         )}
@@ -759,7 +766,7 @@ const label = 'text-xs font-medium tracking-wide text-gray-500 uppercase dark:te
                 </tbody>
               </table>
             </section>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <p class="mt-2 text-xs text-muted-foreground">
               Eficiencia: metros por minuto ÷ FC media (más alto = más rápido con el mismo esfuerzo).
             </p>
           </section>

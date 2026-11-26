@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fontsource-variable/geist";
 @import "flowbite/src/themes/default";
 @plugin "flowbite/plugin";
 @source "../../node_modules/flowbite";
@@ -6,7 +7,90 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Sistema de diseño de shadcn/ui (estilo "new-york", color base neutro, Tailwind v4): tokens semánticos
+   que usan las clases bg-card, text-muted-foreground, border-border, bg-primary… */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-border);
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "cv11", "ss01";
+  }
 }
 
 /* Transición suave entre páginas (fundido); sin ella, donde no hay soporte, se navega igual */
@@ -37,17 +121,17 @@
 
   /* Barras de desplazamiento y controles nativos con la paleta de la app (el pulgar con contraste ≥ 3:1
      frente a la pista). No se anima: en WebKit parpadea. */
-  --scrollbar-thumb: var(--color-gray-500);
-  --scrollbar-track: var(--color-gray-100);
+  --scrollbar-thumb: var(--color-neutral-400);
+  --scrollbar-track: var(--color-neutral-100);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-  accent-color: var(--color-blue-700);
+  accent-color: var(--primary);
 
   /* Tokens de gráficas (paleta validada: ver skill dataviz). Oscuro con pasos propios, no invertido. */
   --viz-surface: #ffffff;
-  --viz-text: #52514e;
+  --viz-text: oklch(0.556 0 0); /* --muted-foreground */
   --viz-muted: #898781;
-  --viz-grid: #e1e0d9;
-  --viz-axis: #c3c2b7;
+  --viz-grid: oklch(0.922 0 0); /* --border */
+  --viz-axis: oklch(0.85 0 0);
   --viz-1: #2a78d6; /* azul */
   --viz-2: #eb6834; /* naranja */
   --viz-3: #1baf7a; /* aqua */
@@ -55,34 +139,35 @@
   --viz-seq-light: #86b6ef; /* azul claro (rango / banda) */
 }
 .dark {
-  --scrollbar-thumb: var(--color-zinc-500);
-  --scrollbar-track: var(--color-zinc-900);
-  accent-color: var(--color-blue-500);
+  --scrollbar-thumb: var(--color-neutral-500);
+  --scrollbar-track: var(--color-neutral-900);
+  accent-color: var(--primary);
 
-  --viz-surface: #27272a; /* zinc-800 de las tarjetas */
-  --viz-text: #c3c2b7;
+  --viz-surface: oklch(0.205 0 0); /* --card */
+  --viz-text: oklch(0.708 0 0);
   --viz-muted: #898781;
-  --viz-grid: #3f3f46; /* zinc-700 */
-  --viz-axis: #52525b; /* zinc-600 */
+  --viz-grid: oklch(1 0 0 / 10%); /* --border */
+  --viz-axis: oklch(1 0 0 / 18%);
   --viz-1: #3987e5;
   --viz-2: #d95926;
   --viz-3: #199e70;
   --viz-4: #c98500;
   --viz-seq-light: #1c5cab;
+}
 
-  /* Modo oscuro en zinc (gris sin el tinte azul de `gray`): todas las clases gray-* pasan a zinc.
-     El modo claro mantiene la paleta gray original. */
-  --color-gray-50: var(--color-zinc-50);
-  --color-gray-100: var(--color-zinc-100);
-  --color-gray-200: var(--color-zinc-200);
-  --color-gray-300: var(--color-zinc-300);
-  --color-gray-400: var(--color-zinc-400);
-  --color-gray-500: var(--color-zinc-500);
-  --color-gray-600: var(--color-zinc-600);
-  --color-gray-700: var(--color-zinc-700);
-  --color-gray-800: var(--color-zinc-800);
-  --color-gray-900: var(--color-zinc-900);
-  --color-gray-950: var(--color-zinc-950);
+/* Restos de clases gray-* (y las de Flowbite) en la escala neutra de shadcn, en claro y en oscuro */
+:root {
+  --color-gray-50: var(--color-neutral-50);
+  --color-gray-100: var(--color-neutral-100);
+  --color-gray-200: var(--color-neutral-200);
+  --color-gray-300: var(--color-neutral-300);
+  --color-gray-400: var(--color-neutral-400);
+  --color-gray-500: var(--color-neutral-500);
+  --color-gray-600: var(--color-neutral-600);
+  --color-gray-700: var(--color-neutral-700);
+  --color-gray-800: var(--color-neutral-800);
+  --color-gray-900: var(--color-neutral-900);
+  --color-gray-950: var(--color-neutral-950);
 }
 
 /* Botones de zoom de ApexCharts en modo oscuro (por defecto vienen pensados para fondo claro) */
@@ -91,11 +176,11 @@
 }
 .dark .apexcharts-toolbar .apexcharts-selected,
 .dark .apexcharts-toolbar > div:hover {
-  background: var(--color-zinc-700);
+  background: var(--color-neutral-700);
 }
 .dark .apexcharts-toolbar svg {
-  fill: var(--color-zinc-400);
+  fill: var(--color-neutral-400);
 }
 .dark .apexcharts-toolbar .apexcharts-selected svg {
-  fill: var(--color-blue-400);
+  fill: var(--foreground);
 }

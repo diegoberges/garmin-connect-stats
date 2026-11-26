@@ -178,6 +178,9 @@ importers:
       '@astrojs/vercel':
         specifier: 11.0.22
         version: 11.0.22(astro@7.4.13(@types/node@26.6.6)(@vercel/functions@3.11.3)(jiti@2.7.0)(yaml@2.9.1))
+      '@fontsource-variable/geist':
+        specifier: 5.3.0
+        version: 5.3.0
       '@garmin/fitsdk':
         specifier: 21.222.0
         version: 21.222.0
@@ -561,6 +564,9 @@ packages:
 
   '@emnapi/wasi-threads@2.2.0':
     resolution: {integrity: sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==}
+
+  '@fontsource-variable/geist@5.3.0':
+    resolution: {integrity: sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==}
 
   '@garmin/fitsdk@21.222.0':
     resolution: {integrity: sha512-YIo/bPfvENuBKECsAT0wWromTy66Yxw3UqRB1FuAJIs8KMoJCkVPgqnUanFxkZwcAXgIN2qXaeFeRt7rvYlB0g==}
@@ -2956,6 +2962,8 @@ snapshots:
     dependencies:
       tslib: 2.9.1
     optional: true
+
+  '@fontsource-variable/geist@5.3.0': {}
 
   '@garmin/fitsdk@21.222.0': {}
 

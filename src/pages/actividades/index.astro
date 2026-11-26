@@ -146,11 +146,11 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
             data-dropdown-toggle="type-menu"
             data-dropdown-placement="bottom-start"
             type="button"
-            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-2xl font-bold hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 focus:outline-none dark:hover:bg-gray-800 dark:focus:ring-gray-700"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-3xl font-semibold tracking-tight hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`Tipo de actividad: ${title}`}
           >
             {title}
-            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+            <svg class="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 10 6" aria-hidden="true">
               <path
                 stroke="currentColor"
                 stroke-linecap="round"
@@ -163,7 +163,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         </h1>
         <div
           id="type-menu"
-          class="z-50 hidden max-h-96 w-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          class="z-50 hidden max-h-96 w-64 overflow-y-auto border border-border bg-popover text-popover-foreground rounded-md shadow-md"
         >
           <ul class="py-1 text-sm" aria-label="Tipo de actividad">
             {[[ALL, all.length] as const, ...types].map(([key, n]) => (
@@ -172,12 +172,13 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
                   href={typeHref(key)}
                   aria-current={key === tipo ? 'page' : undefined}
                   class:list={[
-                    'flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
-                    key === tipo && 'font-semibold text-blue-700 dark:text-blue-400',
+                    'flex items-center justify-between gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground',
+                    key === tipo &&
+                      'font-semibold text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground',
                   ]}
                 >
                   <span class="truncate">{key === ALL ? 'Todas las actividades' : activityLabel(key)}</span>
-                  <span class="text-xs text-gray-500 tabular-nums dark:text-gray-400">{n}</span>
+                  <span class="text-xs tabular-nums text-muted-foreground">{n}</span>
                 </a>
               </li>
             ))}
@@ -185,7 +186,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         </div>
       </div>
     ) : (
-      <h1 class="text-2xl font-bold">Actividades</h1>
+      <h1 class="text-3xl font-semibold tracking-tight">Actividades</h1>
     )}
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
@@ -195,7 +196,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
   ) : error ? (
     <ErrorState error={error} />
   ) : activities.length === 0 ? (
-    <p class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+    <p class="rounded-xl border p-6 text-sm text-muted-foreground border-border bg-card shadow-sm">
       No hay actividades de este tipo en el periodo. Prueba con otro tipo o amplía el rango.
     </p>
   ) : (
