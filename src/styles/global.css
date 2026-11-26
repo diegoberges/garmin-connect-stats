@@ -262,6 +262,11 @@ body::before {
   main p {
     text-wrap: pretty;
   }
+  /* Textos introductorios de página y de sección: líneas de lectura cómoda aunque ocupen todo el ancho */
+  main > p,
+  main :is(h1, h2) + p {
+    max-width: 80ch;
+  }
 }
 @layer components {
   /* Display: el título de la página. El botón desplegable que hace de título hereda la letra. */

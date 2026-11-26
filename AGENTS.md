@@ -405,6 +405,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     le pasa `table` (`specTable` en `lib/chart-table.ts`), y las gráficas hechas a mano usan `<DataTable>` igual.
   - Títulos: `ChartCard` usa `h3` (dentro de una sección con `h2`); `headingLevel={2}` si cuelga del `h1`.
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
+  - Eje X: si las etiquetas no caben (~70 px cada una, también en gráficas a media anchura), se muestran menos.
+  - La etiqueta de una línea de referencia (`reference`) va sobre el fondo de la tarjeta, para leerse encima de las barras.
   - Formato `clock`: hora del día en minutos desde las 12:00, para que una noche no se parta en la medianoche.
   - `zoom: true` activa el zoom por selección en x (se sincroniza en el `group`); `zoomControls: false`
     oculta los botones en las demás gráficas del grupo.
@@ -439,6 +441,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   los pesos y la evidencia van en "Cómo se calcula" (en `ChartCard`, prop `how`). Lo secundario va en "Más …"
   (indicadores de carga, dinámica de carrera, Contexto de Salud). Un aviso nunca se pliega: se muestra fuera en texto
   ("Pide atención: …") o abre el plegable.
+- **Medida de línea**: los textos introductorios de página y de sección (y los subtítulos de gráfica) no pasan de 80
+  caracteres por línea aunque la tarjeta ocupe todo el ancho.
 - **Textos**: explica en la propia tarjeta qué se compara y cuánta confianza merece
   ("orientativo", "evidencia limitada"). Nada de puntuaciones opacas inventadas.
 

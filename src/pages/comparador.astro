@@ -71,6 +71,10 @@ const toggleYear = (y: number) => {
   const next = years.includes(y) ? years.filter((x) => x !== y) : [...years, y].sort((a, b) => a - b).slice(-MAX_YEARS);
   return hrefWith({ anios: next.length ? next.join(',') : undefined });
 };
+/** Años del selector en orden cronológico, como las tarjetas, las leyendas y la tabla. */
+const yearItems = [...availableYears]
+  .reverse()
+  .map((y) => ({ href: toggleYear(y), label: String(y), active: years.includes(y) }));
 
 // ---------- Datos ----------
 const metric = (m: { km: number; movingS: number }) => (byDistance ? Math.round(m.km * 10) / 10 : m.movingS);
@@ -185,10 +189,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
       {/* Selector de años */}
       <div class="flex flex-wrap items-center gap-2">
         <span class="text-sm text-muted-foreground">Años (máx. {MAX_YEARS}):</span>
-        <FilterGroup
-          items={availableYears.map((y) => ({ href: toggleYear(y), label: String(y), active: years.includes(y) }))}
-          label={`Años (máx. ${MAX_YEARS})`}
-        />
+        <FilterGroup items={yearItems} label={`Años (máx. ${MAX_YEARS})`} />
       </div>
 
       {years.length === 0 ? (
