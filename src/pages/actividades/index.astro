@@ -196,7 +196,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
   ) : error ? (
     <ErrorState error={error} />
   ) : activities.length === 0 ? (
-    <p class="rounded-xl border p-6 text-sm text-muted-foreground border-border bg-card shadow-sm">
+    <p class="border p-6 text-sm text-muted-foreground border-border bg-card">
       No hay actividades de este tipo en el periodo. Prueba con otro tipo o amplía el rango.
     </p>
   ) : (

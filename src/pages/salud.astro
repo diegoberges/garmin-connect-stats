@@ -40,6 +40,7 @@ import { alertHistory, resolveThresholds } from '../lib/sleep-alert';
 import { WARMUP_DAYS, dailyLoad, estimateHrParams, pmc } from '../lib/load';
 import { READINESS_WEIGHTS, readiness, readinessLabel } from '../lib/readiness';
 import { weightChange, weightTrend } from '../lib/weight';
+import { card } from '../lib/ui';
 
 /** 90 días: 60 para las líneas base + 30 visibles; también cubre 12 semanas de minutos de intensidad. */
 const FETCH_DAYS = 90;
@@ -307,7 +308,6 @@ const phasesSpec: ChartSpec = {
   height: 220,
 };
 
-const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
 const sectionTitle = 'type-section';
 const TONE = {
   ok: 'border-l-green-500',
@@ -510,14 +510,7 @@ const TONE = {
                     <tr class="border-t border-border">
                       <td class="py-1.5 pr-3 whitespace-nowrap">{dayLabel(a.date)}</td>
                       <td class="py-1.5 pr-3">
-                        <span
-                          class:list={[
-                            'rounded-sm px-1.5 py-0.5 text-xs font-semibold',
-                            a.level === 'high'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
-                          ]}
-                        >
+                        <span class:list={['chip', a.level === 'high' ? 'chip-alert' : 'chip-warn']}>
                           {a.level === 'high' ? 'Alto' : 'Aviso'}
                         </span>
                       </td>
@@ -617,10 +610,7 @@ const TONE = {
                       · {sex === 'male' ? 'hombres' : 'mujeres'} de {vo2Pct.group} años
                     </span>
                   </p>
-                  <div
-                    class="relative mt-6 mb-5 h-2 rounded-full bg-linear-to-r from-muted to-(--viz-1)"
-                    aria-hidden="true"
-                  >
+                  <div class="relative mt-6 mb-5 h-2 bg-linear-to-r from-muted to-(--viz-1)" aria-hidden="true">
                     {vo2Pct.marks
                       .filter((m) => [25, 50, 75, 90].includes(m.p))
                       .map((m) => (

@@ -54,6 +54,7 @@ import { LOAD_SCOPES, SPORT_GROUPS, inLoadScope, parseLoadScope, periodVolumes }
 import { BEST_EFFORT_DISTANCES } from '../lib/garmin/types';
 import { activityLabel, duration, hoursMinutes, int, km, pace, shortDate } from '../lib/format';
 import type { ChartSpec, ColorSlot } from '../lib/chart-spec';
+import { card } from '../lib/ui';
 
 const WEEK_OPTIONS = [
   { value: 4, label: '4 sem' },
@@ -453,7 +454,6 @@ const predictions = vdotBase ? PREDICT.map((d) => ({ d, t: predictTime(vdotBase.
 const cs = criticalSpeed(records);
 const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.min(8, Math.max(1, kmWeekly.length - 1));
 
-const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
 const sectionTitle = 'type-section';
 // Mismo código de color que la tarjeta "Hoy" de Salud: verde bien, ámbar atención, rojo mal
 const ZONE_TONE: Record<FormZone, string> = {
@@ -952,9 +952,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                       <td class="py-2 text-right whitespace-nowrap">
                         {period && best ? (
                           period.timeS <= best.timeS ? (
-                            <span class="rounded-sm bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-300">
-                              Récord
-                            </span>
+                            <span class="chip chip-ok">Récord</span>
                           ) : (
                             <>
                               <span class="font-medium">+{duration(period.timeS - best.timeS)}</span>

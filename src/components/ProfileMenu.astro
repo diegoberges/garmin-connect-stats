@@ -141,13 +141,7 @@ const redirectTo = Astro.url.pathname + Astro.url.search;
       <section>
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-sm font-semibold">Garmin Connect</h2>
-          {key ? (
-            <span class="rounded-sm bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-              Conectado · {maskKey(key)}
-            </span>
-          ) : (
-            <span class="rounded-sm px-2 py-0.5 text-xs font-medium text-foreground bg-muted">Sin conectar</span>
-          )}
+          {key ? <span class="chip chip-ok">Conectado · {maskKey(key)}</span> : <span class="chip">Sin conectar</span>}
         </div>
         <p class="mt-1 text-xs text-muted-foreground">
           Crea tu Personal API Key en{' '}

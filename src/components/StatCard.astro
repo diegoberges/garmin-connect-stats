@@ -20,7 +20,7 @@ const arrow = !hasDelta || flat ? '→' : delta! > 0 ? '↑' : '↓';
 const deltaText = hasDelta ? `${delta! > 0 ? '+' : ''}${Math.round(delta!)} %` : '';
 ---
 
-<div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+<div class="border border-border bg-card p-5 text-card-foreground">
   <p class="type-label">{label}</p>
   <p class="mt-1 type-kpi">
     {value}{unit && <span class="ml-1 text-base font-normal text-muted-foreground">{unit}</span>}

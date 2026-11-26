@@ -1,0 +1,37 @@
+---
+/**
+ * Grupo de filtros por enlaces, el único patrón de selección de la app (periodo, carga, tipo de aviso,
+ * años). Pestañas cuadradas sobre una pista gris; la opción activa va sobre el fondo de la página con
+ * borde. Admite varias activas a la vez (años del comparador) y se parte en líneas si no cabe.
+ */
+interface Props {
+  items: { href: string; label: string; active: boolean }[];
+  /** Nombre accesible del grupo. */
+  label: string;
+  size?: 'md' | 'sm';
+  class?: string;
+}
+const { items, label, size = 'md', class: className } = Astro.props;
+---
+
+<nav
+  class:list={['inline-flex max-w-full flex-wrap items-center gap-[3px] bg-muted p-[3px]', className]}
+  aria-label={label}
+>
+  {items.map((o) => (
+    <a
+      href={o.href}
+      aria-current={o.active ? 'true' : undefined}
+      class:list={[
+        'inline-flex items-center border font-medium whitespace-nowrap tabular-nums transition-colors',
+        'focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+        size === 'sm' ? 'min-h-7 px-2.5 text-xs' : 'min-h-[30px] px-3 text-sm',
+        o.active
+          ? 'border-border bg-background text-foreground dark:border-input dark:bg-input/30'
+          : 'border-transparent text-foreground/70 hover:text-foreground',
+      ]}
+    >
+      {o.label}
+    </a>
+  ))}
+</nav>

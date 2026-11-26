@@ -9,6 +9,7 @@
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
+import FilterGroup from '../components/FilterGroup.astro';
 import TrophyTip from '../components/TrophyTip.astro';
 import { clientFor, getAllActivities, getHrReference, getRaces, type Activity } from '../lib/garmin';
 import { addDays, isoDate, weekStart } from '../lib/dates';
@@ -17,6 +18,7 @@ import { analyzeRace, vo2Trend } from '../lib/progression';
 import { yearCalendar } from '../lib/consistency';
 import { estimateHrParams } from '../lib/load';
 import { activityLabel, duration, int, km, pace, shortDate } from '../lib/format';
+import { card } from '../lib/ui';
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
@@ -100,14 +102,18 @@ const CAT_CLASS: Record<Exclude<RaceCategory, 'Otra'>, string> = {
   Media: 'cat-half',
   Maratón: 'cat-marathon',
 };
-
-const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
 ---
 
 <Base title="Competiciones">
   <div class="mb-6 flex flex-wrap items-baseline justify-between gap-3">
     <h1 class="type-display">
-      Competiciones{races ? <span class="ml-2 text-base font-normal text-muted-foreground">{races.length}</span> : ''}
+      Competiciones{races ? (
+        <span class="ml-2 align-middle font-sans text-base font-normal tracking-normal normal-case tabular-nums text-muted-foreground">
+          {races.length}
+        </span>
+      ) : (
+        ''
+      )}
     </h1>
     <p class="text-sm text-muted-foreground">Actividades marcadas como competición en Garmin Connect</p>
   </div>
@@ -207,11 +213,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
                           <a href={`/actividades/${r.id}`} class="font-medium underline-offset-4 hover:underline">
                             {r.name}
                           </a>
-                          {!/^running$/.test(r.typeKey) && (
-                            <span class="ml-2 rounded-sm px-1.5 py-0.5 text-xs whitespace-nowrap text-foreground/80 bg-muted">
-                              {activityLabel(r.typeKey)}
-                            </span>
-                          )}
+                          {!/^running$/.test(r.typeKey) && <span class="chip ml-2">{activityLabel(r.typeKey)}</span>}
                         </td>
                         <td class="px-4 py-2.5 whitespace-nowrap">
                           {r.distanceKm > 0 ? `${km(r.distanceKm, 2)} km` : '—'}
@@ -274,22 +276,11 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
             <h2 id="calendario-titulo" class="type-card">
               Calendario {calYear}
             </h2>
-            <nav aria-label="Año del calendario" class="flex flex-wrap gap-1">
-              {calYears.map((y) => (
-                <a
-                  href={yearHref(y)}
-                  aria-current={y === calYear ? 'true' : undefined}
-                  class:list={[
-                    'rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums',
-                    y === calYear
-                      ? 'border-primary bg-primary text-primary-foreground shadow-xs hover:bg-primary/90'
-                      : 'text-foreground/80 border-input hover:bg-accent hover:text-accent-foreground',
-                  ]}
-                >
-                  {y}
-                </a>
-              ))}
-            </nav>
+            <FilterGroup
+              items={calYears.map((y) => ({ href: yearHref(y), label: String(y), active: y === calYear }))}
+              label="Año del calendario"
+              size="sm"
+            />
           </div>
           <p class="text-sm text-muted-foreground">
             {activeDays} días con actividad · {yearRaces.length}{' '}
@@ -370,7 +361,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
     display: inline-block;
     width: 0.75rem;
     height: 0.75rem;
-    border-radius: 2px;
+    border-radius: 0;
   }
   .cal-out {
     visibility: hidden;
@@ -421,7 +412,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
     display: inline-block;
     margin-left: 6px;
     padding: 1px 7px;
-    border-radius: 9999px;
+    border-radius: 0;
     font-size: 11px;
     font-weight: 600;
     line-height: 1.5;

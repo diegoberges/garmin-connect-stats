@@ -7,11 +7,13 @@
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
+import FilterGroup from '../components/FilterGroup.astro';
 import Pagination from '../components/Pagination.astro';
 import { clientFor, getAllActivities, type Activity } from '../lib/garmin';
 import { isoDate } from '../lib/dates';
 import { dataIssues, ISSUE_LABELS, type DataIssue, type IssueKind } from '../lib/data-quality';
 import { activityLabel, km, shortDate } from '../lib/format';
+import { card } from '../lib/ui';
 
 const PAGE_SIZE = 50;
 const client = clientFor(Astro.locals);
@@ -37,12 +39,13 @@ const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
 const page = Math.min(Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina'))) || 1), pages);
 const pageItems = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 const kindHref = (k?: IssueKind) => (k ? `?tipo=${k}` : '?');
-const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
-const chip = (active: boolean) => [
-  'rounded-full border px-3 py-1 text-sm font-medium',
-  active
-    ? 'border-primary bg-primary text-primary-foreground shadow-xs hover:bg-primary/90'
-    : 'text-foreground/80 border-input bg-card hover:bg-accent hover:text-accent-foreground',
+const kindItems = [
+  { href: kindHref(), label: `Todos · ${issues.length}`, active: !kind },
+  ...KINDS.filter((k) => counts.get(k)).map((k) => ({
+    href: kindHref(k),
+    label: `${ISSUE_LABELS[k]} · ${counts.get(k)}`,
+    active: kind === k,
+  })),
 ];
 ---
 
@@ -61,16 +64,7 @@ const chip = (active: boolean) => [
     <p class:list={[card, 'p-6 text-sm']}>No hemos encontrado nada raro en tus {all.length} actividades.</p>
   ) : (
     <div class="space-y-4">
-      <nav aria-label="Tipo de problema" class="flex flex-wrap gap-2">
-        <a href={kindHref()} aria-current={!kind ? 'true' : undefined} class:list={chip(!kind)}>
-          Todos · {issues.length}
-        </a>
-        {KINDS.filter((k) => counts.get(k)).map((k) => (
-          <a href={kindHref(k)} aria-current={kind === k ? 'true' : undefined} class:list={chip(kind === k)}>
-            {ISSUE_LABELS[k]} · {counts.get(k)}
-          </a>
-        ))}
-      </nav>
+      <FilterGroup items={kindItems} label="Tipo de problema" />
 
       <section class:list={[card, 'overflow-x-auto']} tabindex="0" aria-labelledby="tabla-calidad">
         <table class="w-full text-left text-sm">
@@ -109,9 +103,7 @@ const chip = (active: boolean) => [
                   </span>
                 </td>
                 <td class="px-3 py-2.5 sm:px-4">
-                  <span class="rounded-sm bg-amber-100 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-                    {ISSUE_LABELS[i.kind]}
-                  </span>
+                  <span class="chip chip-warn">{ISSUE_LABELS[i.kind]}</span>
                 </td>
                 <td class="hidden px-4 py-2.5 sm:table-cell text-muted-foreground">
                   {i.detail}

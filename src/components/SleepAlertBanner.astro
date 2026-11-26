@@ -63,7 +63,7 @@ function signed(v: number): string {
     <section
       aria-labelledby="alerta-sueno-titulo"
       class:list={[
-        'rounded-xl border border-l-4 p-4 bg-card text-card-foreground shadow-sm',
+        'border border-l-4 p-4 bg-card text-card-foreground',
         high
           ? 'border-l-red-600 dark:border-l-red-500 border-border'
           : 'border-l-amber-500 dark:border-l-amber-400 border-border',
@@ -72,14 +72,7 @@ function signed(v: number): string {
       <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 id="alerta-sueno-titulo" class="font-semibold">
           Fatiga por sueño{' '}
-          <span
-            class:list={[
-              'ml-1 rounded-sm px-1.5 py-0.5 align-middle text-xs font-semibold',
-              high
-                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                : 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
-            ]}
-          >
+          <span class:list={['chip ml-1 align-middle', high ? 'chip-alert' : 'chip-warn']}>
             {high ? 'Nivel alto' : 'Aviso'}
           </span>
         </h2>

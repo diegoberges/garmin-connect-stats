@@ -184,31 +184,6 @@ Los títulos llevan `text-wrap: balance` y los párrafos `text-wrap: pretty` (en
 
 ### Named Rules
 
-**La regla del color que significa.** El color solo aparece para decir algo: estado (verde/ámbar/rojo) o serie de una gráfica. Ningún elemento lleva color por decoración.
-
-**La regla del texto primero.** Ningún estado se transmite solo con color: siempre hay una palabra ("Dentro de tu rango", "Carga baja") o una flecha con texto.
-
-**La regla de las cuatro series.** Una gráfica tiene como mucho cuatro series de color; si hacen falta más, se divide en gráficas sincronizadas.
-
-## Typography
-
-**Display Font:** Orbitron 700/900 (con Geist Mono de respaldo)
-**Body Font:** Geist Mono Variable (con `ui-monospace`)
-**Numeric Font:** VT323 (con `ui-monospace`)
-
-**Character:** Geist Mono da a todo el panel la voz de un instrumento de medida, alineando cifras sin esfuerzo. Orbitron pone la etiqueta de hardware en los títulos y VT323 convierte las cifras protagonistas en una pantalla de LED.
-
-### Hierarchy
-
-- **Display** (Orbitron 900, 1.9rem, mayúsculas, espaciado 0.04em): el título de cada página (`main h1`).
-- **Headline** (Orbitron 700, 0.95em, mayúsculas, espaciado 0.06em): títulos de sección y de tarjeta (`main h2`, `main h3`) y la navegación principal.
-- **Numeric** (VT323, 2.4rem, interlineado 1): cifras grandes de KPI (todo `.text-2xl` y `.text-4xl` dentro de `main`).
-- **Title** (Geist Mono 600, 1rem): frase de estado dentro de una tarjeta ("Todo dentro de tu rango normal").
-- **Body** (Geist Mono 400, 0.875rem): explicaciones, subtítulos de gráfica y tablas.
-- **Label** (Geist Mono 500, 0.75rem): etiquetas de KPI, variaciones, notas de confianza y datos de las tablas de "Ver datos".
-
-### Named Rules
-
 **La regla de las cifras alineadas.** Toda cifra que se compara va en `tabular-nums`, para que las columnas no bailen.
 
 **La regla del título en mayúsculas.** Orbitron solo aparece en mayúsculas y en títulos o navegación; nunca en párrafos ni en cifras.
@@ -238,7 +213,7 @@ Sistema plano con una sola sombra, dura y sin desenfoque, que hace de canto de t
 
 ## Shapes
 
-Esquinas rectas en todo (`--radius: 0`): tarjetas, pestañas, botones, menús y campos. Los bordes son de 1 px en el gris de cuadrícula. Las tarjetas de estado añaden un borde izquierdo de 4 px en el color del estado. Las únicas formas redondas son los puntos de estado de las listas de señales y la foto de perfil.
+Esquinas rectas en todo (`--radius: 0`): tarjetas, pestañas, botones, menús y campos. Los bordes son de 1 px en el gris de cuadrícula. Las tarjetas de estado añaden un borde izquierdo de 4 px en el color del estado. Las únicas formas redondas son los puntos de estado (señales, leyendas) y la foto de perfil; las barras de progreso y de zonas también son rectas.
 
 ## Components
 
@@ -251,10 +226,14 @@ Sobrios y rectangulares.
 - **Hover / Focus:** el fondo baja al 90 %; anillo de foco de 3 px en `ring` al 50 %.
 - **Ghost (botón de tema):** solo el icono, de 16 px, en grafito al 60 %; al pasar por encima o con foco, fondo `accent` y texto pleno.
 
-### Tabs (selector de periodo y filtros)
+### Filtros (`FilterGroup`)
 
-- **Style:** grupo de 36 px de alto sobre fondo `muted` con 3 px de relleno; cada opción es un enlace (`?semanas=`, `?carga=`) que conserva el resto de parámetros.
-- **State:** la opción activa toma fondo de página, texto pleno y una sombra mínima; en oscuro, un borde `input`. Las inactivas van en grafito y se aclaran al pasar por encima.
+El único patrón de selección: periodo y carga (vía `RangeSelector`), tipo de aviso en Calidad, años del Comparador
+(varios activos a la vez) y año del calendario (tamaño `sm`).
+
+- **Style:** pista `muted` con 3 px de relleno y separación; opciones cuadradas de 30 px de alto (28 px en `sm`), cada una un enlace con `aria-current` cuando está activa. Si no caben, se parten en líneas.
+- **State:** la activa, fondo de página, texto pleno y borde `border` (en oscuro, `input`); las inactivas, texto al 70 % (contraste AA sobre `muted`) que pasa a pleno al pasar por encima. Sin sombras.
+- No se usan píldoras redondas ni botones sueltos para filtrar.
 
 ### Cards / Containers
 
@@ -264,6 +243,18 @@ Sobrios y rectangulares.
 - **Internal Padding:** 20 px.
 - **KPI (StatCard):** etiqueta en grafito, cifra en LED con la unidad pequeña en grafito, variación con flecha + porcentaje (verde si mejora, rojo si empeora, gris si no cambia) y una línea de pista opcional.
 - **Gráfica (ChartCard):** título en Orbitron, subtítulo que explica qué se compara, gráfica ApexCharts a partir de un `ChartSpec` y un desplegable "Ver datos" con la tabla accesible. Sin datos: "Sin datos en este periodo" centrado.
+
+### Clase compartida de tarjeta
+
+`card` de `src/lib/ui.ts` (borde + `bg-card`): la esquina recta y el canto los pone `.bg-card` en `global.css`. No
+se redefine la cadena de clases en cada página.
+
+### Chips (etiquetas)
+
+Clase `.chip` en `global.css`: cuadrada, 0.75rem, 2 × 6 px de relleno. Tonos: neutro (tipo de actividad, "Sin
+conectar"), `.chip-ok` (Récord, Conectado), `.chip-warn` (Aviso, avisos de calidad) y `.chip-alert` (alerta alta).
+El estado va siempre en el texto. Las etiquetas de distancia de Competiciones (5K, 10K, media, maratón) mantienen
+sus colores fijados en el componente, también cuadradas.
 
 ### Status Card (tarjeta "Hoy" y "Estado de forma")
 

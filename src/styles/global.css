@@ -313,6 +313,50 @@ body::before {
   }
 }
 
+/* Etiqueta (chip): cuadrada y pequeña, con el estado en el texto, no solo en el color.
+   Tonos: neutro (tipo de actividad), ok (récord, conectado), warn (aviso), alert (alerta alta). */
+@layer components {
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: nowrap;
+    background: var(--muted);
+    color: color-mix(in oklab, var(--foreground) 80%, transparent);
+  }
+  .chip-ok {
+    font-weight: 600;
+    background: var(--color-green-100);
+    color: var(--color-green-800);
+  }
+  .chip-warn {
+    font-weight: 600;
+    background: var(--color-amber-100);
+    color: var(--color-amber-900);
+  }
+  .chip-alert {
+    font-weight: 600;
+    background: var(--color-red-100);
+    color: var(--color-red-800);
+  }
+  .dark .chip-ok {
+    background: var(--color-green-900);
+    color: var(--color-green-300);
+  }
+  .dark .chip-warn {
+    background: var(--color-amber-900);
+    color: var(--color-amber-100);
+  }
+  .dark .chip-alert {
+    background: var(--color-red-900);
+    color: var(--color-red-200);
+  }
+}
+
 /* Tarjetas: borde marcado y sombra dura desplazada, en gris */
 .bg-card {
   border-radius: 0;

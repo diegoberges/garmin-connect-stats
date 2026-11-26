@@ -16,7 +16,7 @@ const captionId = `datos-${crypto.randomUUID()}`;
 const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== undefined));
 ---
 
-<section class:list={['min-w-0 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm', className]}>
+<section class:list={['min-w-0 border border-border bg-card p-5 text-card-foreground', className]}>
   <h2 class="type-card">{title}</h2>
   {subtitle && <p class="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
   {hasData ? (

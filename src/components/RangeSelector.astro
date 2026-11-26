@@ -1,8 +1,9 @@
 ---
 /**
- * Selector de opciones por enlaces (?semanas=N, ?carga=…), estilo Tabs de shadcn/ui.
- * Conserva el resto de parámetros.
+ * Selector de opciones por enlaces (?semanas=N, ?carga=…) con FilterGroup. Conserva el resto de parámetros.
  */
+import FilterGroup from './FilterGroup.astro';
+
 interface Props {
   options: { value: number | string; label: string }[];
   current: number | string;
@@ -19,21 +20,7 @@ const hrefFor = (value: number | string) => {
   params.delete('pagina');
   return `?${params}${anchor ? `#${anchor}` : ''}`;
 };
+const items = options.map((o) => ({ href: hrefFor(o.value), label: o.label, active: o.value === current }));
 ---
 
-<nav class="inline-flex h-9 items-center rounded-lg bg-muted p-[3px] text-muted-foreground" aria-label={label}>
-  {options.map((o) => (
-    <a
-      href={hrefFor(o.value)}
-      aria-current={o.value === current ? 'true' : undefined}
-      class:list={[
-        'inline-flex h-full items-center rounded-md border border-transparent px-3 text-sm font-medium whitespace-nowrap transition-colors',
-        o.value === current
-          ? 'bg-background text-foreground shadow-sm dark:border-input dark:bg-input/30'
-          : 'hover:text-foreground',
-      ]}
-    >
-      {o.label}
-    </a>
-  ))}
-</nav>
+<FilterGroup items={items} label={label} />

@@ -38,11 +38,7 @@ const distanceText = (a: Activity, i: number) =>
 
 <!-- Contenedor con scroll lateral: con tabindex se puede desplazar con el teclado (guía responsive-table). La regla
      noNoninteractiveTabindex de Biome está desactivada para este archivo en biome.json (su biome-ignore no surte efecto). -->
-<section
-  class="overflow-x-auto rounded-xl border border-border bg-card shadow-sm"
-  tabindex="0"
-  aria-labelledby={captionId}
->
+<section class="overflow-x-auto border border-border bg-card" tabindex="0" aria-labelledby={captionId}>
   <table class="w-full text-left text-sm">
     <caption id={captionId} class="sr-only">
       {caption}
@@ -89,11 +85,7 @@ const distanceText = (a: Activity, i: number) =>
                 <TrophyTip label="Récord personal en Garmin" />
               </span>
             )}
-            {showType && (
-              <span class="mt-1 block w-fit rounded-sm px-1.5 py-0.5 text-xs whitespace-nowrap sm:mt-0 sm:ml-2 sm:inline text-foreground/80 bg-muted">
-                {activityLabel(a.typeKey)}
-              </span>
-            )}
+            {showType && <span class="chip mt-1 flex sm:mt-0 sm:ml-2 sm:inline-flex">{activityLabel(a.typeKey)}</span>}
           </td>
           {anyDistance && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
           <td class="px-2.5 py-3 sm:px-4 text-right">{duration(a.movingS)}</td>
