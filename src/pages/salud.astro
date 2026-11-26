@@ -25,7 +25,7 @@ import {
   type FitnessAge,
   type Vo2Point,
 } from '../lib/garmin';
-import { addDays, isoDate } from '../lib/dates';
+import { addDays, isoDate, weekStart } from '../lib/dates';
 import { mean } from '../lib/stats';
 import {
   RHR_ALERT_BPM,
@@ -286,7 +286,8 @@ const weeksMet = fullWeeks.filter((w) => w.total >= 150).length;
 const intensitySpec: ChartSpec = {
   type: 'bar',
   stacked: true,
-  categories: intensity.map((w) => shortDate(w.week)),
+  // La semana en curso aún no ha terminado: se rotula así para que no parezca una semana mala
+  categories: intensity.map((w) => (w.week === weekStart(today) ? 'esta semana' : shortDate(w.week))),
   series: [
     { name: 'Moderados', data: intensity.map((w) => w.moderate), color: 1 },
     { name: 'Vigorosos (×2)', data: intensity.map((w) => w.vigorousX2), color: 2 },
@@ -356,12 +357,19 @@ const hrv52 = heart ? weeklyMean(heart, (d) => d.hrvLastNight, 52, today, true) 
 const rhrChange = quarterChange(rhr52);
 const hrvChange = quarterChange(hrv52);
 const has52 = (ws: typeof rhr52) => ws.filter((w) => w.value !== undefined).length >= 8;
-const weekSpec = (name: string, ws: typeof rhr52, format: ChartSpec['format'], color: 1 | 2): ChartSpec => ({
+const weekSpec = (
+  name: string,
+  ws: typeof rhr52,
+  format: ChartSpec['format'],
+  color: 1 | 2,
+  minSpan: number,
+): ChartSpec => ({
   type: 'line',
   categories: ws.map((w) => shortDate(w.week)),
   series: [{ name, data: ws.map((w) => (w.value === undefined ? null : Math.round(w.value * 10) / 10)), color }],
   format,
   height: 220,
+  minSpan,
 });
 // Vista de VFC y FC en reposo (30 días o 12 meses): por enlace (?vfc=12m, ?fc=12m), como el resto de filtros
 type HeartView = '30d' | '12m';
@@ -707,7 +715,7 @@ const TONE = {
               id="vfc"
               title="Variabilidad de la FC (VFC)"
               subtitle={`Media semanal (geométrica) de los últimos 12 meses. Lo útil es tu tendencia, no el valor absoluto${changeText(hrvChange, 'ms')}.`}
-              spec={weekSpec('VFC', hrv52, 'ms', 1)}
+              spec={weekSpec('VFC', hrv52, 'ms', 1, 20)}
               table={{
                 headers: ['Semana', 'Media', 'Noches'],
                 rows: hrv52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
@@ -741,7 +749,7 @@ const TONE = {
               id="fc-reposo"
               title="FC en reposo"
               subtitle={`Media semanal de los últimos 12 meses. Bajar con los meses suele indicar mejor forma aeróbica${changeText(rhrChange, 'ppm')}.`}
-              spec={weekSpec('FC en reposo', rhr52, 'bpm', 2)}
+              spec={weekSpec('FC en reposo', rhr52, 'bpm', 2, 10)}
               table={{
                 headers: ['Semana', 'Media', 'Días'],
                 rows: rhr52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
@@ -914,7 +922,7 @@ const TONE = {
         <div class="grid gap-6 lg:grid-cols-2">
           <ChartCard
             title="Minutos de intensidad por semana"
-            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas`}
+            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas; la última barra es esta semana, aún en curso`}
             how="Cada día se toma lo mayor entre los minutos que da Garmin y los de las zonas de FC de tus actividades (Z2–Z3 moderados, Z4–Z5 vigorosos), porque la API suele dar 0. Los vigorosos cuentan doble, como en la recomendación de la OMS. Orientativo."
             spec={intensitySpec}
             table={{

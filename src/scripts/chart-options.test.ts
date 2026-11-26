@@ -10,6 +10,7 @@ describe('fmt', () => {
     expect(fmt('pace', 305)).toBe('5:05 /km');
     expect(fmt('pace100', 95)).toBe('1:35 /100 m');
     expect(fmt('hm', 5400)).toBe('1 h 30');
+    expect(fmt('hm', 0)).toBe('0');
     expect(fmt('km', 12.34)).toBe('12,3 km');
     expect(fmt('dec2', 1.2)).toBe('1,20');
     expect(fmt('int', null)).toBe('—');
@@ -80,8 +81,23 @@ describe('buildOptions', () => {
       format: 'int',
     };
     const o = buildOptions(spec, env);
-    expect(o.colors).toEqual(['var(--viz-1)', 'var(--viz-1)66']);
+    expect(o.colors).toEqual(['var(--viz-1)', 'var(--viz-1)99']);
     expect((o.markers as { size: number[] }).size).toEqual([3, 0]);
+    expect((o.stroke as { dashArray: number[] }).dashArray).toEqual([0, 4]);
+    expect((o.legend as { markers: { shape: string[] } }).markers.shape).toEqual(['circle', 'line']);
+  });
+
+  it('amplitud mínima del eje: datos estables no parecen grandes cambios', () => {
+    const spec: ChartSpec = {
+      type: 'line',
+      categories: cats(3),
+      series: [{ name: 'FC', data: [41, 42, 43] }],
+      format: 'bpm',
+      minSpan: 10,
+    };
+    const y = buildOptions(spec, env).yaxis as { min: number; max: number };
+    expect(y.max - y.min).toBe(10);
+    expect(y.min).toBe(35);
   });
 
   it('etiquetas del eje x según el ancho real cuando hay muchas categorías', () => {
