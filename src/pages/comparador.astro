@@ -126,11 +126,11 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
             data-dropdown-toggle="cmp-type-menu"
             data-dropdown-placement="bottom-start"
             type="button"
-            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`Tipo de actividad: ${typeTitle}`}
           >
             Comparador · {typeTitle}
-            <svg class="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+            <svg class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 10 6" aria-hidden="true">
               <path
                 stroke="currentColor"
                 stroke-linecap="round"
@@ -257,37 +257,38 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
               </caption>
               <thead class="border-b border-border text-xs text-muted-foreground">
                 <tr>
-                  <th scope="col" class="px-4 py-3">
+                  <th scope="col" class="px-2.5 py-3 sm:px-4">
                     Año
                   </th>
-                  <th scope="col" class="px-4 py-3 text-right">
+                  <th scope="col" class="hidden px-2.5 py-3 sm:px-4 text-right sm:table-cell">
                     Sesiones
                   </th>
                   {byDistance && (
-                    <th scope="col" class="px-4 py-3 text-right">
-                      Distancia
+                    <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
+                      Distancia<span class="sm:hidden"> y tiempo</span>
                     </th>
                   )}
-                  <th scope="col" class="px-4 py-3 text-right">
+                  {/* En móvil, con distancia, el tiempo va bajo los km para no desplazarse de lado */}
+                  <th scope="col" class:list={['px-2.5 py-3 sm:px-4 text-right', byDistance && 'hidden sm:table-cell']}>
                     Tiempo
                   </th>
                   {byDistance && (
-                    <th scope="col" class="px-4 py-3 text-right">
+                    <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
                       {kind === 'cycling' ? 'Velocidad media' : 'Ritmo medio'}
                     </th>
                   )}
-                  <th scope="col" class="hidden px-4 py-3 text-right sm:table-cell">
+                  <th scope="col" class="hidden px-2.5 py-3 sm:px-4 text-right sm:table-cell">
                     FC media
                   </th>
                   {byDistance && (
-                    <th scope="col" class="hidden px-4 py-3 text-right md:table-cell">
+                    <th scope="col" class="hidden px-2.5 py-3 sm:px-4 text-right md:table-cell">
                       Desnivel&nbsp;+
                     </th>
                   )}
-                  <th scope="col" class="hidden px-4 py-3 text-right sm:table-cell">
+                  <th scope="col" class="hidden px-2.5 py-3 sm:px-4 text-right sm:table-cell">
                     Mejor mes
                   </th>
-                  <th scope="col" class="px-4 py-3 text-right">
+                  <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
                     vs año anterior
                   </th>
                 </tr>
@@ -298,28 +299,44 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                   const delta = prev && prev.year === s.year - 1 ? pctVs(mainOf(s), mainOf(prev)) : undefined;
                   return (
                     <tr class="border-t border-border">
-                      <td class="px-4 py-3 font-semibold">
+                      <td class="px-2.5 py-3 sm:px-4 font-semibold">
                         {s.year}
                         {s.year === thisYear && (
-                          <span class="ml-1 text-xs font-normal text-muted-foreground">(en curso)</span>
+                          <span class="block text-xs font-normal text-muted-foreground sm:ml-1 sm:inline">
+                            (en curso)
+                          </span>
                         )}
                       </td>
-                      <td class="px-4 py-3 text-right">{int(s.sessions)}</td>
-                      {byDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{km(s.km)} km</td>}
-                      <td class="px-4 py-3 text-right whitespace-nowrap">{hoursMinutes(s.movingS)}</td>
-                      {byDistance && <td class="px-4 py-3 text-right whitespace-nowrap">{avgSpeedText(s)}</td>}
-                      <td class="hidden px-4 py-3 text-right sm:table-cell">{int(s.avgHr)}</td>
+                      <td class="hidden px-2.5 py-3 sm:px-4 text-right sm:table-cell">{int(s.sessions)}</td>
                       {byDistance && (
-                        <td class="hidden px-4 py-3 text-right whitespace-nowrap md:table-cell">
+                        <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">
+                          {km(s.km)} km
+                          <span class="block text-xs text-muted-foreground sm:hidden">{hoursMinutes(s.movingS)}</span>
+                        </td>
+                      )}
+                      <td
+                        class:list={[
+                          'px-2.5 py-3 sm:px-4 text-right whitespace-nowrap',
+                          byDistance && 'hidden sm:table-cell',
+                        ]}
+                      >
+                        {hoursMinutes(s.movingS)}
+                      </td>
+                      {byDistance && (
+                        <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{avgSpeedText(s)}</td>
+                      )}
+                      <td class="hidden px-2.5 py-3 sm:px-4 text-right sm:table-cell">{int(s.avgHr)}</td>
+                      {byDistance && (
+                        <td class="hidden px-2.5 py-3 sm:px-4 text-right whitespace-nowrap md:table-cell">
                           {int(s.elevationGainM)} m
                         </td>
                       )}
-                      <td class="hidden px-4 py-3 text-right sm:table-cell">
+                      <td class="hidden px-2.5 py-3 sm:px-4 text-right sm:table-cell">
                         {s.bestMonth !== undefined ? MONTHS[s.bestMonth] : '—'}
                       </td>
                       <td
                         class:list={[
-                          'px-4 py-3 text-right whitespace-nowrap',
+                          'px-2.5 py-3 sm:px-4 text-right whitespace-nowrap',
                           delta === undefined
                             ? 'text-muted-foreground'
                             : delta >= 0
@@ -329,7 +346,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                       >
                         {delta === undefined ? '—' : signed(delta)}
                         {delta !== undefined && s.year === thisYear && (
-                          <span class="block text-xs text-muted-foreground">año incompleto</span>
+                          <span class="block text-xs whitespace-normal text-muted-foreground">año incompleto</span>
                         )}
                       </td>
                     </tr>

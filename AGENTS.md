@@ -388,7 +388,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Colores desde los tokens `--viz-*` (paleta validada en claro y oscuro), máximo 4 series de color.
   - **Nunca doble eje Y**: si hacen falta dos magnitudes, usa dos gráficas sincronizadas (`group`).
   - El ritmo va con el eje invertido (más rápido arriba) y escalas redondas.
-  - Toda gráfica de `ChartCard` ofrece "Ver datos" (tabla accesible).
+  - Toda gráfica ofrece "Ver datos" (tabla accesible, `DataTable`): `ChartCard` la genera desde el spec si no se
+    le pasa `table` (`specTable` en `lib/chart-table.ts`), y las gráficas hechas a mano usan `<DataTable>` igual.
+  - Títulos: `ChartCard` usa `h3` (dentro de una sección con `h2`); `headingLevel={2}` si cuelga del `h1`.
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
   - Formato `clock`: hora del día en minutos desde las 12:00, para que una noche no se parta en la medianoche.
   - `zoom: true` activa el zoom por selección en x (se sincroniza en el `group`); `zoomControls: false`
@@ -396,7 +398,15 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Las barras de ritmo no tienen sentido (no empiezan en cero): para parciales, usa línea con puntos.
 - **Tarjetas de estado**: borde izquierdo de color con estado en texto (nunca solo color) y
   variaciones con flecha + texto.
-- **Tablas en móvil**: oculta las columnas secundarias por debajo de `sm`, para no obligar a desplazarse de lado.
+- **Móvil** (se comprueba a 390 px; a 320 px aún se permite algún desplazamiento lateral dentro de una tabla):
+  - Tablas: oculta las columnas secundarias por debajo de `sm` y pasa lo accesorio (fecha, tipo, variación,
+    tiempo) a una segunda línea bajo la cifra principal, para no obligar a desplazarse de lado.
+  - Barra superior en dos filas: perfil y tema arriba, secciones a todo el ancho debajo (el desplegable dice
+    siempre "Actividades"). `scroll-padding-top` en `html` evita que tape los títulos al saltar a un ancla.
+  - Páginas largas (Salud, Rendimiento): índice "Ir a" bajo el título (`PageIndex`).
+  - `StatCard` pinta pequeñas las unidades que van dentro del valor ("68 h 45 min").
+  - Calendario anual: si no cabe en una fila, se parte en dos medias filas con celdas fluidas (container query).
+  - Textos que dependen del cursor tienen variante táctil (`pointer-coarse:`).
 - **Colores críticos** (trofeo, etiquetas de competición): van fijados en el propio componente con
   `<style>`, no con clases que dependan de que Tailwind las genere.
 - **Navegación entre páginas**:
@@ -459,7 +469,6 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - dinámicas de carrera según el ritmo;
   - indicador de subidas.
 - **Comparador**: pulir estadísticas con el usuario.
-- **Interfaz**: la tabla de actividades aún desborda unos 80 px a 390 px de ancho.
 - **Seguridad**: CSP de scripts (necesita un nonce por petición para los scripts en línea).
 - **Sin verificar con datos reales** (no hay capturas): peso (se asume en gramos), RPE y sensación, y potencia.
 - **No disponible en la API personal de Garmin**: equipo (km por zapatilla) y altura (para el IMC se pide en el perfil).

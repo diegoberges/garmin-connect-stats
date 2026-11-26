@@ -146,11 +146,11 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
             data-dropdown-toggle="type-menu"
             data-dropdown-placement="bottom-start"
             type="button"
-            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`Tipo de actividad: ${title}`}
           >
             {title}
-            <svg class="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+            <svg class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 10 6" aria-hidden="true">
               <path
                 stroke="currentColor"
                 stroke-linecap="round"
@@ -219,6 +219,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
       </div>
 
       <ChartCard
+        headingLevel={2}
         title={distanceBased ? 'Kilómetros por semana' : 'Tiempo por semana'}
         subtitle={isAll ? 'Semanas de lunes a domingo · por tipo de actividad' : 'Semanas de lunes a domingo'}
         spec={weeklySpec}
@@ -237,12 +238,13 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         <div class:list={['grid gap-6', speedSpec && hasHr && 'lg:grid-cols-2']}>
           {speedSpec && kind && (
             <ChartCard
+              headingLevel={2}
               title={`${kind === 'cycling' ? 'Velocidad' : 'Ritmo'} por sesión`}
               subtitle={kind === 'cycling' ? 'km/h' : `${swim ? 'min/100 m' : 'min/km'} · más rápido arriba`}
               spec={speedSpec}
             />
           )}
-          {hasHr && <ChartCard title="FC media por sesión" subtitle="ppm" spec={hrSpec} />}
+          {hasHr && <ChartCard headingLevel={2} title="FC media por sesión" subtitle="ppm" spec={hrSpec} />}
         </div>
       )}
 

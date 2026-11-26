@@ -35,7 +35,8 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 const itemActive = (item: NavItem) =>
   item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href);
 const linkClass = (active: boolean) => [
-  'rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+  'inline-flex min-h-10 items-center rounded-md px-2.5 text-xs font-medium whitespace-nowrap transition-colors',
+  'sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm',
   active ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
 ];
 const dropdowns = nav.filter((i) => i.children);
@@ -102,87 +103,93 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
       Saltar al contenido
     </a>
     <header class="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-      <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
+      <!-- En móvil, dos filas: perfil y tema arriba; las secciones a todo el ancho debajo (no caben en una) -->
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:flex-nowrap">
         <ProfileMenu />
-        <div class="flex min-w-0 items-center gap-1">
-          <nav aria-label="Principal" class="flex min-w-0 items-center">
-            <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
-              {nav.map((item) =>
-                item.children ? (
-                  <button
-                    type="button"
-                    data-dropdown-toggle={menuId(item)}
-                    data-dropdown-placement="bottom-end"
-                    class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
-                    aria-controls={menuId(item)}
-                    aria-expanded="false"
-                  >
+        <nav
+          aria-label="Principal"
+          class="order-last flex w-full min-w-0 items-center sm:order-none sm:ml-auto sm:w-auto"
+        >
+          <div class="flex min-w-0 flex-1 items-center justify-between gap-1 overflow-x-auto sm:justify-end">
+            {nav.map((item) =>
+              item.children ? (
+                <button
+                  type="button"
+                  data-dropdown-toggle={menuId(item)}
+                  data-dropdown-placement="bottom-end"
+                  class:list={[linkClass(itemActive(item)), 'flex items-center gap-1']}
+                  aria-controls={menuId(item)}
+                  aria-expanded="false"
+                >
+                  {/* En móvil, siempre "Actividades": el título de la página ya dice cuál de ellas es */}
+                  <span class="sm:hidden">{item.label}</span>
+                  <span class="hidden sm:inline">
                     {item.children.find((c) => isActive(c.href))?.label ?? item.label}
-                    <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
-                      <path
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="m1 1 4 4 4-4"
-                      />
-                    </svg>
-                  </button>
-                ) : (
+                  </span>
+                  <svg class="h-3 w-3" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="m1 1 4 4 4-4"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <a
+                  href={item.href}
+                  class:list={linkClass(isActive(item.href))}
+                  aria-current={isActive(item.href) ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              ),
+            )}
+          </div>
+          {/* Fuera del contenedor con scroll lateral, para que no recorte los paneles */}
+          {dropdowns.map((item) => (
+            <ul
+              id={menuId(item)}
+              class="z-50 hidden w-64 border py-1 border-border bg-popover text-popover-foreground rounded-md shadow-md"
+            >
+              {item.children!.map((c) => (
+                <li>
                   <a
-                    href={item.href}
-                    class:list={linkClass(isActive(item.href))}
-                    aria-current={isActive(item.href) ? 'page' : undefined}
+                    href={c.href}
+                    aria-current={isActive(c.href) ? 'page' : undefined}
+                    class:list={[
+                      'block px-4 py-2 hover:bg-accent hover:text-accent-foreground',
+                      isActive(c.href) && 'bg-accent',
+                    ]}
                   >
-                    {item.label}
+                    <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-accent-foreground']}>
+                      {c.label}
+                    </span>
+                    <span class="block text-xs text-muted-foreground">{c.description}</span>
                   </a>
-                ),
-              )}
-            </div>
-            {/* Fuera del contenedor con scroll lateral, para que no recorte los paneles */}
-            {dropdowns.map((item) => (
-              <ul
-                id={menuId(item)}
-                class="z-50 hidden w-64 border py-1 border-border bg-popover text-popover-foreground rounded-md shadow-md"
-              >
-                {item.children!.map((c) => (
-                  <li>
-                    <a
-                      href={c.href}
-                      aria-current={isActive(c.href) ? 'page' : undefined}
-                      class:list={[
-                        'block px-4 py-2 hover:bg-accent hover:text-accent-foreground',
-                        isActive(c.href) && 'bg-accent',
-                      ]}
-                    >
-                      <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-accent-foreground']}>
-                        {c.label}
-                      </span>
-                      <span class="block text-xs text-muted-foreground">{c.description}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ))}
-          </nav>
-          <button
-            id="theme-toggle"
-            type="button"
-            class="ml-3 rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:text-accent-foreground"
-          >
-            <!-- El texto dice qué hará el botón; el que no aplica se oculta (y sale del árbol accesible) -->
-            <span class="sr-only dark:hidden">Pasar a modo oscuro</span>
-            <span class="sr-only hidden dark:inline">Pasar a modo claro</span>
-            <svg class="h-4 w-4 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-            </svg>
-            <svg class="hidden h-4 w-4 dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path
-                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
-              ></path>
-            </svg>
-          </button>
-        </div>
+                </li>
+              ))}
+            </ul>
+          ))}
+        </nav>
+        <button
+          id="theme-toggle"
+          type="button"
+          class="ml-auto rounded-md p-1.5 text-muted-foreground/60 sm:ml-1 transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:text-accent-foreground"
+        >
+          <!-- El texto dice qué hará el botón; el que no aplica se oculta (y sale del árbol accesible) -->
+          <span class="sr-only dark:hidden">Pasar a modo oscuro</span>
+          <span class="sr-only hidden dark:inline">Pasar a modo claro</span>
+          <svg class="h-4 w-4 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+          </svg>
+          <svg class="hidden h-4 w-4 dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <path
+              d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+            ></path>
+          </svg>
+        </button>
       </div>
     </header>
     <!-- Alerta de fatiga por sueño: isla de servidor, se carga aparte para no retrasar la página -->

@@ -1,11 +1,12 @@
 ---
 /**
- * Tarjeta con gráfica + vista de tabla accesible ("Ver datos"). El subtítulo dice en una línea qué se compara;
+ * Tarjeta con gráfica + vista de tabla accesible ("Ver datos"; sin `table`, se genera desde el spec). El subtítulo dice en una línea qué se compara;
  * la fórmula y la evidencia van en `how` ("Cómo se calcula", plegado). Lo que se pase como hijo se añade al
  * final (p. ej. una gráfica secundaria plegada).
  */
 import type { ChartSpec } from '../lib/chart-spec';
 import Collapsible from './Collapsible.astro';
+import DataTable from './DataTable.astro';
 
 interface Props {
   title: string;
@@ -14,15 +15,17 @@ interface Props {
   table?: { headers: string[]; rows: string[][] };
   /** Fórmula, fuentes y límites: se pliega bajo "Cómo se calcula". */
   how?: string;
+  /** Nivel del título: 3 dentro de una sección con su propio h2 (lo normal), 2 si cuelga directamente del h1. */
+  headingLevel?: 2 | 3;
   class?: string;
 }
-const { title, subtitle, spec, table, how, class: className } = Astro.props;
-const captionId = `datos-${crypto.randomUUID()}`;
+const { title, subtitle, spec, table, how, headingLevel = 3, class: className } = Astro.props;
+const Heading = headingLevel === 2 ? 'h2' : 'h3';
 const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== undefined));
 ---
 
 <section class:list={['min-w-0 border border-border bg-card p-5 text-card-foreground', className]}>
-  <h2 class="type-card">{title}</h2>
+  <Heading class="type-card">{title}</Heading>
   {subtitle && <p class="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
   {hasData ? (
     <div
@@ -35,36 +38,7 @@ const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== u
   ) : (
     <p class="py-10 text-center text-sm text-muted-foreground">Sin datos en este periodo</p>
   )}
-  {table && hasData && (
-    <details class="mt-2 text-sm">
-      <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground">Ver datos</summary>
-      <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby={captionId}>
-        <table class="w-full text-left text-xs">
-          <caption id={captionId} class="sr-only">
-            Datos de la gráfica: {title}
-          </caption>
-          <thead class="sticky top-0 text-muted-foreground bg-muted/50">
-            <tr>
-              {table.headers.map((h) => (
-                <th scope="col" class="px-2 py-1 font-medium">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody class="tabular-nums">
-            {table.rows.map((r) => (
-              <tr class="border-b border-border">
-                {r.map((c) => (
-                  <td class="px-2 py-1">{c}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </details>
-  )}
+  {hasData && <DataTable title={title} spec={spec} table={table} />}
   {how && (
     <Collapsible summary="Cómo se calcula" class="mt-1">
       <p class="max-w-prose text-xs text-muted-foreground">{how}</p>

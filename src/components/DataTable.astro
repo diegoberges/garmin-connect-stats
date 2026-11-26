@@ -1,0 +1,52 @@
+---
+/**
+ * "Ver datos": la tabla accesible de una gráfica, plegada. Toda gráfica la lleva (también las hechas a mano).
+ * Por defecto genera la tabla desde el `ChartSpec` (categoría + una columna por serie); con `table`, usa esa.
+ */
+import type { ChartSpec } from '../lib/chart-spec';
+import { specTable } from '../lib/chart-table';
+
+interface Props {
+  /** Nombre de la gráfica, para el título accesible de la tabla. */
+  title: string;
+  spec?: ChartSpec;
+  table?: { headers: string[]; rows: string[][] };
+  /** Cabecera de la columna de categorías al generar desde el spec. */
+  categoryLabel?: string;
+  class?: string;
+}
+const { title, spec, table: given, categoryLabel, class: className } = Astro.props;
+const table = given ?? (spec ? specTable(spec, categoryLabel) : undefined);
+const captionId = `datos-${crypto.randomUUID()}`;
+---
+
+{table && table.rows.length > 0 && (
+  <details class:list={['mt-2 text-sm', className]}>
+    <summary class="w-fit cursor-pointer select-none text-muted-foreground hover:text-foreground">Ver datos</summary>
+    <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby={captionId}>
+      <table class="w-full text-left text-xs">
+        <caption id={captionId} class="sr-only">
+          Datos de la gráfica: {title}
+        </caption>
+        <thead class="sticky top-0 text-muted-foreground bg-muted/50">
+          <tr>
+            {table.headers.map((h) => (
+              <th scope="col" class="px-2 py-1 font-medium">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody class="tabular-nums">
+          {table.rows.map((r) => (
+            <tr class="border-b border-border">
+              {r.map((c) => (
+                <td class="px-2 py-1">{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  </details>
+)}

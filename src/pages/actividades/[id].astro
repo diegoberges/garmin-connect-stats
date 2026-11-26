@@ -472,7 +472,14 @@ const label = 'type-label';
               <h2 class="type-card">A lo largo de la actividad</h2>
               {charts.length > 1 && (
                 <p class="text-xs text-muted-foreground">
-                  Pasa el cursor: las gráficas marcan el mismo punto. Arrastra sobre una para ampliar un tramo en todas
+                  {/* El texto depende de la entrada: en pantalla táctil no hay cursor */}
+                  <span class="pointer-coarse:hidden">
+                    Pasa el cursor: las gráficas marcan el mismo punto. Arrastra sobre una para ampliar un tramo en
+                    todas
+                  </span>
+                  <span class="hidden pointer-coarse:inline">
+                    Toca una gráfica: todas marcan el mismo punto. Los botones de la primera amplían un tramo en todas
+                  </span>
                 </p>
               )}
             </div>

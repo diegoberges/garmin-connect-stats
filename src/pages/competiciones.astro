@@ -124,33 +124,38 @@ const CAT_CLASS: Record<Exclude<RaceCategory, 'Otra'>, string> = {
     <ErrorState error={error} />
   ) : (
     <div class="space-y-6">
-      {races && races.length > 0 && (
+      {/* Solo las distancias en las que has competido: una tarjeta con "—" no dice nada */}
+      {bestByCat.some((b) => b.race) && (
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {bestByCat.map(({ cat, race, count }) => (
-            <div class:list={[card, 'p-4']}>
-              <p class="type-label">Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}</p>
-              {race ? (
-                <>
-                  <p class="mt-1 type-kpi">{duration(raceTime(race))}</p>
-                  <p class="mt-1 text-xs text-muted-foreground">
-                    {pace(raceTime(race) / race.distanceKm)} /km ·{' '}
-                    <a
-                      href={`/actividades/${race.id}`}
-                      class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
-                      title={race.name}
-                    >
-                      {shortDate(race.date)} {race.date.slice(0, 4)}
-                    </a>
-                  </p>
-                  <p class="text-xs text-muted-foreground">
-                    {count} {count === 1 ? 'competición' : 'competiciones'}
-                  </p>
-                </>
-              ) : (
-                <p class="mt-1 type-kpi text-muted-foreground">—</p>
-              )}
-            </div>
-          ))}
+          {bestByCat
+            .filter((b) => b.race)
+            .map(({ cat, race, count }) => (
+              <div class:list={[card, 'p-4']}>
+                <p class="type-label">
+                  Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}
+                </p>
+                {race ? (
+                  <>
+                    <p class="mt-1 type-kpi">{duration(raceTime(race))}</p>
+                    <p class="mt-1 text-xs text-muted-foreground">
+                      {pace(raceTime(race) / race.distanceKm)} /km ·{' '}
+                      <a
+                        href={`/actividades/${race.id}`}
+                        class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+                        title={race.name}
+                      >
+                        {shortDate(race.date)} {race.date.slice(0, 4)}
+                      </a>
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                      {count} {count === 1 ? 'competición' : 'competiciones'}
+                    </p>
+                  </>
+                ) : (
+                  <p class="mt-1 type-kpi text-muted-foreground">—</p>
+                )}
+              </div>
+            ))}
         </div>
       )}
 
@@ -286,7 +291,7 @@ const CAT_CLASS: Record<Exclude<RaceCategory, 'Otra'>, string> = {
             {activeDays} días con actividad · {yearRaces.length}{' '}
             {yearRaces.length === 1 ? 'competición' : 'competiciones'} (con borde ámbar)
           </p>
-          <div class="mt-3 overflow-x-auto pb-1">
+          <div class="cal-wrap mt-3 overflow-x-auto pb-1">
             <div
               class="cal-grid"
               role="img"
@@ -405,6 +410,33 @@ const CAT_CLASS: Record<Exclude<RaceCategory, 'Otra'>, string> = {
   }
   :global(.dark) .cal-month {
     color: #a1a1aa;
+  }
+  /* Si el año no cabe en una fila (móvil), se parte en dos medias filas de 27 semanas con celdas fluidas:
+     se ve entero sin desplazarse de lado */
+  .cal-wrap {
+    container-type: inline-size;
+  }
+  @container (width < 50rem) {
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(27, minmax(0, 1fr));
+      gap: 0.75rem 2px;
+      width: 100%;
+      max-width: 27rem;
+      padding-right: 0.75rem; /* la etiqueta del último mes sobresale de su columna */
+    }
+    .cal-week {
+      gap: 2px;
+    }
+    .cal-week .cal-day {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1;
+    }
+    .cal-month {
+      width: auto;
+      overflow: visible;
+    }
   }
 
   /* Etiquetas de distancia: intensidad creciente de 5K a maratón */

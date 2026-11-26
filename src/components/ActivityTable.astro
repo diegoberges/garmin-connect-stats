@@ -43,9 +43,9 @@ const distanceText = (a: Activity, i: number) =>
     <caption id={captionId} class="sr-only">
       {caption}
     </caption>
-    <thead class="border-b border-border text-muted-foreground">
+    <thead class="border-b border-border text-xs text-muted-foreground">
       <tr>
-        <th scope="col" class="px-2.5 py-3 sm:px-4">Fecha</th>
+        <th scope="col" class:list={[secondary, 'px-2.5 py-3 sm:px-4']}>Fecha</th>
         <th scope="col" class="px-2.5 py-3 sm:px-4">Actividad</th>
         {anyDistance && (
           <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
@@ -75,7 +75,7 @@ const distanceText = (a: Activity, i: number) =>
     <tbody class="tabular-nums">
       {activities.map((a, i) => (
         <tr class="border-b border-border transition-colors last:border-0 hover:bg-muted/50">
-          <td class="px-2.5 py-3 sm:px-4 whitespace-nowrap">{dayLabel(a.date)}</td>
+          <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 whitespace-nowrap']}>{dayLabel(a.date)}</td>
           <td class="px-2.5 py-3 sm:px-4">
             <a href={`/actividades/${a.id}`} class="font-medium underline-offset-4 hover:underline">
               {a.name}
@@ -85,7 +85,11 @@ const distanceText = (a: Activity, i: number) =>
                 <TrophyTip label="Récord personal en Garmin" />
               </span>
             )}
-            {showType && <span class="chip mt-1 flex sm:mt-0 sm:ml-2 sm:inline-flex">{activityLabel(a.typeKey)}</span>}
+            {/* En móvil la fecha va bajo el nombre, junto al tipo: así caben las cifras sin desplazarse de lado */}
+            <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:mt-0 sm:ml-2 sm:inline-flex">
+              <span class="whitespace-nowrap sm:hidden">{dayLabel(a.date)}</span>
+              {showType && <span class="chip">{activityLabel(a.typeKey)}</span>}
+            </span>
           </td>
           {anyDistance && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
           <td class="px-2.5 py-3 sm:px-4 text-right">{duration(a.movingS)}</td>

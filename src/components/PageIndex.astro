@@ -1,0 +1,24 @@
+---
+/**
+ * Índice de una página larga (Salud, Rendimiento): enlaces a cada sección bajo el título. En móvil ahorra
+ * varias pantallas de desplazamiento; el desfase de la barra fija lo pone `scroll-padding-top` en global.css.
+ */
+interface Props {
+  items: { href: string; label: string }[];
+  class?: string;
+}
+const { items, class: className } = Astro.props;
+---
+
+<nav aria-label="En esta página" class:list={['flex flex-wrap items-center gap-x-4 text-sm', className]}>
+  <span class="text-muted-foreground" aria-hidden="true">Ir a</span>
+  {items.map((i) => (
+    <a
+      href={i.href}
+      class="inline-flex min-h-10 items-center underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground sm:min-h-8"
+      data-no-loading
+    >
+      {i.label}
+    </a>
+  ))}
+</nav>
