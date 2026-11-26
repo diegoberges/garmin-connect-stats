@@ -213,7 +213,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         {hasHr && <StatCard label="FC media" value={int(t.avgHr)} unit="ppm" />}
         {t.calories > 0 && <StatCard label="Calorías" value={int(t.calories)} unit="kcal" />}
         {distanceBased && t.elevationGainM > 0 && (
-          <StatCard label="Desnivel +" value={int(t.elevationGainM)} unit="m" />
+          <StatCard label={'Desnivel\u00a0+'} value={int(t.elevationGainM)} unit="m" />
         )}
         {isAll && <StatCard label="Tipos" value={int(types.length)} />}
       </div>
