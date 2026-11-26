@@ -33,6 +33,7 @@ export function duration(seconds?: number): string {
 export function hoursMinutes(seconds?: number): string {
   if (seconds === undefined) return DASH;
   const m = Math.round(seconds / 60);
+  if (m < 60) return `${m} min`;
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
 }
 

@@ -282,6 +282,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Con una sola señal fuera, el estado sigue siendo normal pero el veredicto la nombra ("En tu rango, salvo …").
     Una señal fuera va en ámbar con la etiqueta "Fuera de rango" en texto; la VFC por encima del rango, con un
     punto verde hueco ("no suma"). En la interfaz se dice siempre VFC (no HRV) y "Forma" (no "Forma (TSB)").
+  - Bajo "Hoy" se dice de qué noche son los datos ("Noche del mié 25 al jue 26 · te levantaste a las 06:33"); si la
+    última noche con datos no es la de hoy, aviso en ámbar de que el reloj no ha sincronizado.
   - Las señales son la lectura principal (`.type-readout`, LED); la disposición va después, a tamaño de valor, con el
     desglose plegado y, si algo tira de ella hacia abajo, "Pide atención: …" fuera en texto.
 - **Recuperación** (30 días): HRV y FC en reposo con banda de rango normal; horas de sueño frente a la necesidad.
