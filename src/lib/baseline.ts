@@ -132,7 +132,7 @@ function hrvSignal(days: DayHealth[], fmt: Fmt): Signal {
       detail: `Calibrando tu rango (${hrv.nights}/${HRV_MIN_NIGHTS} noches)`,
     };
   }
-  const range = `rango ${fmt.ms(hrv.low)}–${fmt.ms(hrv.high)}`;
+  const range = `rango ${Math.round(hrv.low)}–${fmt.ms(hrv.high)}`;
   if (hrv.avg7! < hrv.low) return { ...base, state: 'warn', value, detail: `Por debajo de tu ${range}` };
   if (hrv.avg7! > hrv.high) return { ...base, state: 'high', value, detail: `Por encima de tu ${range}` };
   return { ...base, state: 'ok', value, detail: `Dentro de tu ${range}` };

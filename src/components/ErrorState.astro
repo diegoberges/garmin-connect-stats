@@ -7,11 +7,16 @@ interface Props {
 }
 const { error } = Astro.props;
 const auth = error instanceof GarminAuthError || (error instanceof GarminApiError && error.status === 401);
-const message = auth
-  ? 'Tu API key de Garmin no es válida o ha caducado.'
-  : error instanceof Error
-    ? error.message
-    : 'Error inesperado al cargar los datos.';
+/** Qué ha fallado y qué hacer, sin el mensaje técnico (que va al log). */
+function messageFor(): string {
+  if (auth) return 'Tu API key de Garmin no es válida o ha caducado.';
+  if (error instanceof GarminApiError && error.status === 429)
+    return 'Garmin está limitando las peticiones. Espera unos minutos y recarga la página.';
+  if (error instanceof GarminApiError && error.status >= 500)
+    return 'Garmin no responde ahora mismo. Prueba a recargar en unos minutos.';
+  return 'Ha fallado la petición a Garmin. Recarga la página; si sigue fallando, comprueba la conexión en tu perfil.';
+}
+const message = messageFor();
 if (!auth) console.error('[garmin]', error);
 ---
 

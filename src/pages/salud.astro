@@ -140,6 +140,21 @@ const DOT_LABEL: Record<SignalState, string> = {
   nodata: 'Sin datos',
 };
 
+// De qué noche son los datos de Hoy: la última con sueño o VFC. Si no es la de hoy, el reloj no ha sincronizado.
+const lastNight = all.findLast((d) => d.sleepS !== undefined || d.hrvLastNight !== undefined);
+const nightDay = (date: string) =>
+  new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${date}T12:00:00Z`),
+  );
+const nightText = lastNight && `noche del ${nightDay(addDays(lastNight.date, -1))} al ${nightDay(lastNight.date)}`;
+const wakeTime =
+  lastNight?.sleepEndLocal !== undefined
+    ? new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }).format(
+        lastNight.sleepEndLocal,
+      )
+    : undefined;
+const nightIsToday = lastNight?.date === today;
+
 // ---------- Disposición (readiness) ----------
 const tsb = new Map<string, number>();
 if (acts) {
@@ -433,6 +448,17 @@ const TONE = {
             <h2 id="hoy" class={sectionTitle}>
               Hoy
             </h2>
+            {nightText && nightIsToday && (
+              <p class="mt-1 text-xs text-muted-foreground">
+                {nightText.replace(/^n/, 'N')}
+                {wakeTime ? ` · te levantaste a las ${wakeTime}` : ''}
+              </p>
+            )}
+            {nightText && !nightIsToday && (
+              <p class="mt-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                Aún no hay datos de anoche (el reloj no ha sincronizado): se muestra la {nightText}.
+              </p>
+            )}
             <p class="type-title mt-2">{state.title}</p>
             <p class="mt-1 text-sm text-muted-foreground">{state.text}</p>
             <p class="mt-3 text-xs text-muted-foreground">
@@ -503,10 +529,10 @@ const TONE = {
                     ))}
                   </ul>
                   <p class="mt-2 text-xs text-muted-foreground">
-                    50 es tu día normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo{' '}
-                    {READINESS_WEIGHTS.rhr * 100} %, sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y
-                    forma {READINESS_WEIGHTS.tsb * 100} %
-                    {ready.missing.length ? '; los que faltan se reparten entre el resto' : ''}. Orientativa: no es un
+                    Cada componente se mide en desviaciones estándar (DE) frente a tu media de 60 días; 50 es tu día
+                    normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo {READINESS_WEIGHTS.rhr * 100} %,
+                    sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y forma {READINESS_WEIGHTS.tsb * 100}{' '}
+                    %{ready.missing.length ? '; los que faltan se reparten entre el resto' : ''}. Orientativa: no es un
                     modelo validado.
                   </p>
                 </Collapsible>
@@ -817,7 +843,8 @@ const TONE = {
         <div class="grid gap-6 lg:grid-cols-2">
           <ChartCard
             title="Minutos de intensidad por semana"
-            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas. Con las zonas de FC de tus actividades (Z2–Z3 moderados, Z4–Z5 vigorosos) cuando Garmin no los da; orientativo.`}
+            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas`}
+            how="Cada día se toma lo mayor entre los minutos que da Garmin y los de las zonas de FC de tus actividades (Z2–Z3 moderados, Z4–Z5 vigorosos), porque la API suele dar 0. Los vigorosos cuentan doble, como en la recomendación de la OMS. Orientativo."
             spec={intensitySpec}
             table={{
               headers: ['Semana', 'Moderados', 'Vigorosos ×2', 'Total'],
