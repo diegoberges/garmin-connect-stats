@@ -13,6 +13,10 @@ describe('fmt', () => {
     expect(fmt('km', 12.34)).toBe('12,3 km');
     expect(fmt('dec2', 1.2)).toBe('1,20');
     expect(fmt('int', null)).toBe('—');
+    // Minutos desde las 12:00: 660 = 23:00, 780 = 01:00 del día siguiente, 1140 = 07:00
+    expect(fmt('clock', 660)).toBe('23:00');
+    expect(fmt('clock', 780)).toBe('01:00');
+    expect(fmt('clock', 1140)).toBe('07:00');
   });
 });
 

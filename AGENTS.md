@@ -160,6 +160,7 @@ src/
     activity-analysis.ts      # zonas de ritmo de Daniels por fecha y actividades en la misma ruta
     rr.ts                     # VFC intra-sesión con los intervalos RR del FIT
     weight.ts                 # peso con media de 7 días
+    long-term.ts              # regularidad del sueño, medias semanales a 12 meses e IMC
     vo2-norms.ts              # percentiles de VO2máx (FRIEND 2015)
     activity-kinds.ts         # familia de cada tipo (a pie, ciclismo, natación, otros)
     stats.ts, dates.ts, format.ts, settings.ts, flash.ts, chart-spec.ts
@@ -266,6 +267,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Estado según las señales fuera de rango: 0–1 normal, 2 atención, ≥3 posible enfermedad o mala recuperación.
     Sin datos suficientes, "calibrando".
 - **Recuperación** (30 días): HRV y FC en reposo con banda de rango normal; horas de sueño frente a la necesidad.
+  - Regularidad del sueño: hora media de acostarse y de levantarse ± su desviación típica (< 30 min regular,
+    30–60 algo irregular, > 60 irregular) y jet lag social (punto medio del sueño de las noches que acaban en
+    sábado o domingo frente a las laborables; > 1 h, a vigilar). Gráfica `rangeBar` con formato `clock`.
 - **Vida sana**:
   - Edad física con sus palancas.
   - VO2máx con margen ±5 % y percentil por sexo y edad (FRIEND 2015; el sexo se guarda en el perfil).
@@ -273,7 +277,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     el resumen diario: cada día se toma lo mayor entre Garmin y las zonas de FC de las actividades (Z2–Z3
     moderados, Z4–Z5 vigorosos; `INTENSITY_ZONES` en `baseline.ts`).
   - Pasos frente a una meta por edad.
-  - Peso con la media de 7 días (si hay pesajes en Garmin; sin captura real para comprobar unidades).
+  - Peso con la media de 7 días (si hay pesajes en Garmin; sin captura real para comprobar unidades) e IMC
+    con la altura del perfil (Garmin no la da) o, sin ella, el IMC que usa Garmin para la edad física.
+  - FC en reposo y VFC a 12 meses: medias semanales (la VFC, geométrica) y cambio del primer al último
+    trimestre. Se piden solo resúmenes y VFC (`getHeartHistory`, memo de 6 h).
 - **Contexto** (evidencia limitada): Body Battery, estrés (se muestra como "activación fisiológica") y fases del sueño.
 
 - **Disposición** (en la tarjeta Hoy): 0–100, 50 = tu día normal. z de VFC (35 %), FC en reposo (25 %),
@@ -377,6 +384,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - El ritmo va con el eje invertido (más rápido arriba) y escalas redondas.
   - Toda gráfica de `ChartCard` ofrece "Ver datos" (tabla accesible).
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
+  - Formato `clock`: hora del día en minutos desde las 12:00, para que una noche no se parta en la medianoche.
   - `zoom: true` activa el zoom por selección en x (se sincroniza en el `group`); `zoomControls: false`
     oculta los botones en las demás gráficas del grupo.
   - Las barras de ritmo no tienen sentido (no empiezan en cero): para parciales, usa línea con puntos.
@@ -432,18 +440,22 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 ## Pendiente (hoja de ruta)
 
 - **Salud**:
-  - regularidad del sueño;
-  - FC en reposo a 12 meses;
-  - etiquetas manuales (alcohol, viaje, enfermo) que excluyan esos días de los rangos.
-- **Refinamientos**:
-  - monotonía de la carga;
-  - peso/IMC;
-  - sedentarismo;
-  - HRV a 12 meses;
+  - etiquetas manuales (alcohol, viaje, enfermo, lesión) que excluyan esos días de las líneas base y tendencias;
+  - sedentarismo.
+- **Rendimiento**:
+  - curva de mejores marcas desde las series del FIT (400 m … 21K; 90 días, año e histórico): hoy sale de los
+    `fastestSplit_*` de Garmin (1 km a maratón, 12 meses frente al histórico);
+  - forma de maratón (índice de Runalyze);
   - dinámicas de carrera según el ritmo;
   - indicador de subidas.
 - **Comparador**: pulir estadísticas con el usuario.
-- **Posible**: base de datos para el histórico (hoy todo es en directo con caché en memoria) y modo multiusuario.
+- **Interfaz**: la tabla de actividades aún desborda unos 80 px a 390 px de ancho.
+- **Seguridad**: CSP de scripts (necesita un nonce por petición para los scripts en línea).
+- **Sin verificar con datos reales** (no hay capturas): peso (se asume en gramos), RPE y sensación, y potencia.
+- **No disponible en la API personal de Garmin**: equipo (km por zapatilla) y altura (para el IMC se pide en el perfil).
+- **Descartado**: clima por API meteorológica (no enviar ubicaciones a terceros).
+- **Posible**: base de datos para el histórico y modo multiusuario. Desbloquearía las etiquetas manuales, notas
+  subjetivas propias (RPE y sensación en el dashboard), equipo y la curva de marcas completa.
 
 ---
 

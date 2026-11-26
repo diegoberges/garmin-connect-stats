@@ -45,6 +45,10 @@ export function fmt(format: ValueFormat, v: number | null | undefined): string {
       return `${Math.round(v)} ms`;
     case 'pct':
       return `${Math.round(v)} %`;
+    case 'clock': {
+      const m = (((Math.round(v) + 720) % 1440) + 1440) % 1440;
+      return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    }
     default:
       return Math.round(v).toLocaleString('es-ES');
   }
@@ -158,7 +162,28 @@ function xAxisOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Option
 }
 
 /** Límites del eje Y: escala de tiempo, de ritmo o la que fije el spec. */
+/** Valores de un punto: uno, los dos de un rango [mín, máx] o ninguno. */
+function pointValues(d: number | [number, number] | null): number[] {
+  if (d === null) return [];
+  return Array.isArray(d) ? d : [d];
+}
+
+/** Hora del día: de hora en hora (o cada 2 h si el rango es amplio), con margen de una hora. */
+function clockScale(spec: ChartSpec): { min: number; max: number; tickAmount: number } | undefined {
+  if (spec.format !== 'clock') return undefined;
+  const values = spec.series.flatMap((s) => s.data.flatMap(pointValues));
+  if (!values.length) return undefined;
+  const min = Math.floor(Math.min(...values) / 60) * 60;
+  const max = Math.ceil(Math.max(...values) / 60) * 60;
+  const step = max - min > 8 * 60 ? 120 : 60;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  return { min: lo, max: hi, tickAmount: (hi - lo) / step };
+}
+
 function yRange(spec: ChartSpec) {
+  const clock = clockScale(spec);
+  if (clock) return { ...clock, nice: false };
   const time = timeScale(spec);
   if (time) return { min: 0, max: time.max, tickAmount: time.tickAmount, nice: false };
   const pace = paceScale(spec);
