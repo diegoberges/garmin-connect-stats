@@ -256,6 +256,12 @@ conectar"), `.chip-ok` (Récord, Conectado), `.chip-warn` (Aviso, avisos de cali
 El estado va siempre en el texto. Las etiquetas de distancia de Competiciones (5K, 10K, media, maratón) mantienen
 sus colores fijados en el componente, también cuadradas.
 
+### Plegables (`Collapsible`)
+
+Mismo aspecto que "Ver datos" (resumen en grafito, 0.875rem, sin borde). Un resumen visible de una línea y, plegado,
+"Cómo se calcula" (fórmula, pesos, evidencia) o "Más …" (indicadores secundarios). Nunca esconde un aviso: lo que
+pide atención se muestra fuera en texto o abre el plegable de entrada.
+
 ### Status Card (tarjeta "Hoy" y "Estado de forma")
 
 La pieza que define el sistema. Tarjeta con borde izquierdo de 4 px en el color del estado, título de sección, frase de estado en peso 600, explicación en grafito y una nota de confianza en tamaño Label. Debajo, la lista de señales: punto de color, nombre, comparación con tu rango y la cifra alineada a la derecha.

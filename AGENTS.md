@@ -294,7 +294,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     se avisa). No se mezcla con la carga de Garmin ni con otras escalas. Sin FC, la sesión no suma.
   - Filtro `?carga=` (todas, sin caminatas, solo carrera) para la carga; los días de fuerza se cuentan siempre.
   - Ratio agudo:crónico (fatiga / forma física; < 0,8 baja, 0,8–1,3 óptima, > 1,5 riesgo), rampa de la
-    forma física en 7 días (> 5 vigilar, > 8 alerta) y monotonía y strain de Foster de 7 días.
+    forma física en 7 días (> 5 vigilar, > 8 alerta) y monotonía y strain de Foster de 7 días. En la tarjeta de
+    estado solo se ven forma, forma física y fatiga; el resto va en "Más indicadores de carga" y, si alguno pide
+    atención, se avisa fuera del plegable. El ratio en el tiempo va plegado en la tarjeta de forma física.
   - Forma física (media exponencial de 42 días), fatiga (7 días) y forma en % de la forma física, con zonas orientativas.
   - Estado "calibrando" con menos de 42 días desde la primera carga.
 - Carga semanal por tipo con aviso si sube más de un 25 % sobre la media de 4 semanas; días de fuerza.
@@ -406,6 +408,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Para un mensaje propio, usa `data-loading="…"` en el enlace o formulario.
   - Para desactivarlo, `data-no-loading`.
   - Si una página nueva carga datos lentos, añade su mensaje en `messageFor()`.
+- **Plegables** (`Collapsible`, mismo aspecto que "Ver datos"): una línea visible dice qué se compara; la fórmula,
+  los pesos y la evidencia van en "Cómo se calcula" (en `ChartCard`, prop `how`). Lo secundario va en "Más …"
+  (indicadores de carga, dinámica de carrera, Contexto de Salud). Un aviso nunca se pliega: se muestra fuera en texto
+  ("Pide atención: …") o abre el plegable.
 - **Textos**: explica en la propia tarjeta qué se compara y cuánta confianza merece
   ("orientativo", "evidencia limitada"). Nada de puntuaciones opacas inventadas.
 

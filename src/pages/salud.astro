@@ -7,6 +7,7 @@ import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
 import ChartCard from '../components/ChartCard.astro';
+import Collapsible from '../components/Collapsible.astro';
 import {
   clientFor,
   getActivities,
@@ -423,29 +424,31 @@ const TONE = {
                   </p>
                 </div>
                 <p class="text-sm font-medium">{readinessLabel(ready.score)}</p>
-                <ul class="mt-2 space-y-0.5 text-xs">
-                  {ready.parts.map((part) => (
-                    <li class="flex justify-between gap-3 tabular-nums">
-                      <span>
-                        {part.label} · {PART_VALUE[part.key](part.value)}
-                      </span>
-                      <span
-                        class:list={[
-                          part.z < -1 ? 'font-medium text-red-700 dark:text-red-400' : 'text-muted-foreground',
-                        ]}
-                      >
-                        {part.z >= 0 ? '↑' : '↓'} {zText(part.z)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p class="mt-2 text-xs text-muted-foreground">
-                  50 es tu día normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo{' '}
-                  {READINESS_WEIGHTS.rhr * 100} %, sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y
-                  forma {READINESS_WEIGHTS.tsb * 100} %
-                  {ready.missing.length ? '; los que faltan se reparten entre el resto' : ''}. Orientativa: no es un
-                  modelo validado.
-                </p>
+                <Collapsible summary="Desglose y cómo se calcula" class="mt-2" open={ready.parts.some((x) => x.z < -1)}>
+                  <ul class="space-y-0.5 text-xs">
+                    {ready.parts.map((part) => (
+                      <li class="flex justify-between gap-3 tabular-nums">
+                        <span>
+                          {part.label} · {PART_VALUE[part.key](part.value)}
+                        </span>
+                        <span
+                          class:list={[
+                            part.z < -1 ? 'font-medium text-red-700 dark:text-red-400' : 'text-muted-foreground',
+                          ]}
+                        >
+                          {part.z >= 0 ? '↑' : '↓'} {zText(part.z)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p class="mt-2 text-xs text-muted-foreground">
+                    50 es tu día normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo{' '}
+                    {READINESS_WEIGHTS.rhr * 100} %, sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y
+                    forma {READINESS_WEIGHTS.tsb * 100} %
+                    {ready.missing.length ? '; los que faltan se reparten entre el resto' : ''}. Orientativa: no es un
+                    modelo validado.
+                  </p>
+                </Collapsible>
               </div>
             )}
           </div>
@@ -536,10 +539,7 @@ const TONE = {
               Horas de sueño y alertas de fatiga
             </h3>
             <p class="max-w-prose text-sm text-muted-foreground">
-              La duración pesa más que las fases, que en reloj de muñeca son poco fiables. La línea es la necesidad que
-              calcula Garmin. En color, las noches en que saltó la alerta: menos de {hm1(alertT.lastNightH)} h y al
-              menos {alertT.minShortNights} noches de menos de {hm1(alertT.shortNightH)} h en 7 días; alto si además
-              baja la VFC o sube la FC en reposo. Orientativa; los umbrales se cambian en tu perfil.
+              La línea es la necesidad que calcula Garmin; en color, las noches en que saltó la alerta de fatiga.
             </p>
             <p class="mt-2 text-sm font-medium">
               {alerts.length === 0
@@ -587,6 +587,14 @@ const TONE = {
                 </table>
               </section>
             </details>
+            <Collapsible summary="Cómo se calcula" class="mt-1">
+              <p class="max-w-prose text-xs text-muted-foreground">
+                Alerta: anoche menos de {hm1(alertT.lastNightH)} h y al menos {alertT.minShortNights} noches de menos de{' '}
+                {hm1(alertT.shortNightH)} h en 7 días; nivel alto si además baja la VFC o sube la FC en reposo. Los
+                umbrales se cambian en tu perfil. La duración pesa más que las fases, que en reloj de muñeca son poco
+                fiables. Orientativa.
+              </p>
+            </Collapsible>
           </div>
         </section>
 
@@ -829,19 +837,25 @@ const TONE = {
             Métricas de Garmin con evidencia limitada: útiles para contexto, no para decidir.
           </p>
         </div>
-        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          <ChartCard title="Body Battery" subtitle="Rango diario mínimo–máximo (algoritmo propietario)" spec={bbSpec} />
-          <ChartCard
-            title="Activación fisiológica"
-            subtitle="El «estrés» de Garmin mide activación, no estrés psicológico. Lo más útil es el valor durante el sueño."
-            spec={stressSpec}
-          />
-          <ChartCard
-            title="Fases del sueño"
-            subtitle="Orientativas: el reloj de muñeca las estima con poca precisión"
-            spec={phasesSpec}
-          />
-        </div>
+        <Collapsible summary="Ver Body Battery, activación fisiológica y fases del sueño">
+          <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <ChartCard
+              title="Body Battery"
+              subtitle="Rango diario mínimo–máximo (algoritmo propietario)"
+              spec={bbSpec}
+            />
+            <ChartCard
+              title="Activación fisiológica"
+              subtitle="El «estrés» de Garmin mide activación, no estrés psicológico. Lo más útil es el valor durante el sueño."
+              spec={stressSpec}
+            />
+            <ChartCard
+              title="Fases del sueño"
+              subtitle="Orientativas: el reloj de muñeca las estima con poca precisión"
+              spec={phasesSpec}
+            />
+          </div>
+        </Collapsible>
       </section>
 
       <p class="text-xs text-muted-foreground">
