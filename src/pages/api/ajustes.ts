@@ -45,10 +45,23 @@ async function saveKey(ctx: Ctx): Promise<Flash> {
   }
 }
 
+/** Límites de la altura (cm) que se acepta en el perfil. */
+const HEIGHT_CM = { min: 120, max: 230 };
+
 function saveSex(ctx: Ctx): Flash {
   const sex = ctx.form.get('sex');
+  const heightRaw = textField(ctx.form, 'heightCm').trim().replace(',', '.');
+  const height = Number(heightRaw);
+  if (heightRaw && !(Number.isFinite(height) && height >= HEIGHT_CM.min && height <= HEIGHT_CM.max)) {
+    return {
+      type: 'error',
+      text: `La altura va en centímetros (${HEIGHT_CM.min}–${HEIGHT_CM.max}). No se ha guardado.`,
+    };
+  }
   if (sex === 'male' || sex === 'female') ctx.settings.sex = sex;
   else delete ctx.settings.sex;
+  if (heightRaw) ctx.settings.heightCm = Math.round(height);
+  else delete ctx.settings.heightCm;
   persist(ctx);
   return { type: 'success', text: 'Perfil actualizado.' };
 }

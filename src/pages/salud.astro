@@ -11,6 +11,7 @@ import {
   clientFor,
   getActivities,
   getDailyHealth,
+  getHeartHistory,
   getHrReference,
   getWeights,
   getFitnessAge,
@@ -40,6 +41,8 @@ import { alertHistory, resolveThresholds } from '../lib/sleep-alert';
 import { WARMUP_DAYS, dailyLoad, estimateHrParams, pmc } from '../lib/load';
 import { READINESS_WEIGHTS, readiness, readinessLabel } from '../lib/readiness';
 import { weightChange, weightTrend } from '../lib/weight';
+import { fmt } from '../scripts/chart-options';
+import { bmi, bmiCategory, quarterChange, sleepRegularity, weeklyMean } from '../lib/long-term';
 
 /** 90 días: 60 para las líneas base + 30 visibles; también cubre 12 semanas de minutos de intensidad. */
 const FETCH_DAYS = 90;
@@ -55,11 +58,12 @@ let fitness: FitnessAge | undefined;
 let acts: Activity[] | undefined;
 let hrRef: { restingHr: number; maxHr: number } | undefined;
 let weights: { date: string; kg: number }[] = [];
+let heart: DayHealth[] | undefined;
 let error: unknown;
 if (client) {
   try {
     const from = addDays(today, -(FETCH_DAYS - 1));
-    [all, vo2, fitness, acts, hrRef, weights] = await Promise.all([
+    [all, vo2, fitness, acts, hrRef, weights, heart] = await Promise.all([
       getDailyHealth(client, from, today),
       getVo2Max(client, from, today).catch(() => []),
       getFitnessAge(client).catch(() => undefined),
@@ -67,6 +71,8 @@ if (client) {
       getActivities(client, addDays(from, -WARMUP_DAYS), today).catch(() => undefined),
       getHrReference(client).catch(() => undefined),
       getWeights(client, from, today).catch(() => []),
+      // 12 meses de FC en reposo y VFC (memo de 6 h); si falla, la página se muestra sin esas gráficas
+      getHeartHistory(client, addDays(today, -363), today).catch(() => undefined),
     ]);
   } catch (err) {
     error = err;
@@ -263,6 +269,44 @@ const weightSpec: ChartSpec = {
   format: 'dec1',
   height: 220,
 };
+
+const heightCm = Astro.locals.settings.heightCm;
+const lastWeight = wTrend.at(-1);
+// IMC con tu altura del perfil; sin ella, el que usa Garmin para la edad física
+const garminBmi = fitness?.levers.find((l) => l.key === 'bmi')?.value;
+const bmiNow = lastWeight && heightCm ? bmi(lastWeight.avg7, heightCm) : garminBmi;
+const bmiSource = lastWeight && heightCm ? '' : ', de Garmin';
+
+// ---------- Regularidad del sueño (30 días) ----------
+const regularity = sleepRegularity(all, today);
+const regSpec: ChartSpec | undefined = regularity && {
+  type: 'rangeBar',
+  categories: regularity.nights.map((n) => shortDate(n.date)),
+  series: [{ name: 'En la cama', data: regularity.nights.map((n) => [n.bed, n.wake]), color: 1 }],
+  format: 'clock',
+  height: 240,
+};
+const clock = (minFromNoon: number) => fmt('clock', minFromNoon);
+const mins = (m: number) => `${Math.round(m)} min`;
+
+// ---------- FC en reposo y VFC a 12 meses ----------
+const rhr52 = heart ? weeklyMean(heart, (d) => d.restingHr, 52, today) : [];
+const hrv52 = heart ? weeklyMean(heart, (d) => d.hrvLastNight, 52, today, true) : [];
+const rhrChange = quarterChange(rhr52);
+const hrvChange = quarterChange(hrv52);
+const has52 = (ws: typeof rhr52) => ws.filter((w) => w.value !== undefined).length >= 8;
+const weekSpec = (name: string, ws: typeof rhr52, format: ChartSpec['format'], color: 1 | 2): ChartSpec => ({
+  type: 'line',
+  categories: ws.map((w) => shortDate(w.week)),
+  series: [{ name, data: ws.map((w) => (w.value === undefined ? null : Math.round(w.value * 10) / 10)), color }],
+  format,
+  height: 220,
+});
+function changeText(c: typeof rhrChange, unit: string): string {
+  if (!c) return '';
+  if (Math.abs(c.diff) < 0.05) return ` · sin cambio (±0 ${unit}) del primer al último trimestre`;
+  return ` · ${c.diff > 0 ? '+' : '−'}${km(Math.abs(c.diff))} ${unit} del primer al último trimestre`;
+}
 
 // ---------- Contexto ----------
 const bbSpec: ChartSpec = {
@@ -535,6 +579,59 @@ const TONE = {
             </div>
           )}
         </section>
+
+        {regularity && regSpec && (
+          <section class:list={[card, 'grid gap-6 p-4 lg:grid-cols-[14rem_1fr]']} aria-labelledby="regularidad">
+            <div>
+              <h3 id="regularidad" class="text-base font-semibold">
+                Regularidad del sueño
+              </h3>
+              <p class="text-sm font-medium">{regularity.label}</p>
+              <dl class="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-1">
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Te acuestas</dt>
+                  <dd class="font-semibold tabular-nums">
+                    {clock(regularity.meanBed)} ± {mins(regularity.sdBed)}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Te levantas</dt>
+                  <dd class="font-semibold tabular-nums">
+                    {clock(regularity.meanWake)} ± {mins(regularity.sdWake)}
+                  </dd>
+                </div>
+                {regularity.socialJetlag !== undefined && (
+                  <div>
+                    <dt class="text-xs text-gray-500 dark:text-gray-400">Jet lag social</dt>
+                    <dd
+                      class:list={[
+                        'font-semibold tabular-nums',
+                        regularity.socialJetlag > 60 && 'text-amber-800 dark:text-amber-300',
+                      ]}
+                    >
+                      {hoursMinutes(regularity.socialJetlag * 60)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                {regularity.nights.length} noches. ± es la variación típica de un día a otro: menos de 30 min es
+                regular. Jet lag social: cuánto se desplaza tu sueño el fin de semana (más de 1 h se asocia a peor salud
+                metabólica). Orientativo.
+              </p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Hora de acostarte y de levantarte</p>
+              <div
+                class="mt-2 w-full min-w-0"
+                data-chart={JSON.stringify(regSpec)}
+                role="img"
+                aria-label={`Horario de sueño de las últimas ${regularity.nights.length} noches`}
+                style="min-height:240px"
+              />
+            </div>
+          </section>
+        )}
       </section>
 
       {/* ---------- Vida sana ---------- */}
@@ -687,11 +784,33 @@ const TONE = {
           {wTrend.length >= 2 && (
             <ChartCard
               title="Peso (kg)"
-              subtitle={`Media de 7 días, que amortigua la hidratación y la hora del pesaje${wChange !== undefined ? ` · ${wChange >= 0 ? '+' : '−'}${km(Math.abs(wChange))} kg en ${FETCH_DAYS} días` : ''}`}
+              subtitle={`Media de 7 días, que amortigua la hidratación y la hora del pesaje${wChange !== undefined ? ` · ${wChange >= 0 ? '+' : '−'}${km(Math.abs(wChange))} kg en ${FETCH_DAYS} días` : ''}${bmiNow !== undefined ? ` · IMC ${km(bmiNow)} (${bmiCategory(bmiNow).toLowerCase()}${bmiSource}; orientativo, sobrestima la grasa si tienes mucho músculo)` : ' · Indica tu altura en el perfil para ver el IMC'}`}
               spec={weightSpec}
               table={{
                 headers: ['Día', 'Pesaje', 'Media 7 d'],
                 rows: wTrend.map((w) => [shortDate(w.date), km(w.kg), km(w.avg7)]),
+              }}
+            />
+          )}
+          {has52(rhr52) && (
+            <ChartCard
+              title="FC en reposo · 12 meses"
+              subtitle={`Media semanal. Bajar con los meses suele indicar mejor forma aeróbica${changeText(rhrChange, 'ppm')}.`}
+              spec={weekSpec('FC en reposo', rhr52, 'bpm', 2)}
+              table={{
+                headers: ['Semana', 'Media', 'Días'],
+                rows: rhr52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
+              }}
+            />
+          )}
+          {has52(hrv52) && (
+            <ChartCard
+              title="VFC · 12 meses"
+              subtitle={`Media semanal (geométrica) de la VFC nocturna. Lo útil es tu tendencia, no el valor absoluto${changeText(hrvChange, 'ms')}.`}
+              spec={weekSpec('VFC', hrv52, 'ms', 1)}
+              table={{
+                headers: ['Semana', 'Media', 'Noches'],
+                rows: hrv52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
               }}
             />
           )}
