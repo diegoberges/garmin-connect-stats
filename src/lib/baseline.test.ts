@@ -84,4 +84,21 @@ describe('weeklyIntensity', () => {
     expect(w.map((x) => x.total)).toEqual([100, 70]);
     expect(w[1].vigorousX2).toBe(20);
   });
+
+  it('si Garmin da 0, usa las zonas de FC de las actividades (Z2–Z3 moderados, Z4–Z5 vigorosos)', () => {
+    const days: DayHealth[] = [{ date: '2026-11-21', intensityModerate: 0, intensityVigorous: 0 }];
+    const acts = [{ date: '2026-11-21', hrZonesS: [300, 600, 1200, 600, 0] }]; // 10+20 min mod., 10 min vig.
+    const w = weeklyIntensity(days, 1, '2026-11-22', acts);
+    expect(w[0].moderate).toBe(30);
+    expect(w[0].vigorousX2).toBe(20);
+    expect(w[0].total).toBe(50);
+  });
+
+  it('cada día toma lo mayor entre Garmin y las actividades, sin sumar los dos', () => {
+    const days: DayHealth[] = [{ date: '2026-11-17', intensityModerate: 45, intensityVigorous: 1 }];
+    const acts = [{ date: '2026-11-17', hrZonesS: [0, 600, 0, 300, 0] }]; // 10 min mod., 5 min vig.
+    const w = weeklyIntensity(days, 1, '2026-11-22', acts);
+    expect(w[0].moderate).toBe(45);
+    expect(w[0].vigorousX2).toBe(10);
+  });
 });

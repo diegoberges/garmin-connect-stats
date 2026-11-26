@@ -320,30 +320,19 @@ const sixWeeksAgo = addDays(today, -42);
 const efRecent = efMean(ef.filter((p) => p.date > sixWeeksAgo));
 const efPrevious = efMean(ef.filter((p) => p.date <= sixWeeksAgo && p.date > addDays(sixWeeksAgo, -42)));
 const efChange = efRecent && efPrevious ? ((efRecent - efPrevious) / efPrevious) * 100 : undefined;
-const efSpec: ChartSpec = {
-  type: 'line',
-  categories: efShown.map((p) => shortDate(p.date)),
-  series: [
-    {
-      name: 'Media 28 días',
-      data: efShown.map((p) => (p.avg28 === undefined ? null : Math.round(p.avg28 * 1000) / 1000)),
-      color: 1,
-    },
-    { name: 'Cada carrera', data: efShown.map((p) => Math.round(p.ef * 1000) / 1000), color: 1, faint: true },
-  ],
-  format: 'dec2',
-  height: 240,
-};
+// Eficiencia expresada como ritmo a la FC habitual de rodaje (mismo dato que el EF, en min/km):
+// cada carrera comparable y la media de 28 días.
 const paceRefSpec: ChartSpec | undefined = refHr
   ? {
       type: 'line',
       categories: efShown.map((p) => shortDate(p.date)),
       series: [
         {
-          name: `Ritmo a ${refHr} ppm`,
+          name: 'Media 28 días',
           data: efShown.map((p) => (p.avg28 ? Math.round(paceAtHr(p.avg28, refHr)) : null)),
-          color: 3,
+          color: 1,
         },
+        { name: 'Cada rodaje', data: efShown.map((p) => Math.round(paceAtHr(p.ef, refHr))), color: 1, faint: true },
       ],
       format: 'pace',
       reversed: true,
@@ -357,7 +346,9 @@ const decouplings = longTracks
   .filter((x): x is { run: Activity; d: NonNullable<ActivityTrack['decoupling']> } => Boolean(x.d));
 
 // VO2máx estimado por sesión (ritmo y FC) frente al de Garmin, en el periodo
-const vo2Est = vo2Trend([...(history ?? []), ...runs], hr.maxHr).filter((p) => p.date >= from);
+const runsById = new Map([...(history ?? []), ...runs].map((r) => [r.id, r]));
+const vo2TrendAll = vo2Trend([...runsById.values()], hr.maxHr);
+const vo2Est = vo2TrendAll.filter((p) => p.date >= from);
 const vo2Dates = [...new Set(vo2Est.map((p) => p.date))];
 const garminByDate = garminVo2.toSorted((a, b) => a.date.localeCompare(b.date));
 const garminAt = (d: string) => garminByDate.findLast((g) => g.date <= d)?.value;
@@ -390,8 +381,8 @@ const vo2Spec: ChartSpec = {
   height: 240,
 };
 
-// Pronóstico de 10K y media semana a semana (mejor marca ≥ 5 km de los 90 días previos)
-const predTrend = predictionTrend([...(history ?? []), ...runs], weeks, today);
+// Pronóstico de 10K y media semana a semana a partir del VO2máx estimado (media de 28 días)
+const predTrend = predictionTrend(vo2TrendAll, weeks, today);
 const hasPredTrend = predTrend.filter((p) => p.vdot !== undefined).length >= 2;
 const predSpec: ChartSpec = {
   type: 'line',
@@ -609,6 +600,68 @@ const ZONE_TONE: Record<FormZone, string> = {
           </div>
         </section>
       )}
+
+      {/* ---------- Constancia ---------- */}
+      <section class="space-y-4" aria-labelledby="constancia">
+        <h2 id="constancia" class={sectionTitle}>
+          Constancia
+        </h2>
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div class:list={[card, 'p-4']}>
+            <p class="type-label">Número de Eddington (carrera)</p>
+            <p class="mt-1 type-kpi">{edd.value}</p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {edd.value} días con al menos {edd.value} km. Para llegar a {edd.value + 1}: {edd.toNext}{' '}
+              {edd.toNext === 1 ? 'día más' : 'días más'} de {edd.value + 1} km o más.
+            </p>
+          </div>
+          <div class:list={[card, 'p-4']}>
+            <p class="type-label">Racha de días con actividad</p>
+            <p class="mt-1 type-kpi">
+              {streak.currentDays.length} {streak.currentDays.length === 1 ? 'día' : 'días'}
+            </p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {streak.currentDays.from ? `Desde el ${shortDate(streak.currentDays.from)}. ` : ''}La más larga:{' '}
+              {streak.longestDays.length} días
+              {streak.longestDays.from
+                ? ` (${shortDate(streak.longestDays.from)} ${streak.longestDays.from.slice(0, 4)})`
+                : ''}
+              .
+            </p>
+          </div>
+          <div class:list={[card, 'p-4']}>
+            <p class="type-label">Semanas seguidas corriendo</p>
+            <p class="mt-1 type-kpi">
+              {streak.currentWeeks.length} {streak.currentWeeks.length === 1 ? 'semana' : 'semanas'}
+            </p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              La más larga: {streak.longestWeeks.length} semanas
+              {streak.longestWeeks.from
+                ? ` (desde el ${shortDate(streak.longestWeeks.from)} ${streak.longestWeeks.from.slice(0, 4)})`
+                : ''}
+              .
+            </p>
+          </div>
+          <div class:list={[card, 'p-4']}>
+            <p class="text-sm text-muted-foreground">Calendario anual</p>
+            <p class="mt-1 text-sm">
+              Tus días de actividad y tus competiciones, año a año, en{' '}
+              <a
+                href="/competiciones#calendario"
+                class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+              >
+                Competiciones
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+        {!everything && (
+          <p class="text-xs text-muted-foreground">
+            No se ha podido cargar el historial completo: las rachas y el Eddington cubren solo el periodo cargado.
+          </p>
+        )}
+      </section>
 
       {/* ---------- Carga ---------- */}
       <section id="seccion-carga" class="scroll-mt-4 space-y-4" aria-labelledby="carga">
@@ -993,48 +1046,78 @@ const ZONE_TONE: Record<FormZone, string> = {
           </p>
         </div>
 
-        {efShown.length >= 2 ? (
-          <div class="grid gap-6 lg:grid-cols-2">
-            <section class:list={[card, 'min-w-0 p-4']}>
-              <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 class="type-card">Factor de eficiencia</h3>
-                {efChange !== undefined && (
-                  <span
-                    class:list={[
-                      'text-sm font-medium tabular-nums',
-                      Math.abs(efChange) < 1
-                        ? 'text-muted-foreground'
-                        : efChange > 0
-                          ? 'text-green-700 dark:text-green-400'
-                          : 'text-red-700 dark:text-red-400',
-                    ]}
-                  >
-                    {Math.abs(efChange) < 1
-                      ? '→ estable'
-                      : `${efChange > 0 ? '↑ +' : '↓ −'}${km(Math.abs(efChange))} %`}{' '}
-                    en 6 semanas
-                  </span>
-                )}
-              </div>
-              <p class="text-sm text-muted-foreground">
-                Metros por minuto ÷ FC media. Más alto = más velocidad por latido.
-              </p>
-              <div
-                class="mt-2 w-full min-w-0"
-                data-chart={JSON.stringify(efSpec)}
-                role="img"
-                aria-label="Factor de eficiencia"
-                style="min-height:240px"
-              />
-            </section>
-            {paceRefSpec && (
-              <ChartCard
-                title={`Ritmo a ${refHr} ppm`}
-                subtitle="El ritmo que llevarías a tu FC habitual de rodaje, según tu eficiencia de las últimas 4 semanas. Más rápido = mejor forma aeróbica."
-                spec={paceRefSpec}
-              />
-            )}
-          </div>
+        {efShown.length >= 2 && paceRefSpec ? (
+          <section class:list={[card, 'min-w-0 p-4']}>
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 class="type-card">Ritmo a {refHr} ppm</h3>
+              {efChange !== undefined && (
+                <span
+                  class:list={[
+                    'text-sm font-medium tabular-nums',
+                    Math.abs(efChange) < 1
+                      ? 'text-muted-foreground'
+                      : efChange > 0
+                        ? 'text-green-700 dark:text-green-400'
+                        : 'text-red-700 dark:text-red-400',
+                  ]}
+                >
+                  {Math.abs(efChange) < 1
+                    ? '→ estable'
+                    : `${efChange > 0 ? '↑ ' : '↓ '}${km(Math.abs(efChange))} % ${efChange > 0 ? 'más eficiente' : 'menos eficiente'}`}{' '}
+                  en 6 semanas
+                </span>
+              )}
+            </div>
+            <p class="max-w-prose text-sm text-muted-foreground">
+              El ritmo que llevarías a tu FC habitual de rodaje ({refHr} ppm), según la eficiencia de cada rodaje
+              (metros por minuto ÷ FC media). Más rápido arriba = mejor forma aeróbica.
+            </p>
+            <div
+              class="mt-2 w-full min-w-0"
+              data-chart={JSON.stringify(paceRefSpec)}
+              role="img"
+              aria-label={`Ritmo a ${refHr} ppm por rodaje y media de 28 días`}
+              style="min-height:240px"
+            />
+            <details class="mt-2 text-sm">
+              <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground">
+                Ver datos
+              </summary>
+              <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby="datos-ritmo-fc">
+                <table class="w-full text-left text-xs">
+                  <caption id="datos-ritmo-fc" class="sr-only">
+                    Ritmo a {refHr} ppm por rodaje
+                  </caption>
+                  <thead class="sticky top-0 text-muted-foreground bg-muted/50">
+                    <tr>
+                      <th scope="col" class="px-2 py-1 font-medium">
+                        Fecha
+                      </th>
+                      <th scope="col" class="px-2 py-1 font-medium">
+                        Factor de eficiencia
+                      </th>
+                      <th scope="col" class="px-2 py-1 font-medium">
+                        Ritmo a {refHr} ppm
+                      </th>
+                      <th scope="col" class="px-2 py-1 font-medium">
+                        Media 28 días
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="tabular-nums">
+                    {efShown.toReversed().map((p) => (
+                      <tr class="border-b border-border">
+                        <td class="px-2 py-1">{shortDate(p.date)}</td>
+                        <td class="px-2 py-1">{km(p.ef, 3)}</td>
+                        <td class="px-2 py-1">{pace(paceAtHr(p.ef, refHr!))}</td>
+                        <td class="px-2 py-1">{p.avg28 ? pace(paceAtHr(p.avg28, refHr!)) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            </details>
+          </section>
         ) : (
           <p class:list={[card, 'p-4 text-sm text-muted-foreground']}>
             Hacen falta al menos 2 rodajes suaves en el periodo para ver la tendencia de eficiencia.
@@ -1173,10 +1256,10 @@ const ZONE_TONE: Record<FormZone, string> = {
           {hasPredTrend && (
             <ChartCard
               title="Pronóstico a lo largo del tiempo"
-              subtitle="Ritmo previsto en 10K y media maratón (VDOT de tu mejor marca de 5 km o más de los 90 días anteriores a cada semana). Más rápido arriba."
+              subtitle="Ritmo previsto en 10K y media maratón con tu VO2máx estimado de cada semana (media de 28 días de tus carreras), tomado como VDOT. Orientativo; más rápido arriba."
               spec={predSpec}
               table={{
-                headers: ['Semana', 'VDOT', '10K', 'Media'],
+                headers: ['Semana', 'VO2máx estimado', '10K', 'Media'],
                 rows: predTrend.map((p) => [
                   shortDate(p.week),
                   km(p.vdot),
@@ -1187,68 +1270,6 @@ const ZONE_TONE: Record<FormZone, string> = {
             />
           )}
         </div>
-      </section>
-
-      {/* ---------- Constancia ---------- */}
-      <section class="space-y-4" aria-labelledby="constancia">
-        <h2 id="constancia" class={sectionTitle}>
-          Constancia
-        </h2>
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div class:list={[card, 'p-4']}>
-            <p class="type-label">Número de Eddington (carrera)</p>
-            <p class="mt-1 type-kpi">{edd.value}</p>
-            <p class="mt-1 text-xs text-muted-foreground">
-              {edd.value} días con al menos {edd.value} km. Para llegar a {edd.value + 1}: {edd.toNext}{' '}
-              {edd.toNext === 1 ? 'día más' : 'días más'} de {edd.value + 1} km o más.
-            </p>
-          </div>
-          <div class:list={[card, 'p-4']}>
-            <p class="type-label">Racha de días con actividad</p>
-            <p class="mt-1 type-kpi">
-              {streak.currentDays.length} {streak.currentDays.length === 1 ? 'día' : 'días'}
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground">
-              {streak.currentDays.from ? `Desde el ${shortDate(streak.currentDays.from)}. ` : ''}La más larga:{' '}
-              {streak.longestDays.length} días
-              {streak.longestDays.from
-                ? ` (${shortDate(streak.longestDays.from)} ${streak.longestDays.from.slice(0, 4)})`
-                : ''}
-              .
-            </p>
-          </div>
-          <div class:list={[card, 'p-4']}>
-            <p class="type-label">Semanas seguidas corriendo</p>
-            <p class="mt-1 type-kpi">
-              {streak.currentWeeks.length} {streak.currentWeeks.length === 1 ? 'semana' : 'semanas'}
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground">
-              La más larga: {streak.longestWeeks.length} semanas
-              {streak.longestWeeks.from
-                ? ` (desde el ${shortDate(streak.longestWeeks.from)} ${streak.longestWeeks.from.slice(0, 4)})`
-                : ''}
-              .
-            </p>
-          </div>
-          <div class:list={[card, 'p-4']}>
-            <p class="text-sm text-muted-foreground">Calendario anual</p>
-            <p class="mt-1 text-sm">
-              Tus días de actividad y tus competiciones, año a año, en{' '}
-              <a
-                href="/competiciones#calendario"
-                class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
-              >
-                Competiciones
-              </a>
-              .
-            </p>
-          </div>
-        </div>
-        {!everything && (
-          <p class="text-xs text-muted-foreground">
-            No se ha podido cargar el historial completo: las rachas y el Eddington cubren solo el periodo cargado.
-          </p>
-        )}
       </section>
     </div>
   )}

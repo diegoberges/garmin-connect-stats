@@ -269,7 +269,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 - **Vida sana**:
   - Edad física con sus palancas.
   - VO2máx con margen ±5 % y percentil por sexo y edad (FRIEND 2015; el sexo se guarda en el perfil).
-  - Minutos de intensidad semanales (moderados + vigorosos ×2) frente a los 150 de la OMS.
+  - Minutos de intensidad semanales (moderados + vigorosos ×2) frente a los 150 de la OMS. La API suele dar 0 en
+    el resumen diario: cada día se toma lo mayor entre Garmin y las zonas de FC de las actividades (Z2–Z3
+    moderados, Z4–Z5 vigorosos; `INTENSITY_ZONES` en `baseline.ts`).
   - Pasos frente a una meta por edad.
   - Peso con la media de 7 días (si hay pesajes en Garmin; sin captura real para comprobar unidades).
 - **Contexto** (evidencia limitada): Body Battery, estrés (se muestra como "activación fisiológica") y fases del sueño.
@@ -297,15 +299,18 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 - **Eficiencia** (fase 3):
   - Factor de eficiencia (m/min ÷ FC) solo en rodajes comparables: asfalto/cinta, 30–120 min,
     ≤ 15 m/km de desnivel y efecto base/recuperación.
-  - Ritmo a la FC mediana de rodaje.
+  - Ritmo a la FC mediana de rodaje: una sola gráfica (cada rodaje y media de 28 días) que expresa el factor de
+    eficiencia en min/km; la tabla de "Ver datos" incluye el EF.
   - Desacoplamiento de las últimas 8 tiradas de 60 minutos o más (FIT, ritmo ajustado por pendiente de Minetti).
   - Predicción con VDOT de Daniels, velocidad crítica y curva de marcas.
 - **Progresión**:
   - VO2máx estimado por carrera (coste de Daniels del ritmo / %VO2máx de la FC según Swain), solo asfalto o
     cinta, 20–150 min, ≤ 15 m/km y FC entre el 65 y el 95 % de la máxima; media de 28 días, con el de
     Garmin como referencia.
-  - Pronóstico de 10K y media semana a semana (VDOT de la mejor marca ≥ 5 km de los 90 días previos).
-- **Constancia**: número de Eddington de carrera, racha de días con actividad y de semanas corriendo.
+  - Pronóstico de 10K y media semana a semana: el VO2máx estimado de cada semana (media de 28 días) tomado como
+    VDOT; sin estimación en los 28 días previos, sin pronóstico. (Con la mejor marca de 90 días salía plano.)
+- **Constancia** (justo debajo del estado de forma): número de Eddington de carrera, racha de días con actividad y
+  de semanas corriendo.
 
 ### Actividades
 
@@ -328,7 +333,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     VDOT de los 180 días previos a la actividad (así quedan versionadas por fecha);
   - VFC intra-sesión (RMSSD, SDNN, pNN50) si el FIT trae intervalos RR;
   - actividades en la misma ruta (salida a < 250 m y distancia ±5 %) con su ritmo y eficiencia.
-- `/competiciones`: `eventType=race` de todo el historial, por años; mejor marca de 5K, 10K, media y
+- `/competiciones`: `eventType=race` de todo el historial, por años (la API puede ignorar el filtro: también se
+  filtra por `eventTypeKey === 'race'` en `getRaces`); mejor marca de 5K, 10K, media y
   maratón con trofeo; etiquetas por distancia (maratón > media > 10K > 5K).
   - Tiempos y ritmos sobre el **tiempo total** (`elapsedDuration`, con pausas), como Strava.
   - VDOT de la marca frente al VO2máx estimado de las 4 semanas previas (no en trail ni ultra).

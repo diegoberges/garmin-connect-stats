@@ -28,6 +28,8 @@ export function mapActivity(a: ApiActivity): Activity {
     anaerobicTE: num(a.anaerobicTrainingEffect),
     trainingLoad: num(a.activityTrainingLoad),
     trainingEffectLabel: a.trainingEffectLabel ?? undefined,
+    // La búsqueda lo devuelve como `eventType` aunque la spec lo llame `eventTypeDTO` en otros esquemas
+    eventTypeKey: (a as { eventType?: { typeKey?: string } | null }).eventType?.typeKey ?? undefined,
     hrZonesS: [a.hrTimeInZone_1, a.hrTimeInZone_2, a.hrTimeInZone_3, a.hrTimeInZone_4, a.hrTimeInZone_5].map(
       (z) => num(z) ?? 0,
     ),
@@ -62,9 +64,17 @@ export const getAllRuns = (client: GarminClient, today: string) =>
 export const getAllActivities = (client: GarminClient, today: string) =>
   client.memo(`all-activities`, HISTORY_TTL_MS, () => getActivities(client, HISTORY_START, today));
 
-/** Actividades marcadas como competición (tipo de evento "race" en Garmin Connect), de cualquier deporte. */
+/** ¿Marcada como competición en Garmin Connect? */
+export const isRace = (a: Pick<Activity, 'eventTypeKey'>) => a.eventTypeKey === 'race';
+
+/**
+ * Actividades marcadas como competición (tipo de evento "race" en Garmin Connect), de cualquier deporte.
+ * Se pide con `eventType=race`, pero la API puede ignorar el filtro y devolverlo todo: se filtra también aquí.
+ */
 export const getRaces = (client: GarminClient, today: string) =>
-  client.memo(`races`, HISTORY_TTL_MS, () => getActivities(client, HISTORY_START, today, undefined, 'race'));
+  client.memo(`races`, HISTORY_TTL_MS, async () =>
+    (await getActivities(client, HISTORY_START, today, undefined, 'race')).filter(isRace),
+  );
 
 /** Actividades entre dos fechas (todas, o solo un tipo/tipo padre de Garmin), paginando, más recientes primero. */
 export async function getActivities(

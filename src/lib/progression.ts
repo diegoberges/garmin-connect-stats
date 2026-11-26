@@ -4,7 +4,8 @@
  *    fracción de VO2máx que corresponde a la FC (Swain 1994: %FCmáx = 0,64 × %VO2máx + 37). Solo en
  *    carreras de asfalto/cinta con poco desnivel, sin las muy cortas ni a FC muy baja o muy alta. Es una
  *    estimación ruidosa: se usa su media móvil de 28 días.
- *  - Pronósticos a lo largo del tiempo: VDOT de la mejor marca (≥ 5 km) de los 90 días previos a cada semana.
+ *  - Pronósticos a lo largo del tiempo: el VO2máx estimado de cada semana (media de 28 días) usado como VDOT.
+ *    Se mueve con la forma; con la mejor marca de 90 días salía plano durante meses.
  *  - Competiciones: VDOT de la carrera (con el tiempo total) frente al VO2máx estimado de ese momento.
  */
 import { addDays, weekStart } from './dates';
@@ -84,20 +85,22 @@ export function bestVdot(runs: Activity[], from: string, to: string): number | u
 }
 
 /**
- * Pronóstico de 10K y media semana a semana: VDOT de la mejor marca (≥ 5 km) de los 90 días que acaban
- * en cada semana. Sin marcas en la ventana, sin pronóstico.
+ * Pronóstico de 10K y media semana a semana: el VO2máx estimado al final de cada semana (media móvil de
+ * 28 días de `vo2Trend`) tomado como VDOT. Si la última estimación tiene más de 28 días, no hay pronóstico:
+ * sin carreras recientes no sabemos cómo estás.
  */
-export function predictionTrend(runs: Activity[], weeks: number, today: string, windowDays = 90): PredictionPoint[] {
+export function predictionTrend(trend: Vo2EstimatePoint[], weeks: number, today: string): PredictionPoint[] {
   const current = weekStart(today);
   const out: PredictionPoint[] = [];
   for (let i = weeks - 1; i >= 0; i--) {
     const week = addDays(current, -7 * i);
     const end = i === 0 ? today : addDays(week, 6);
-    const best = bestVdot(runs, addDays(end, -(windowDays - 1)), end);
+    const last = trend.findLast((p) => p.date <= end && p.avg28 !== undefined);
+    const value = last && last.date >= addDays(end, -27) ? last.avg28 : undefined;
     out.push(
-      best === undefined
+      value === undefined
         ? { week }
-        : { week, vdot: best, t10k: predictTime(best, 10000), tHalf: predictTime(best, 21097.5) },
+        : { week, vdot: value, t10k: predictTime(value, 10000), tHalf: predictTime(value, 21097.5) },
     );
   }
   return out;

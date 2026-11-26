@@ -52,6 +52,8 @@ export interface Activity {
   anaerobicTE?: number;
   trainingLoad?: number;
   trainingEffectLabel?: string;
+  /** Clasificación del evento en Garmin Connect: race, training, uncategorized… */
+  eventTypeKey?: string;
   /** segundos en zonas 1..5 */
   hrZonesS: number[];
   calories?: number;
