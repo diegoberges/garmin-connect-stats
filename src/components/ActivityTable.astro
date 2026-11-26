@@ -38,16 +38,12 @@ const distanceText = (a: Activity, i: number) =>
 
 <!-- Contenedor con scroll lateral: con tabindex se puede desplazar con el teclado (guía responsive-table). La regla
      noNoninteractiveTabindex de Biome está desactivada para este archivo en biome.json (su biome-ignore no surte efecto). -->
-<section
-  class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700"
-  tabindex="0"
-  aria-labelledby={captionId}
->
+<section class="overflow-x-auto border border-border bg-card" tabindex="0" aria-labelledby={captionId}>
   <table class="w-full text-left text-sm">
     <caption id={captionId} class="sr-only">
       {caption}
     </caption>
-    <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+    <thead class="border-b border-border text-muted-foreground">
       <tr>
         <th scope="col" class="px-2.5 py-3 sm:px-4">Fecha</th>
         <th scope="col" class="px-2.5 py-3 sm:px-4">Actividad</th>
@@ -78,10 +74,10 @@ const distanceText = (a: Activity, i: number) =>
     </thead>
     <tbody class="tabular-nums">
       {activities.map((a, i) => (
-        <tr class="border-b border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
+        <tr class="border-b border-border transition-colors last:border-0 hover:bg-muted/50">
           <td class="px-2.5 py-3 sm:px-4 whitespace-nowrap">{dayLabel(a.date)}</td>
           <td class="px-2.5 py-3 sm:px-4">
-            <a href={`/actividades/${a.id}`} class="font-medium text-blue-700 hover:underline dark:text-blue-400">
+            <a href={`/actividades/${a.id}`} class="font-medium underline-offset-4 hover:underline">
               {a.name}
             </a>
             {a.isPr && (
@@ -89,11 +85,7 @@ const distanceText = (a: Activity, i: number) =>
                 <TrophyTip label="Récord personal en Garmin" />
               </span>
             )}
-            {showType && (
-              <span class="mt-1 block w-fit rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap sm:mt-0 sm:ml-2 sm:inline text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                {activityLabel(a.typeKey)}
-              </span>
-            )}
+            {showType && <span class="chip mt-1 flex sm:mt-0 sm:ml-2 sm:inline-flex">{activityLabel(a.typeKey)}</span>}
           </td>
           {anyDistance && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
           <td class="px-2.5 py-3 sm:px-4 text-right">{duration(a.movingS)}</td>

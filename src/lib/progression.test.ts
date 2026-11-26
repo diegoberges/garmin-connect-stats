@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { vdot } from './efficiency';
+import { predictTime, vdot } from './efficiency';
 import type { Activity } from './garmin/types';
 import { analyzeRace, isVo2Candidate, predictionTrend, vo2At, vo2AtSpeed, vo2FromRun, vo2Trend } from './progression';
 import { raceTime } from './races';
@@ -54,18 +54,26 @@ describe('VO2máx estimado por sesión', () => {
 });
 
 describe('pronósticos a lo largo del tiempo', () => {
-  it('VDOT de la mejor marca de ≥ 5 km en los 90 días de cada semana', () => {
-    const runs = [
-      run('2026-09-01', { bestEfforts: { 5000: 1500, 1000: 200 } }),
-      run('2026-11-10', { bestEfforts: { 10000: 2700 } }),
-    ];
-    const p = predictionTrend(runs, 14, '2026-11-22');
+  it('cada semana usa el VO2máx estimado (media de 28 días) como VDOT', () => {
+    const trend = vo2Trend(
+      [run('2026-10-20'), run('2026-10-27'), run('2026-11-10', { movingS: 2800 }), run('2026-11-17')],
+      192,
+    );
+    const p = predictionTrend(trend, 14, '2026-11-22');
     const last = p.at(-1)!;
-    expect(last.vdot).toBeCloseTo(Math.max(vdot(5000, 1500), vdot(10000, 2700)), 5);
-    expect(last.t10k).toBeGreaterThan(0);
+    expect(last.vdot).toBeCloseTo(vo2At(trend, '2026-11-22')!, 5);
+    expect(last.t10k).toBeCloseTo(predictTime(last.vdot!, 10000), 5);
     expect(last.tHalf!).toBeGreaterThan(last.t10k!);
-    // Antes del 1 de septiembre no hay marcas
+    // Con una carrera más rápida la previsión cambia de una semana a otra (no queda plana)
+    const vdots = p.map((x) => x.vdot).filter((x) => x !== undefined);
+    expect(new Set(vdots.map((x) => x!.toFixed(3))).size).toBeGreaterThan(1);
+    // Antes de tener dos estimaciones no hay pronóstico
     expect(p[0].vdot).toBeUndefined();
+  });
+
+  it('sin estimaciones en los 28 días anteriores, no hay pronóstico', () => {
+    const trend = vo2Trend([run('2026-08-01'), run('2026-08-05')], 192);
+    expect(predictionTrend(trend, 2, '2026-11-22').every((x) => x.vdot === undefined)).toBe(true);
   });
 });
 

@@ -35,10 +35,8 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 const itemActive = (item: NavItem) =>
   item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href);
 const linkClass = (active: boolean) => [
-  'rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap',
-  active
-    ? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-white'
-    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+  'rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+  active ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
 ];
 const dropdowns = nav.filter((i) => i.children);
 const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
@@ -95,15 +93,15 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
     </script>
     <Analytics />
   </head>
-  <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
+  <body class="min-h-screen bg-background text-foreground antialiased">
     <a
       href="#contenido"
-      class="sr-only z-70 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      class="sr-only z-70 rounded-lg px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
       data-no-loading
     >
       Saltar al contenido
     </a>
-    <header class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <header class="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
         <ProfileMenu />
         <div class="flex min-w-0 items-center gap-1">
@@ -145,7 +143,7 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
             {dropdowns.map((item) => (
               <ul
                 id={menuId(item)}
-                class="z-50 hidden w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                class="z-50 hidden w-64 border py-1 border-border bg-popover text-popover-foreground rounded-md shadow-md"
               >
                 {item.children!.map((c) => (
                   <li>
@@ -153,16 +151,14 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
                       href={c.href}
                       aria-current={isActive(c.href) ? 'page' : undefined}
                       class:list={[
-                        'block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
-                        isActive(c.href) && 'bg-blue-50 dark:bg-gray-700',
+                        'block px-4 py-2 hover:bg-accent hover:text-accent-foreground',
+                        isActive(c.href) && 'bg-accent',
                       ]}
                     >
-                      <span
-                        class:list={['block text-sm font-medium', isActive(c.href) && 'text-blue-700 dark:text-white']}
-                      >
+                      <span class:list={['block text-sm font-medium', isActive(c.href) && 'text-accent-foreground']}>
                         {c.label}
                       </span>
-                      <span class="block text-xs text-gray-500 dark:text-gray-400">{c.description}</span>
+                      <span class="block text-xs text-muted-foreground">{c.description}</span>
                     </a>
                   </li>
                 ))}
@@ -172,15 +168,15 @@ const menuId = (item: NavItem) => `nav-menu-${item.label.toLowerCase()}`;
           <button
             id="theme-toggle"
             type="button"
-            class="ml-1 rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+            class="ml-3 rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:text-accent-foreground"
           >
             <!-- El texto dice qué hará el botón; el que no aplica se oculta (y sale del árbol accesible) -->
             <span class="sr-only dark:hidden">Pasar a modo oscuro</span>
             <span class="sr-only hidden dark:inline">Pasar a modo claro</span>
-            <svg class="h-5 w-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <svg class="h-4 w-4 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
             </svg>
-            <svg class="hidden h-5 w-5 dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <svg class="hidden h-4 w-4 dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path
                 d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
               ></path>

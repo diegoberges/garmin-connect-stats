@@ -7,11 +7,13 @@
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
+import FilterGroup from '../components/FilterGroup.astro';
 import Pagination from '../components/Pagination.astro';
 import { clientFor, getAllActivities, type Activity } from '../lib/garmin';
 import { isoDate } from '../lib/dates';
 import { dataIssues, ISSUE_LABELS, type DataIssue, type IssueKind } from '../lib/data-quality';
 import { activityLabel, km, shortDate } from '../lib/format';
+import { card } from '../lib/ui';
 
 const PAGE_SIZE = 50;
 const client = clientFor(Astro.locals);
@@ -37,18 +39,19 @@ const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
 const page = Math.min(Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina'))) || 1), pages);
 const pageItems = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 const kindHref = (k?: IssueKind) => (k ? `?tipo=${k}` : '?');
-const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
-const chip = (active: boolean) => [
-  'rounded-full border px-3 py-1 text-sm font-medium',
-  active
-    ? 'border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600'
-    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+const kindItems = [
+  { href: kindHref(), label: `Todos · ${issues.length}`, active: !kind },
+  ...KINDS.filter((k) => counts.get(k)).map((k) => ({
+    href: kindHref(k),
+    label: `${ISSUE_LABELS[k]} · ${counts.get(k)}`,
+    active: kind === k,
+  })),
 ];
 ---
 
 <Base title="Calidad de datos">
-  <h1 class="text-2xl font-bold">Calidad de datos</h1>
-  <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+  <h1 class="type-display">Calidad de datos</h1>
+  <p class="mb-6 text-sm text-muted-foreground">
     Actividades de todo tu historial que conviene revisar en Garmin Connect: distorsionan la carga, las marcas o las
     tendencias. Son avisos heurísticos; que salga aquí no significa que esté mal.
   </p>
@@ -61,23 +64,14 @@ const chip = (active: boolean) => [
     <p class:list={[card, 'p-6 text-sm']}>No hemos encontrado nada raro en tus {all.length} actividades.</p>
   ) : (
     <div class="space-y-4">
-      <nav aria-label="Tipo de problema" class="flex flex-wrap gap-2">
-        <a href={kindHref()} aria-current={!kind ? 'true' : undefined} class:list={chip(!kind)}>
-          Todos · {issues.length}
-        </a>
-        {KINDS.filter((k) => counts.get(k)).map((k) => (
-          <a href={kindHref(k)} aria-current={kind === k ? 'true' : undefined} class:list={chip(kind === k)}>
-            {ISSUE_LABELS[k]} · {counts.get(k)}
-          </a>
-        ))}
-      </nav>
+      <FilterGroup items={kindItems} label="Tipo de problema" />
 
       <section class:list={[card, 'overflow-x-auto']} tabindex="0" aria-labelledby="tabla-calidad">
         <table class="w-full text-left text-sm">
           <caption id="tabla-calidad" class="sr-only">
             Actividades a revisar{kind ? `: ${ISSUE_LABELS[kind]}` : ''}, página {page} de {pages}
           </caption>
-          <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+          <thead class="border-b border-border text-xs text-muted-foreground">
             <tr>
               <th scope="col" class="px-3 py-3 sm:px-4">
                 Fecha
@@ -95,34 +89,32 @@ const chip = (active: boolean) => [
           </thead>
           <tbody class="tabular-nums">
             {pageItems.map((i) => (
-              <tr class="border-t border-gray-100 dark:border-gray-700">
+              <tr class="border-t border-border">
                 <td class="px-3 py-2.5 whitespace-nowrap sm:px-4">
                   {shortDate(i.activity.date)} {i.activity.date.slice(0, 4)}
                 </td>
                 <td class="px-3 py-2.5 sm:px-4">
-                  <a
-                    href={`/actividades/${i.activity.id}`}
-                    class="font-medium text-blue-700 hover:underline dark:text-blue-400"
-                  >
+                  <a href={`/actividades/${i.activity.id}`} class="font-medium underline-offset-4 hover:underline">
                     {i.activity.name}
                   </a>
-                  <span class="block text-xs text-gray-500 dark:text-gray-400">
+                  <span class="block text-xs text-muted-foreground">
                     {activityLabel(i.activity.typeKey)}
                     {i.activity.distanceKm > 0 ? ` · ${km(i.activity.distanceKm, 2)} km` : ''}
                   </span>
                 </td>
                 <td class="px-3 py-2.5 sm:px-4">
-                  <span class="rounded-sm bg-amber-100 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-                    {ISSUE_LABELS[i.kind]}
-                  </span>
+                  <span class="chip chip-warn">{ISSUE_LABELS[i.kind]}</span>
                 </td>
-                <td class="hidden px-4 py-2.5 text-gray-600 sm:table-cell dark:text-gray-300">
+                <td class="hidden px-4 py-2.5 sm:table-cell text-muted-foreground">
                   {i.detail}
                   {i.other && (
                     <>
                       {' '}
                       (
-                      <a href={`/actividades/${i.other.id}`} class="text-blue-700 hover:underline dark:text-blue-400">
+                      <a
+                        href={`/actividades/${i.other.id}`}
+                        class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
+                      >
                         {i.other.name}
                       </a>
                       )

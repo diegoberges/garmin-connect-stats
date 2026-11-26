@@ -35,12 +35,13 @@ import {
   type SignalState,
 } from '../lib/baseline';
 import { dayLabel, hoursMinutes, int, km, shortDate } from '../lib/format';
-import type { ChartSpec } from '../lib/chart-spec';
+import type { ChartSeries, ChartSpec } from '../lib/chart-spec';
 import { vo2Percentile } from '../lib/vo2-norms';
-import { alertHistory, resolveThresholds } from '../lib/sleep-alert';
+import { type AlertLevel, alertHistory, resolveThresholds, type SleepFatigueAlert } from '../lib/sleep-alert';
 import { WARMUP_DAYS, dailyLoad, estimateHrParams, pmc } from '../lib/load';
 import { READINESS_WEIGHTS, readiness, readinessLabel } from '../lib/readiness';
 import { weightChange, weightTrend } from '../lib/weight';
+import { card } from '../lib/ui';
 import { fmt } from '../scripts/chart-options';
 import { bmi, bmiCategory, quarterChange, sleepRegularity, weeklyMean } from '../lib/long-term';
 
@@ -114,8 +115,8 @@ const DOT: Record<SignalState, string> = {
   ok: 'bg-green-500',
   warn: 'bg-red-500',
   high: 'bg-amber-400',
-  calibrating: 'bg-gray-400',
-  nodata: 'bg-gray-300 dark:bg-gray-600',
+  calibrating: 'bg-muted-foreground',
+  nodata: 'bg-muted-foreground/40',
 };
 const DOT_LABEL: Record<SignalState, string> = {
   ok: 'En rango',
@@ -179,13 +180,41 @@ const rhrSpec: ChartSpec = {
 };
 const needs = view.map((d) => d.sleepNeedS).filter((x): x is number => x !== undefined);
 const avgNeed = needs.length ? mean(needs) : undefined;
+// Las noches en que saltó la alerta de fatiga por sueño se pintan en el color de su nivel (como sus etiquetas):
+// una serie por nivel, apiladas, así cada barra tiene un solo color y la leyenda dice qué significa.
+const alertByDate = new Map(alerts.map((a) => [a.date, a]));
+const sleepOf = (level?: AlertLevel) =>
+  view.map((d) => (alertByDate.get(d.date)?.level === level ? v(d.sleepS) : null));
+const sleepSeries: ChartSeries[] = [{ name: 'Sueño', data: sleepOf(undefined), color: 1 }];
+if (alerts.some((a) => a.level === 'warning')) {
+  sleepSeries.push({ name: 'Alerta de fatiga · aviso', data: sleepOf('warning'), color: 4 });
+}
+if (alerts.some((a) => a.level === 'high')) {
+  sleepSeries.push({ name: 'Alerta de fatiga · alto', data: sleepOf('high'), color: 2 });
+}
 const sleepSpec: ChartSpec = {
   type: 'bar',
   categories: cats,
-  series: [{ name: 'Sueño', data: view.map((d) => v(d.sleepS)), color: 1 }],
+  series: sleepSeries,
+  stacked: true,
   format: 'hm',
   reference: avgNeed ? { value: Math.round(avgNeed), label: 'Necesidad' } : undefined,
 };
+const levelText = (a?: SleepFatigueAlert) => (a ? (a.level === 'high' ? 'Alto' : 'Aviso') : '—');
+const sleepTable = {
+  headers: ['Noche', 'Sueño', 'Alerta', 'Noches cortas (7 d)', 'Deuda 7 días'],
+  rows: view.toReversed().map((d) => {
+    const a = alertByDate.get(d.date);
+    return [
+      dayLabel(d.date),
+      d.sleepS !== undefined ? hoursMinutes(d.sleepS) : '—',
+      levelText(a),
+      a ? `${a.shortNights} de ${a.nightsWithData}` : '—',
+      a ? hoursMinutes(a.debtS) : '—',
+    ];
+  }),
+};
+const hm1 = (h: number) => String(h).replace('.', ',');
 const debt = sleepDebt(all);
 const sleptNights = view.filter((d) => d.sleepS !== undefined);
 const avgSleep = sleptNights.length ? mean(sleptNights.map((d) => d.sleepS!)) : undefined;
@@ -219,7 +248,7 @@ const scalePos = (value: number) => {
 const firstVo2 = vo2[0];
 const vo2Change = lastVo2 && firstVo2 && vo2.length > 1 ? lastVo2.value - firstVo2.value : undefined;
 
-const intensity = weeklyIntensity(all, WEEKS, today);
+const intensity = weeklyIntensity(all, WEEKS, today, acts ?? []);
 const fullWeeks = intensity.slice(0, -1); // la semana en curso aún no ha terminado
 const weeksMet = fullWeeks.filter((w) => w.total >= 150).length;
 const intensitySpec: ChartSpec = {
@@ -351,19 +380,18 @@ const phasesSpec: ChartSpec = {
   height: 220,
 };
 
-const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
-const sectionTitle = 'text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
+const sectionTitle = 'type-section';
 const TONE = {
   ok: 'border-l-green-500',
   warn: 'border-l-amber-400',
   alert: 'border-l-red-500',
-  muted: 'border-l-gray-400',
+  muted: 'border-l-muted-foreground',
 } as const;
 ---
 
 <Base title="Salud">
-  <h1 class="text-2xl font-bold">Salud</h1>
-  <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">{dayLabel(today)}</p>
+  <h1 class="type-display">Salud</h1>
+  <p class="mb-6 text-sm text-muted-foreground">{dayLabel(today)}</p>
 
   {!client ? (
     <ConnectPrompt />
@@ -378,20 +406,20 @@ const TONE = {
             <h2 id="hoy" class={sectionTitle}>
               Hoy
             </h2>
-            <p class="mt-2 text-xl font-bold">{state.title}</p>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{state.text}</p>
-            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            <p class="type-title mt-2">{state.title}</p>
+            <p class="mt-1 text-sm text-muted-foreground">{state.text}</p>
+            <p class="mt-3 text-xs text-muted-foreground">
               Cada señal se compara con tu propio rango de los últimos 1–2 meses, no con valores de referencia.
             </p>
             {ready && (
-              <div class="mt-4 rounded-lg bg-gray-50 p-3 dark:bg-gray-900/40">
+              <div class="mt-4 rounded-lg p-3 bg-muted/50">
                 <div class="flex items-baseline justify-between gap-3">
-                  <h3 id="disposicion" class="text-sm font-semibold">
+                  <h3 id="disposicion" class="type-card">
                     Disposición{readyDate !== today ? ' (datos de ayer)' : ''}
                   </h3>
                   <p class="tabular-nums">
-                    <span class="text-2xl font-bold">{ready.score}</span>
-                    <span class="text-sm text-gray-500 dark:text-gray-400">/100</span>
+                    <span class="type-kpi">{ready.score}</span>
+                    <span class="text-sm text-muted-foreground">/100</span>
                   </p>
                 </div>
                 <p class="text-sm font-medium">{readinessLabel(ready.score)}</p>
@@ -403,9 +431,7 @@ const TONE = {
                       </span>
                       <span
                         class:list={[
-                          part.z < -1
-                            ? 'font-medium text-red-700 dark:text-red-400'
-                            : 'text-gray-500 dark:text-gray-400',
+                          part.z < -1 ? 'font-medium text-red-700 dark:text-red-400' : 'text-muted-foreground',
                         ]}
                       >
                         {part.z >= 0 ? '↑' : '↓'} {zText(part.z)}
@@ -413,7 +439,7 @@ const TONE = {
                     </li>
                   ))}
                 </ul>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p class="mt-2 text-xs text-muted-foreground">
                   50 es tu día normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo{' '}
                   {READINESS_WEIGHTS.rhr * 100} %, sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y
                   forma {READINESS_WEIGHTS.tsb * 100} %
@@ -423,7 +449,7 @@ const TONE = {
               </div>
             )}
           </div>
-          <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+          <ul class="divide-y divide-border">
             {status.signals.map((s) => (
               <li class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
                 <span
@@ -439,7 +465,7 @@ const TONE = {
                   <p
                     class:list={[
                       'text-xs',
-                      s.state === 'warn' ? 'text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400',
+                      s.state === 'warn' ? 'text-red-700 dark:text-red-400' : 'text-muted-foreground',
                     ]}
                   >
                     {s.detail}
@@ -486,142 +512,123 @@ const TONE = {
             }}
           />
         </div>
-        <div class:list={[card, 'grid gap-6 p-4 lg:grid-cols-[14rem_1fr]']}>
+        <section
+          id="alertas"
+          class:list={[card, 'grid scroll-mt-4 gap-6 p-4 lg:grid-cols-[14rem_1fr]']}
+          aria-labelledby="alertas-titulo"
+        >
           <dl class="grid grid-cols-3 gap-4 lg:grid-cols-1">
             <div>
-              <dt class="text-xs text-gray-500 dark:text-gray-400">Deuda de sueño (7 noches)</dt>
-              <dd class="text-xl font-bold tabular-nums">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
+              <dt class="type-label">Deuda de sueño (7 noches)</dt>
+              <dd class="type-value">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
             </div>
             <div>
-              <dt class="text-xs text-gray-500 dark:text-gray-400">Media por noche</dt>
-              <dd class="text-xl font-bold tabular-nums">{hoursMinutes(avgSleep)}</dd>
+              <dt class="type-label">Media por noche</dt>
+              <dd class="type-value">{hoursMinutes(avgSleep)}</dd>
             </div>
             <div>
-              <dt class="text-xs text-gray-500 dark:text-gray-400">Noches de 7 h o más</dt>
-              <dd class="text-xl font-bold tabular-nums">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
+              <dt class="type-label">Noches de 7 h o más</dt>
+              <dd class="type-value">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
             </div>
           </dl>
           <div class="min-w-0">
-            <h3 class="text-base font-semibold">Horas de sueño</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <h3 id="alertas-titulo" class="type-card">
+              Horas de sueño y alertas de fatiga
+            </h3>
+            <p class="max-w-prose text-sm text-muted-foreground">
               La duración pesa más que las fases, que en reloj de muñeca son poco fiables. La línea es la necesidad que
-              calcula Garmin.
+              calcula Garmin. En color, las noches en que saltó la alerta: menos de {hm1(alertT.lastNightH)} h y al
+              menos {alertT.minShortNights} noches de menos de {hm1(alertT.shortNightH)} h en 7 días; alto si además
+              baja la VFC o sube la FC en reposo. Orientativa; los umbrales se cambian en tu perfil.
+            </p>
+            <p class="mt-2 text-sm font-medium">
+              {alerts.length === 0
+                ? `Ninguna alerta en los últimos ${VIEW_DAYS} días.`
+                : `${alerts.length} ${alerts.length === 1 ? 'noche' : 'noches'} con alerta en los últimos ${VIEW_DAYS} días${
+                    alerts.some((x) => x.level === 'high')
+                      ? ` (${alerts.filter((x) => x.level === 'high').length} de nivel alto)`
+                      : ''
+                  }.`}
             </p>
             <div
               class="mt-2 w-full min-w-0"
               data-chart={JSON.stringify(sleepSpec)}
               role="img"
-              aria-label="Horas de sueño"
+              aria-label="Horas de sueño por noche, con las noches de alerta de fatiga destacadas"
               style="min-height:260px"
             />
-          </div>
-        </div>
-        <section id="alertas" class:list={[card, 'scroll-mt-4 p-4']} aria-labelledby="alertas-titulo">
-          <h3 id="alertas-titulo" class="text-base font-semibold">
-            Alertas de fatiga por sueño
-          </h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            Días de los últimos {VIEW_DAYS} en los que saltó la regla: anoche menos de{' '}
-            {String(alertT.lastNightH).replace('.', ',')} h y al menos {alertT.minShortNights} noches de menos de{' '}
-            {String(alertT.shortNightH).replace('.', ',')} h en 7 días. Nivel alto si además baja la VFC o sube la FC en
-            reposo. Orientativa; los umbrales se cambian en tu perfil.
-          </p>
-          {alerts.length === 0 ? (
-            <p class="mt-3 text-sm">Ninguna en los últimos {VIEW_DAYS} días.</p>
-          ) : (
-            <div class="mt-3 overflow-x-auto">
-              <table class="w-full text-left text-sm">
-                <caption class="sr-only">Alertas de fatiga por sueño de los últimos {VIEW_DAYS} días</caption>
-                <thead class="text-xs text-gray-500 dark:text-gray-400">
-                  <tr>
-                    <th scope="col" class="py-1 pr-3 font-medium">
-                      Día
-                    </th>
-                    <th scope="col" class="py-1 pr-3 font-medium">
-                      Nivel
-                    </th>
-                    <th scope="col" class="py-1 pr-3 text-right font-medium">
-                      Esa noche
-                    </th>
-                    <th scope="col" class="py-1 pr-3 text-right font-medium">
-                      Noches cortas
-                    </th>
-                    <th scope="col" class="hidden py-1 text-right font-medium sm:table-cell">
-                      Deuda 7 días
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="tabular-nums">
-                  {alerts.map((a) => (
-                    <tr class="border-t border-gray-100 dark:border-gray-700">
-                      <td class="py-1.5 pr-3 whitespace-nowrap">{dayLabel(a.date)}</td>
-                      <td class="py-1.5 pr-3">
-                        <span
-                          class:list={[
-                            'rounded-sm px-1.5 py-0.5 text-xs font-semibold',
-                            a.level === 'high'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
-                          ]}
-                        >
-                          {a.level === 'high' ? 'Alto' : 'Aviso'}
-                        </span>
-                      </td>
-                      <td class="py-1.5 pr-3 text-right">{hoursMinutes(a.lastNightS)}</td>
-                      <td class="py-1.5 pr-3 text-right">
-                        {a.shortNights} de {a.nightsWithData}
-                      </td>
-                      <td class="hidden py-1.5 text-right sm:table-cell">{hoursMinutes(a.debtS)}</td>
+            <details class="mt-2 text-sm">
+              <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground">
+                Ver datos
+              </summary>
+              <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby="datos-sueno">
+                <table class="w-full text-left text-xs">
+                  <caption id="datos-sueno" class="sr-only">
+                    Horas de sueño y alertas de fatiga de los últimos {VIEW_DAYS} días
+                  </caption>
+                  <thead class="sticky top-0 text-muted-foreground bg-muted/50">
+                    <tr>
+                      {sleepTable.headers.map((h) => (
+                        <th scope="col" class="px-2 py-1 font-medium">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody class="tabular-nums">
+                    {sleepTable.rows.map((r) => (
+                      <tr class="border-b border-border">
+                        {r.map((c) => (
+                          <td class="px-2 py-1">{c}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            </details>
+          </div>
         </section>
 
         {regularity && regSpec && (
           <section class:list={[card, 'grid gap-6 p-4 lg:grid-cols-[14rem_1fr]']} aria-labelledby="regularidad">
             <div>
-              <h3 id="regularidad" class="text-base font-semibold">
+              <h3 id="regularidad" class="type-card">
                 Regularidad del sueño
               </h3>
-              <p class="text-sm font-medium">{regularity.label}</p>
+              <p class="type-title mt-1">{regularity.label}</p>
               <dl class="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-1">
                 <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Te acuestas</dt>
-                  <dd class="font-semibold tabular-nums">
+                  <dt class="type-label">Te acuestas</dt>
+                  <dd class="type-value">
                     {clock(regularity.meanBed)} ± {mins(regularity.sdBed)}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Te levantas</dt>
-                  <dd class="font-semibold tabular-nums">
+                  <dt class="type-label">Te levantas</dt>
+                  <dd class="type-value">
                     {clock(regularity.meanWake)} ± {mins(regularity.sdWake)}
                   </dd>
                 </div>
                 {regularity.socialJetlag !== undefined && (
                   <div>
-                    <dt class="text-xs text-gray-500 dark:text-gray-400">Jet lag social</dt>
+                    <dt class="type-label">Jet lag social</dt>
                     <dd
-                      class:list={[
-                        'font-semibold tabular-nums',
-                        regularity.socialJetlag > 60 && 'text-amber-800 dark:text-amber-300',
-                      ]}
+                      class:list={['type-value', regularity.socialJetlag > 60 && 'text-amber-800 dark:text-amber-300']}
                     >
                       {hoursMinutes(regularity.socialJetlag * 60)}
                     </dd>
                   </div>
                 )}
               </dl>
-              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-3 text-xs text-muted-foreground">
                 {regularity.nights.length} noches. ± es la variación típica de un día a otro: menos de 30 min es
                 regular. Jet lag social: cuánto se desplaza tu sueño el fin de semana (más de 1 h se asocia a peor salud
                 metabólica). Orientativo.
               </p>
             </div>
             <div class="min-w-0">
-              <p class="text-sm text-gray-500 dark:text-gray-400">Hora de acostarte y de levantarte</p>
+              <p class="text-sm text-muted-foreground">Hora de acostarte y de levantarte</p>
               <div
                 class="mt-2 w-full min-w-0"
                 data-chart={JSON.stringify(regSpec)}
@@ -642,10 +649,10 @@ const TONE = {
         <div class:list={['grid gap-6', fitness?.fitnessAge !== undefined && lastVo2 && 'lg:grid-cols-2']}>
           {fitness?.fitnessAge !== undefined && (
             <section class:list={[card, 'p-5']}>
-              <h3 class="text-base font-semibold">Edad física</h3>
+              <h3 class="type-card">Edad física</h3>
               <p class="mt-2 flex items-baseline gap-2">
-                <span class="text-4xl font-bold tabular-nums">{km(fitness.fitnessAge)}</span>
-                <span class="text-sm text-gray-500 dark:text-gray-400">años</span>
+                <span class="type-kpi">{km(fitness.fitnessAge)}</span>
+                <span class="text-sm text-muted-foreground">años</span>
               </p>
               {ageDiff !== undefined && (
                 <p
@@ -658,29 +665,27 @@ const TONE = {
                 </p>
               )}
               {fitness.achievable !== undefined && fitness.achievable < fitness.fitnessAge && (
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p class="mt-1 text-sm text-muted-foreground">
                   Podrías llegar a {km(fitness.achievable)} años con estas palancas:
                 </p>
               )}
               {fitness.levers.length > 0 && (
-                <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-700">
+                <ul class="mt-3 divide-y text-sm divide-border">
                   {fitness.levers.map((l) => (
                     <li class="flex items-baseline justify-between gap-3 py-2">
                       <span>
                         {l.label}
-                        {l.stale && <span class="ml-1 text-xs text-gray-400">(dato antiguo)</span>}
+                        {l.stale && <span class="ml-1 text-xs text-muted-foreground">(dato antiguo)</span>}
                       </span>
                       <span class="text-right tabular-nums">
                         <span class="font-semibold">{l.value !== undefined ? leverFmt(l.value) : '—'}</span>
-                        {l.target !== undefined && (
-                          <span class="text-gray-500 dark:text-gray-400"> → {leverFmt(l.target)}</span>
-                        )}
+                        {l.target !== undefined && <span class="text-muted-foreground"> → {leverFmt(l.target)}</span>}
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
-              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-3 text-xs text-muted-foreground">
                 Cálculo de Garmin a partir de VO2máx, actividad vigorosa, FC en reposo e IMC.
               </p>
             </section>
@@ -689,15 +694,15 @@ const TONE = {
           {lastVo2 && (
             <section class:list={[card, 'min-w-0 p-5']}>
               <div class="flex items-baseline justify-between gap-3">
-                <h3 class="text-base font-semibold">VO2máx</h3>
-                <span class="text-xs text-gray-500 dark:text-gray-400">a {shortDate(lastVo2.date)}</span>
+                <h3 class="type-card">VO2máx</h3>
+                <span class="text-xs text-muted-foreground">a {shortDate(lastVo2.date)}</span>
               </div>
               <p class="mt-2 flex items-baseline gap-2">
-                <span class="text-4xl font-bold tabular-nums">{km(lastVo2.value)}</span>
-                <span class="text-sm text-gray-500 dark:text-gray-400">ml/kg/min</span>
+                <span class="type-kpi">{km(lastVo2.value)}</span>
+                <span class="text-sm text-muted-foreground">ml/kg/min</span>
               </p>
               {vo2Change !== undefined && (
-                <p class="text-sm text-gray-600 dark:text-gray-300">
+                <p class="text-sm text-muted-foreground">
                   {Math.abs(vo2Change) < lastVo2.value * 0.05
                     ? 'Estable en 90 días (los cambios menores del 5 % están dentro del margen del reloj).'
                     : `${vo2Change > 0 ? '+' : '−'}${km(Math.abs(vo2Change))} en 90 días.`}
@@ -713,37 +718,34 @@ const TONE = {
                           ? 'Por debajo del percentil 5'
                           : `Percentil ${vo2Pct.percentile}`}
                     </span>
-                    <span class="text-gray-500 dark:text-gray-400">
+                    <span class="text-muted-foreground">
                       {' '}
                       · {sex === 'male' ? 'hombres' : 'mujeres'} de {vo2Pct.group} años
                     </span>
                   </p>
-                  <div
-                    class="relative mt-6 mb-5 h-2 rounded-full bg-gradient-to-r from-gray-200 to-blue-500 dark:from-gray-700 dark:to-blue-500"
-                    aria-hidden="true"
-                  >
+                  <div class="relative mt-6 mb-5 h-2 bg-linear-to-r from-muted to-(--viz-1)" aria-hidden="true">
                     {vo2Pct.marks
                       .filter((m) => [25, 50, 75, 90].includes(m.p))
                       .map((m) => (
                         <span
-                          class="absolute top-full mt-1 -translate-x-1/2 text-[10px] text-gray-500 tabular-nums dark:text-gray-400"
+                          class="absolute top-full mt-1 -translate-x-1/2 text-[10px] tabular-nums text-muted-foreground"
                           style={`left:${scalePos(m.value)}%`}
                         >
                           P{m.p}
                         </span>
                       ))}
                     <span
-                      class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-700 shadow dark:border-gray-800 dark:bg-blue-400"
+                      class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-foreground shadow-sm"
                       style={`left:${scalePos(lastVo2.value)}%`}
                     />
                   </div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                  <p class="text-xs text-muted-foreground">
                     Referencia FRIEND (pruebas de esfuerzo en cinta, 2015). Orientativo: el VO2máx del reloj tiene un
                     margen de ±5 %.
                   </p>
                 </div>
               ) : (
-                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                <p class="mt-3 text-xs text-muted-foreground">
                   {!sex
                     ? 'Indica tu sexo en el menú de perfil para ver en qué percentil estás para tu edad.'
                     : 'Falta tu edad (llega con la Edad física de Garmin) para calcular el percentil.'}
@@ -758,7 +760,7 @@ const TONE = {
                   style="min-height:220px"
                 />
               )}
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-2 text-xs text-muted-foreground">
                 Es el marcador con más evidencia: cada +3,5 ml/kg/min se asocia a un ~13 % menos de mortalidad.
               </p>
             </section>
@@ -768,7 +770,7 @@ const TONE = {
         <div class="grid gap-6 lg:grid-cols-2">
           <ChartCard
             title="Minutos de intensidad por semana"
-            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas`}
+            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas. Con las zonas de FC de tus actividades (Z2–Z3 moderados, Z4–Z5 vigorosos) cuando Garmin no los da; orientativo.`}
             spec={intensitySpec}
             table={{
               headers: ['Semana', 'Moderados', 'Vigorosos ×2', 'Total'],
@@ -823,7 +825,7 @@ const TONE = {
           <h2 id="contexto" class={sectionTitle}>
             Contexto
           </h2>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-1 text-sm text-muted-foreground">
             Métricas de Garmin con evidencia limitada: útiles para contexto, no para decidir.
           </p>
         </div>
@@ -842,7 +844,7 @@ const TONE = {
         </div>
       </section>
 
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-muted-foreground">
         Estimaciones de bienestar basadas en estudios observacionales y en los sensores del reloj. No es un diagnóstico
         médico.
       </p>

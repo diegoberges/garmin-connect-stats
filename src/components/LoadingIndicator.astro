@@ -133,15 +133,12 @@
     width: max-content;
     max-width: calc(100vw - 2rem);
     padding: 0.625rem 0.875rem;
-    border-radius: 10px;
-    background: #111827;
-    color: #fff;
-    box-shadow: 0 10px 25px rgb(0 0 0 / 0.25);
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: var(--primary-foreground);
+    /* Canto duro como el de las tarjetas (DESIGN.md › Elevation) */
+    box-shadow: 4px 4px 0 var(--border);
     pointer-events: auto;
-  }
-  :global(.dark) .page-loading-toast {
-    background: #f4f4f5;
-    color: #18181b;
   }
   .page-loading-spinner {
     flex-shrink: 0;

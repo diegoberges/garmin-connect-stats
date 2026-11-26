@@ -8,7 +8,7 @@
  * Los umbrales de "fuera de rango" son heurísticos (no validados) y están aquí, en un solo sitio.
  */
 import { addDays, weekStart } from './dates';
-import type { DayHealth } from './garmin/types';
+import type { Activity, DayHealth } from './garmin/types';
 
 export const HRV_WINDOW = 60;
 export const HRV_MIN_NIGHTS = 21;
@@ -217,18 +217,53 @@ export interface WeekIntensity {
   total: number;
 }
 
-/** Minutos de intensidad por semana (lunes–domingo) para las `weeks` semanas que terminan en la de `today`. */
-export function weeklyIntensity(days: DayHealth[], weeks: number, today: string): WeekIntensity[] {
+/**
+ * Zonas de FC (1–5, las de Garmin) que cuentan como minutos moderados y vigorosos al calcularlos desde las
+ * actividades. Con las zonas por defecto (% FC máx.) Z2–Z3 ≈ 60–80 % y Z4–Z5 ≥ 80 %, cerca de los cortes del
+ * ACSM (moderado 64–76 %, vigoroso ≥ 77 %). Orientativo.
+ */
+export const INTENSITY_ZONES = { moderate: [2, 3], vigorous: [4, 5] } as const;
+
+/** Minutos moderados y vigorosos de una actividad según su tiempo en cada zona de FC. */
+export function activityIntensity(hrZonesS: number[]): { moderate: number; vigorous: number } {
+  const sum = (zones: readonly number[]) => zones.reduce((t, z) => t + (hrZonesS[z - 1] ?? 0), 0) / 60;
+  return { moderate: sum(INTENSITY_ZONES.moderate), vigorous: sum(INTENSITY_ZONES.vigorous) };
+}
+
+/**
+ * Minutos de intensidad por semana (lunes–domingo) para las `weeks` semanas que terminan en la de `today`.
+ * La API de Garmin devuelve a menudo 0 en el resumen diario aunque haya entrenos; por eso, cada día se toma
+ * lo mayor entre el dato de Garmin y lo calculado con las zonas de FC de las actividades de ese día.
+ */
+export function weeklyIntensity(
+  days: DayHealth[],
+  weeks: number,
+  today: string,
+  activities: Pick<Activity, 'date' | 'hrZonesS'>[] = [],
+): WeekIntensity[] {
   const current = weekStart(today);
   const out: WeekIntensity[] = [];
   for (let i = weeks - 1; i >= 0; i--)
     out.push({ week: addDays(current, -7 * i), moderate: 0, vigorousX2: 0, total: 0 });
   const byWeek = new Map(out.map((w) => [w.week, w]));
-  for (const d of days) {
-    const w = byWeek.get(weekStart(d.date));
+
+  const fromActs = new Map<string, { moderate: number; vigorous: number }>();
+  for (const a of activities) {
+    const acc = fromActs.get(a.date) ?? { moderate: 0, vigorous: 0 };
+    const m = activityIntensity(a.hrZonesS);
+    acc.moderate += m.moderate;
+    acc.vigorous += m.vigorous;
+    fromActs.set(a.date, acc);
+  }
+  const dates = new Set([...days.map((d) => d.date), ...fromActs.keys()]);
+  const garmin = new Map(days.map((d) => [d.date, d]));
+  for (const date of dates) {
+    const w = byWeek.get(weekStart(date));
     if (!w) continue;
-    w.moderate += d.intensityModerate ?? 0;
-    w.vigorousX2 += 2 * (d.intensityVigorous ?? 0);
+    const g = garmin.get(date);
+    const act = fromActs.get(date);
+    w.moderate += Math.round(Math.max(g?.intensityModerate ?? 0, act?.moderate ?? 0));
+    w.vigorousX2 += 2 * Math.round(Math.max(g?.intensityVigorous ?? 0, act?.vigorous ?? 0));
   }
   for (const w of out) w.total = w.moderate + w.vigorousX2;
   return out;

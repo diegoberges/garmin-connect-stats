@@ -1,8 +1,9 @@
 ---
 /**
- * Selector de opciones por enlaces (?semanas=N, ?carga=…), estilo button group de Flowbite.
- * Conserva el resto de parámetros.
+ * Selector de opciones por enlaces (?semanas=N, ?carga=…) con FilterGroup. Conserva el resto de parámetros.
  */
+import FilterGroup from './FilterGroup.astro';
+
 interface Props {
   options: { value: number | string; label: string }[];
   current: number | string;
@@ -19,24 +20,7 @@ const hrefFor = (value: number | string) => {
   params.delete('pagina');
   return `?${params}${anchor ? `#${anchor}` : ''}`;
 };
+const items = options.map((o) => ({ href: hrefFor(o.value), label: o.label, active: o.value === current }));
 ---
 
-<nav class="inline-flex rounded-lg shadow-xs" aria-label={label}>
-  {options.map((o, i) => (
-    <a
-      href={hrefFor(o.value)}
-      aria-current={o.value === current ? 'true' : undefined}
-      class:list={[
-        'border border-gray-200 px-3 py-1.5 text-sm font-medium dark:border-gray-600',
-        i === 0 && 'rounded-s-lg',
-        i === options.length - 1 && 'rounded-e-lg',
-        i > 0 && '-ms-px',
-        o.value === current
-          ? 'bg-blue-700 text-white dark:bg-blue-600'
-          : 'bg-white text-gray-900 hover:bg-gray-100 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700',
-      ]}
-    >
-      {o.label}
-    </a>
-  ))}
-</nav>
+<FilterGroup items={items} label={label} />

@@ -6,6 +6,7 @@
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
+import FilterGroup from '../components/FilterGroup.astro';
 import ChartCard from '../components/ChartCard.astro';
 import { clientFor, getAllActivities, type Activity } from '../lib/garmin';
 import { isoDate } from '../lib/dates';
@@ -13,6 +14,7 @@ import { hasDistance, kindOf, speedUnit, speedValue } from '../lib/activity-kind
 import { MONTHS, cumulative, monthlyTotals, yearSummary, yearToDate } from '../lib/compare';
 import { activityLabel, hoursMinutes, int, km, pace, speed } from '../lib/format';
 import type { ChartSpec, ColorSlot } from '../lib/chart-spec';
+import { card } from '../lib/ui';
 
 const RUN = 'correr';
 const ALL = 'todas';
@@ -109,8 +111,7 @@ const avgSpeedText = (s: { km: number; movingS: number }) => {
 };
 const signed = (p?: number) => (p === undefined ? '' : `${p >= 0 ? '+' : '−'}${Math.abs(Math.round(p))} %`);
 
-const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
-const sectionTitle = 'text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400';
+const sectionTitle = 'type-section';
 const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
   new Date(`${today}T00:00:00Z`),
 );
@@ -120,16 +121,16 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     {client && !error ? (
       <div>
-        <h1>
+        <h1 class="type-display">
           <button
             data-dropdown-toggle="cmp-type-menu"
             data-dropdown-placement="bottom-start"
             type="button"
-            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-2xl font-bold hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 focus:outline-none dark:hover:bg-gray-800 dark:focus:ring-gray-700"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`Tipo de actividad: ${typeTitle}`}
           >
             Comparador · {typeTitle}
-            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 10 6" aria-hidden="true">
+            <svg class="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 10 6" aria-hidden="true">
               <path
                 stroke="currentColor"
                 stroke-linecap="round"
@@ -142,7 +143,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
         </h1>
         <div
           id="cmp-type-menu"
-          class="z-50 hidden max-h-96 w-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          class="z-50 hidden max-h-96 w-72 overflow-y-auto border border-border bg-popover text-popover-foreground rounded-md shadow-md"
         >
           <ul class="py-1 text-sm" aria-label="Tipo de actividad">
             {[
@@ -155,12 +156,13 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                   href={hrefWith({ tipo: key, anios: undefined })}
                   aria-current={key === tipo ? 'page' : undefined}
                   class:list={[
-                    'flex items-center justify-between gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700',
-                    key === tipo && 'font-semibold text-blue-700 dark:text-blue-400',
+                    'flex items-center justify-between gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground',
+                    key === tipo &&
+                      'font-semibold text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground',
                   ]}
                 >
                   <span class="truncate">{label}</span>
-                  <span class="text-xs text-gray-500 tabular-nums dark:text-gray-400">{n}</span>
+                  <span class="text-xs tabular-nums text-muted-foreground">{n}</span>
                 </a>
               </li>
             ))}
@@ -168,7 +170,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
         </div>
       </div>
     ) : (
-      <h1 class="text-2xl font-bold">Comparador</h1>
+      <h1 class="type-display">Comparador</h1>
     )}
   </div>
 
@@ -177,30 +179,20 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
   ) : error ? (
     <ErrorState error={error} />
   ) : availableYears.length === 0 ? (
-    <p class:list={[card, 'p-6 text-sm text-gray-500 dark:text-gray-400']}>No hay actividades de este tipo.</p>
+    <p class:list={[card, 'p-6 text-sm text-muted-foreground']}>No hay actividades de este tipo.</p>
   ) : (
     <div class="space-y-6">
       {/* Selector de años */}
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-sm text-gray-500 dark:text-gray-400">Años (máx. {MAX_YEARS}):</span>
-        {availableYears.map((y) => (
-          <a
-            href={toggleYear(y)}
-            aria-current={years.includes(y) ? 'true' : undefined}
-            class:list={[
-              'rounded-full border px-3 py-1 text-sm font-medium tabular-nums',
-              years.includes(y)
-                ? 'border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-            ]}
-          >
-            {y}
-          </a>
-        ))}
+        <span class="text-sm text-muted-foreground">Años (máx. {MAX_YEARS}):</span>
+        <FilterGroup
+          items={availableYears.map((y) => ({ href: toggleYear(y), label: String(y), active: years.includes(y) }))}
+          label={`Años (máx. ${MAX_YEARS})`}
+        />
       </div>
 
       {years.length === 0 ? (
-        <p class:list={[card, 'p-6 text-sm text-gray-500 dark:text-gray-400']}>Elige al menos un año.</p>
+        <p class:list={[card, 'p-6 text-sm text-muted-foreground']}>Elige al menos un año.</p>
       ) : (
         <>
           {/* Año hasta hoy */}
@@ -213,12 +205,12 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                 const delta = y.year !== thisYear && ytdCurrent ? pctVs(mainOf(ytdCurrent), mainOf(y)) : undefined;
                 return (
                   <div class:list={[card, 'p-4']}>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{y.year}</p>
-                    <p class="mt-1 text-2xl font-semibold tabular-nums">{fmtMetric(y)}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{int(y.sessions)} sesiones</p>
+                    <p class="type-label">{y.year}</p>
+                    <p class="mt-1 type-kpi">{fmtMetric(y)}</p>
+                    <p class="text-xs text-muted-foreground">{int(y.sessions)} sesiones</p>
                     {delta !== undefined &&
                       (Math.abs(delta) < 1 ? (
-                        <p class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <p class="mt-1 text-xs font-medium text-muted-foreground">
                           → {thisYear} va igual que {y.year}
                         </p>
                       ) : (
@@ -263,7 +255,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
               <caption id="tabla-resumen" class="sr-only">
                 Resumen por año
               </caption>
-              <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+              <thead class="border-b border-border text-xs text-muted-foreground">
                 <tr>
                   <th scope="col" class="px-4 py-3">
                     Año
@@ -305,11 +297,11 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                   const prev = summaries[i - 1];
                   const delta = prev && prev.year === s.year - 1 ? pctVs(mainOf(s), mainOf(prev)) : undefined;
                   return (
-                    <tr class="border-t border-gray-100 dark:border-gray-700">
+                    <tr class="border-t border-border">
                       <td class="px-4 py-3 font-semibold">
                         {s.year}
                         {s.year === thisYear && (
-                          <span class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">(en curso)</span>
+                          <span class="ml-1 text-xs font-normal text-muted-foreground">(en curso)</span>
                         )}
                       </td>
                       <td class="px-4 py-3 text-right">{int(s.sessions)}</td>
@@ -329,7 +321,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                         class:list={[
                           'px-4 py-3 text-right whitespace-nowrap',
                           delta === undefined
-                            ? 'text-gray-400'
+                            ? 'text-muted-foreground'
                             : delta >= 0
                               ? 'text-green-700 dark:text-green-400'
                               : 'text-red-700 dark:text-red-400',
@@ -337,7 +329,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                       >
                         {delta === undefined ? '—' : signed(delta)}
                         {delta !== undefined && s.year === thisYear && (
-                          <span class="block text-xs text-gray-500 dark:text-gray-400">año incompleto</span>
+                          <span class="block text-xs text-muted-foreground">año incompleto</span>
                         )}
                       </td>
                     </tr>

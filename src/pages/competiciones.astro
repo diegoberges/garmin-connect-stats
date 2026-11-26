@@ -9,6 +9,7 @@
 import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import ErrorState from '../components/ErrorState.astro';
+import FilterGroup from '../components/FilterGroup.astro';
 import TrophyTip from '../components/TrophyTip.astro';
 import { clientFor, getAllActivities, getHrReference, getRaces, type Activity } from '../lib/garmin';
 import { addDays, isoDate, weekStart } from '../lib/dates';
@@ -17,6 +18,7 @@ import { analyzeRace, vo2Trend } from '../lib/progression';
 import { yearCalendar } from '../lib/consistency';
 import { estimateHrParams } from '../lib/load';
 import { activityLabel, duration, int, km, pace, shortDate } from '../lib/format';
+import { card } from '../lib/ui';
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
@@ -100,20 +102,20 @@ const CAT_CLASS: Record<Exclude<RaceCategory, 'Otra'>, string> = {
   Media: 'cat-half',
   Maratón: 'cat-marathon',
 };
-
-const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
 ---
 
 <Base title="Competiciones">
   <div class="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-    <h1 class="text-2xl font-bold">
+    <h1 class="type-display">
       Competiciones{races ? (
-        <span class="ml-2 text-base font-normal text-gray-500 dark:text-gray-400">{races.length}</span>
+        <span class="ml-2 align-middle font-sans text-base font-normal tracking-normal normal-case tabular-nums text-muted-foreground">
+          {races.length}
+        </span>
       ) : (
         ''
       )}
     </h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400">Actividades marcadas como competición en Garmin Connect</p>
+    <p class="text-sm text-muted-foreground">Actividades marcadas como competición en Garmin Connect</p>
   </div>
 
   {!client ? (
@@ -126,28 +128,26 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {bestByCat.map(({ cat, race, count }) => (
             <div class:list={[card, 'p-4']}>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}
-              </p>
+              <p class="type-label">Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}</p>
               {race ? (
                 <>
-                  <p class="mt-1 text-2xl font-semibold tabular-nums">{duration(raceTime(race))}</p>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <p class="mt-1 type-kpi">{duration(raceTime(race))}</p>
+                  <p class="mt-1 text-xs text-muted-foreground">
                     {pace(raceTime(race) / race.distanceKm)} /km ·{' '}
                     <a
                       href={`/actividades/${race.id}`}
-                      class="text-blue-700 hover:underline dark:text-blue-400"
+                      class="text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
                       title={race.name}
                     >
                       {shortDate(race.date)} {race.date.slice(0, 4)}
                     </a>
                   </p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                  <p class="text-xs text-muted-foreground">
                     {count} {count === 1 ? 'competición' : 'competiciones'}
                   </p>
                 </>
               ) : (
-                <p class="mt-1 text-2xl font-semibold text-gray-400">—</p>
+                <p class="mt-1 type-kpi text-muted-foreground">—</p>
               )}
             </div>
           ))}
@@ -155,11 +155,9 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
       )}
 
       {!races ? (
-        <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>
-          No se han podido cargar las competiciones.
-        </p>
+        <p class:list={[card, 'p-4 text-sm text-muted-foreground']}>No se han podido cargar las competiciones.</p>
       ) : races.length === 0 ? (
-        <p class:list={[card, 'p-4 text-sm text-gray-500 dark:text-gray-400']}>
+        <p class:list={[card, 'p-4 text-sm text-muted-foreground']}>
           No tienes actividades marcadas como competición. En Garmin Connect, edita la actividad y elige el tipo de
           evento «Competición».
         </p>
@@ -169,7 +167,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
             <caption id="tabla-competiciones" class="sr-only">
               Competiciones por año
             </caption>
-            <thead class="bg-gray-50 text-xs text-gray-600 uppercase dark:bg-gray-700 dark:text-gray-300">
+            <thead class="border-b border-border text-xs text-muted-foreground">
               <tr>
                 <th scope="col" class="px-3 py-3 sm:px-4">
                   Fecha
@@ -199,12 +197,8 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
             </thead>
             {raceYears.map((year) => (
               <tbody class="tabular-nums">
-                <tr class="bg-gray-50/60 dark:bg-gray-900/40">
-                  <th
-                    colspan="8"
-                    scope="rowgroup"
-                    class="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400"
-                  >
+                <tr class="bg-muted/50">
+                  <th colspan="8" scope="rowgroup" class="px-4 py-1.5 text-xs font-semibold text-muted-foreground">
                     {year} · {races.filter((r) => r.date.startsWith(year)).length}
                   </th>
                 </tr>
@@ -213,20 +207,13 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
                   .map((r) => {
                     const cat = raceCategory(r);
                     return (
-                      <tr class="border-t border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
+                      <tr class="border-t border-border hover:bg-muted/50">
                         <td class="px-4 py-2.5 whitespace-nowrap">{shortDate(r.date)}</td>
                         <td class="px-4 py-2.5">
-                          <a
-                            href={`/actividades/${r.id}`}
-                            class="font-medium text-blue-700 hover:underline dark:text-blue-400"
-                          >
+                          <a href={`/actividades/${r.id}`} class="font-medium underline-offset-4 hover:underline">
                             {r.name}
                           </a>
-                          {!/^running$/.test(r.typeKey) && (
-                            <span class="ml-2 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs whitespace-nowrap text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                              {activityLabel(r.typeKey)}
-                            </span>
-                          )}
+                          {!/^running$/.test(r.typeKey) && <span class="chip ml-2">{activityLabel(r.typeKey)}</span>}
                         </td>
                         <td class="px-4 py-2.5 whitespace-nowrap">
                           {r.distanceKm > 0 ? `${km(r.distanceKm, 2)} km` : '—'}
@@ -257,7 +244,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
                                     'ml-1 text-xs',
                                     analysis.get(r.id)!.diff! >= 0
                                       ? 'text-green-700 dark:text-green-400'
-                                      : 'text-gray-500 dark:text-gray-400',
+                                      : 'text-muted-foreground',
                                   ]}
                                 >
                                   ({signed(analysis.get(r.id)!.diff!)})
@@ -275,7 +262,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
         </section>
       )}
       {races && races.length > 0 && (
-        <p class="text-xs text-gray-500 dark:text-gray-400">
+        <p class="max-w-prose text-xs text-muted-foreground">
           Tiempos y ritmos sobre el tiempo total, con las pausas (como en Strava). VDOT: el de Daniels que da la marca;
           entre paréntesis, frente a tu VO2máx estimado de las 4 semanas previas (positivo = rendiste por encima de lo
           que indicaba tu forma). Orientativo; en trail o con mucho desnivel no es comparable.
@@ -286,27 +273,16 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
       {everything && calYears.length > 0 && (
         <section id="calendario" class:list={[card, 'scroll-mt-4 p-4']} aria-labelledby="calendario-titulo">
           <div class="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 id="calendario-titulo" class="text-base font-semibold">
+            <h2 id="calendario-titulo" class="type-card">
               Calendario {calYear}
             </h2>
-            <nav aria-label="Año del calendario" class="flex flex-wrap gap-1">
-              {calYears.map((y) => (
-                <a
-                  href={yearHref(y)}
-                  aria-current={y === calYear ? 'true' : undefined}
-                  class:list={[
-                    'rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums',
-                    y === calYear
-                      ? 'border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700',
-                  ]}
-                >
-                  {y}
-                </a>
-              ))}
-            </nav>
+            <FilterGroup
+              items={calYears.map((y) => ({ href: yearHref(y), label: String(y), active: y === calYear }))}
+              label="Año del calendario"
+              size="sm"
+            />
           </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-muted-foreground">
             {activeDays} días con actividad · {yearRaces.length}{' '}
             {yearRaces.length === 1 ? 'competición' : 'competiciones'} (con borde ámbar)
           </p>
@@ -344,7 +320,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
             </div>
           </div>
           <div
-            class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
+            class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
             aria-hidden="true"
           >
             <span class="flex items-center gap-1">
@@ -385,7 +361,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
     display: inline-block;
     width: 0.75rem;
     height: 0.75rem;
-    border-radius: 2px;
+    border-radius: 0;
   }
   .cal-out {
     visibility: hidden;
@@ -436,7 +412,7 @@ const card = 'rounded-lg border border-gray-200 bg-white dark:border-gray-700 da
     display: inline-block;
     margin-left: 6px;
     padding: 1px 7px;
-    border-radius: 9999px;
+    border-radius: 0;
     font-size: 11px;
     font-weight: 600;
     line-height: 1.5;
