@@ -38,6 +38,8 @@ export interface ChartSpec {
   reversed?: boolean;
   yMin?: number;
   yMax?: number;
+  /** Número de intervalos del eje Y (p. ej. 3 para no llenar de decimales un eje estrecho). */
+  yTicks?: number;
   /** Amplitud mínima del eje Y: con datos muy estables, que ±1 no parezca un gran cambio. */
   minSpan?: number;
   height?: number;

@@ -22,7 +22,9 @@ const captionId = `datos-${crypto.randomUUID()}`;
 
 {table && table.rows.length > 0 && (
   <details class:list={['mt-2 text-sm', className]}>
-    <summary class="w-fit cursor-pointer select-none text-muted-foreground hover:text-foreground">Ver datos</summary>
+    <summary class="w-fit cursor-pointer select-none text-muted-foreground hover:text-foreground pointer-coarse:py-2.5">
+      Ver datos
+    </summary>
     <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby={captionId}>
       <table class="w-full text-left text-xs">
         <caption id={captionId} class="sr-only">

@@ -13,7 +13,9 @@ const { summary, class: className, open = false } = Astro.props;
 ---
 
 <details class:list={['text-sm', className]} open={open}>
-  <summary class="w-fit cursor-pointer select-none text-muted-foreground hover:text-foreground">{summary}</summary>
+  <summary class="w-fit cursor-pointer select-none text-muted-foreground hover:text-foreground pointer-coarse:py-2.5">
+    {summary}
+  </summary>
   <div class="mt-2">
     <slot />
   </div>

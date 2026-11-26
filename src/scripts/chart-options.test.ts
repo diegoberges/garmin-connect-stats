@@ -81,7 +81,7 @@ describe('buildOptions', () => {
       format: 'int',
     };
     const o = buildOptions(spec, env);
-    expect(o.colors).toEqual(['var(--viz-1)', 'var(--viz-1)99']);
+    expect(o.colors).toEqual(['var(--viz-1)', 'var(--viz-1)cc']);
     expect((o.markers as { size: number[] }).size).toEqual([3, 0]);
     expect((o.stroke as { dashArray: number[] }).dashArray).toEqual([0, 4]);
     expect((o.legend as { markers: { shape: string[] } }).markers.shape).toEqual(['circle', 'line']);
