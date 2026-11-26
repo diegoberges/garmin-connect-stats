@@ -154,16 +154,19 @@ function fillOf(spec: ChartSpec, band: Band | undefined): Options['fill'] {
 
 function xAxisOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['xaxis'] {
   const muted = env.css('--viz-muted');
-  // Muchas categorías, pantalla estrecha o gráfica a media anchura (~70 px por etiqueta de fecha)
-  const crowded = isDense(spec) || env.viewportWidth < 640 || spec.categories.length * 70 > env.width;
+  // Ancho de etiqueta según la más larga (~9 px por carácter a 12 px, con holgura; mínimo 70, el de "28 oct")
+  const longest = Math.max(0, ...spec.categories.map((c) => c.length));
+  const labelPx = Math.max(70, Math.round(longest * 9 + 16));
+  // Muchas categorías, pantalla estrecha o gráfica a media anchura
+  const crowded = isDense(spec) || env.viewportWidth < 640 || spec.categories.length * labelPx > env.width;
   return {
     categories: spec.type === 'rangeBar' || band ? undefined : spec.categories,
     type: 'category',
     // El zoom por selección en un eje de categorías solo funciona con las marcas sobre los puntos
     ...(spec.zoom ? { tickPlacement: 'on' as const } : {}),
     labels: { show: !spec.hideXLabels, style: { colors: muted }, rotate: 0, hideOverlappingLabels: true, trim: false },
-    // Una etiqueta cada ~90 px del ancho real de la gráfica, para que no se monten
-    tickAmount: crowded ? Math.max(3, Math.min(8, Math.floor(env.width / 90))) : undefined,
+    // Una etiqueta por cada hueco de su ancho más 20 px del ancho real de la gráfica, para que no se monten
+    tickAmount: crowded ? Math.max(3, Math.min(8, Math.floor(env.width / (labelPx + 20)))) : undefined,
     axisBorder: { color: env.css('--viz-axis') },
     axisTicks: { show: false },
     tooltip: { enabled: false },

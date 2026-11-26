@@ -125,6 +125,18 @@ export function quarterChange(weeks: WeekValue[]): { first: number; last: number
   return first !== undefined && last !== undefined ? { first, last, diff: last - first } : undefined;
 }
 
+/**
+ * Rango del año: media ± 1 desviación típica de las medias semanales (con 8 semanas o más). Es la referencia
+ * personal de la vista de 12 meses: qué semanas se salen de lo habitual para ti en ese año. Orientativo.
+ */
+export function yearRange(weeks: WeekValue[]): { low: number; high: number } | undefined {
+  const xs = weeks.filter((w) => w.value !== undefined).map((w) => w.value!);
+  if (xs.length < 8) return undefined;
+  const m = mean(xs);
+  const s = sd(xs);
+  return { low: m - s, high: m + s };
+}
+
 export const bmi = (kg: number, heightCm: number) => kg / (heightCm / 100) ** 2;
 
 /** Categorías de la OMS (adultos). */

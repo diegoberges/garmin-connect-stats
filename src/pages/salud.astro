@@ -47,7 +47,7 @@ import { READINESS_WEIGHTS, readiness, readinessLabel } from '../lib/readiness';
 import { weightChange, weightTrend } from '../lib/weight';
 import { card } from '../lib/ui';
 import { fmt } from '../scripts/chart-options';
-import { bmi, bmiCategory, quarterChange, sleepRegularity, weeklyMean } from '../lib/long-term';
+import { bmi, bmiCategory, quarterChange, sleepRegularity, weeklyMean, yearRange } from '../lib/long-term';
 
 /** 90 días: 60 para las líneas base + 30 visibles; también cubre 12 semanas de minutos de intensidad. */
 const FETCH_DAYS = 90;
@@ -357,20 +357,32 @@ const hrv52 = heart ? weeklyMean(heart, (d) => d.hrvLastNight, 52, today, true) 
 const rhrChange = quarterChange(rhr52);
 const hrvChange = quarterChange(hrv52);
 const has52 = (ws: typeof rhr52) => ws.filter((w) => w.value !== undefined).length >= 8;
+/** Semana con año ("1 dic 2025"): en 12 meses el mismo mes aparece dos veces. */
+const weekLabel = (week: string) => `${shortDate(week)} ${week.slice(0, 4)}`;
 const weekSpec = (
   name: string,
   ws: typeof rhr52,
   format: ChartSpec['format'],
   color: 1 | 2,
   minSpan: number,
-): ChartSpec => ({
-  type: 'line',
-  categories: ws.map((w) => shortDate(w.week)),
-  series: [{ name, data: ws.map((w) => (w.value === undefined ? null : Math.round(w.value * 10) / 10)), color }],
-  format,
-  height: 220,
-  minSpan,
-});
+): ChartSpec => {
+  const range = yearRange(ws);
+  return {
+    type: 'line',
+    categories: ws.map((w) => weekLabel(w.week)),
+    // Tu referencia también a 12 meses: lo habitual para ti en el año (media ± 1 DE de las semanas)
+    band: range
+      ? {
+          name: 'Tu rango del año',
+          data: ws.map(() => [Math.round(range.low * 10) / 10, Math.round(range.high * 10) / 10]),
+        }
+      : undefined,
+    series: [{ name, data: ws.map((w) => (w.value === undefined ? null : Math.round(w.value * 10) / 10)), color }],
+    format,
+    height: 220,
+    minSpan,
+  };
+};
 // Vista de VFC y FC en reposo (30 días o 12 meses): por enlace (?vfc=12m, ?fc=12m), como el resto de filtros
 type HeartView = '30d' | '12m';
 const viewParam = (key: string, ok: boolean): HeartView =>
@@ -717,11 +729,11 @@ const TONE = {
             <ChartCard
               id="vfc"
               title="Variabilidad de la FC (VFC)"
-              subtitle={`Media semanal (geométrica) de los últimos 12 meses. Lo útil es tu tendencia, no el valor absoluto${changeText(hrvChange, 'ms')}.`}
+              subtitle={`Media semanal (geométrica) de los últimos 12 meses frente a tu rango del año. Lo útil es tu tendencia, no el valor absoluto${changeText(hrvChange, 'ms')}.`}
               spec={weekSpec('VFC', hrv52, 'ms', 1, 20)}
               table={{
                 headers: ['Semana', 'Media', 'Noches'],
-                rows: hrv52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
+                rows: hrv52.map((w) => [weekLabel(w.week), int(w.value), int(w.days)]),
               }}
             >
               <FilterGroup slot="controls" size="sm" label="Periodo de la VFC" items={viewItems('vfc', hrvView)} />
@@ -751,11 +763,11 @@ const TONE = {
             <ChartCard
               id="fc-reposo"
               title="FC en reposo"
-              subtitle={`Media semanal de los últimos 12 meses. Bajar con los meses suele indicar mejor forma aeróbica${changeText(rhrChange, 'ppm')}.`}
+              subtitle={`Media semanal de los últimos 12 meses frente a tu rango del año. Bajar con los meses suele indicar mejor forma aeróbica${changeText(rhrChange, 'ppm')}.`}
               spec={weekSpec('FC en reposo', rhr52, 'bpm', 2, 10)}
               table={{
                 headers: ['Semana', 'Media', 'Días'],
-                rows: rhr52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
+                rows: rhr52.map((w) => [weekLabel(w.week), int(w.value), int(w.days)]),
               }}
             >
               <FilterGroup
