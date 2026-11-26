@@ -6,6 +6,7 @@ import {
   bmiCategory,
   minutesFromNoon,
   quarterChange,
+  yearRange,
   sleepNights,
   sleepRegularity,
   weeklyMean,
@@ -90,6 +91,16 @@ describe('medias semanales a 12 meses', () => {
     expect(c.last).toBe(42);
     expect(c.diff).toBe(-3);
     expect(quarterChange(weeklyMean([], (d) => d.restingHr, 52, TODAY))).toBeUndefined();
+  });
+});
+
+describe('rango del año', () => {
+  it('media ± 1 DE de las medias semanales; sin 8 semanas, nada', () => {
+    const weeks = [40, 42, 44, 40, 42, 44, 40, 42].map((value, i) => ({ week: `w${i}`, value, days: 7 }));
+    const r = yearRange(weeks)!;
+    expect((r.low + r.high) / 2).toBeCloseTo(41.75, 5);
+    expect(r.high - r.low).toBeGreaterThan(2);
+    expect(yearRange(weeks.slice(0, 7))).toBeUndefined();
   });
 });
 

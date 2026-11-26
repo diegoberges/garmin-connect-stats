@@ -290,6 +290,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   en reposo con banda de rango normal. Estas dos llevan un selector "30 días | 12 meses" (`FilterGroup` en el hueco
   `controls` de `ChartCard`, por enlace `?vfc=12m` / `?fc=12m` con ancla a la tarjeta); el de 12 meses solo aparece con
   8 semanas de datos o más.
+  En la vista de 12 meses la referencia es "tu rango del año" (media ± 1 DE de las medias semanales, `yearRange` en
+  `long-term.ts`) y las semanas llevan año ("1 dic 2025").
   - Regularidad del sueño: hora media de acostarse y de levantarse ± su desviación típica (< 30 min regular,
     30–60 algo irregular, > 60 irregular) y jet lag social (punto medio del sueño de las noches que acaban en
     sábado o domingo frente a las laborables; > 1 h, a vigilar). Gráfica `rangeBar` con formato `clock`.
@@ -416,7 +418,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     la leyenda (banda: cuadrado; resto: círculo), para no depender solo de un tono más claro.
   - `minSpan`: amplitud mínima del eje Y (múltiplos de 5) para que datos estables no parezcan grandes cambios
     (12 meses: 20 ms de VFC, 10 ppm de FC en reposo).
-  - Eje X: si las etiquetas no caben (~70 px cada una, también en gráficas a media anchura), se muestran menos.
+  - Eje X: si las etiquetas no caben (ancho según la más larga, mínimo ~70 px; también a media anchura), se muestran menos.
   - La etiqueta de una línea de referencia (`reference`) va sobre el fondo de la tarjeta, para leerse encima de las barras.
   - Formato `clock`: hora del día en minutos desde las 12:00, para que una noche no se parta en la medianoche.
   - `zoom: true` activa el zoom por selección en x (se sincroniza en el `group`); `zoomControls: false`
