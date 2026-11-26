@@ -439,7 +439,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Si una página nueva carga datos lentos, añade su mensaje en `messageFor()`.
 - **Plegables** (`Collapsible`, mismo aspecto que "Ver datos"): una línea visible dice qué se compara; la fórmula,
   los pesos y la evidencia van en "Cómo se calcula" (en `ChartCard`, prop `how`). Lo secundario va en "Más …"
-  (indicadores de carga, dinámica de carrera, Contexto de Salud). Un aviso nunca se pliega: se muestra fuera en texto
+  (indicadores de carga, dinámica de carrera). Un aviso nunca se pliega: se muestra fuera en texto
   ("Pide atención: …") o abre el plegable.
 - **Medida de línea**: los textos introductorios de página y de sección (y los subtítulos de gráfica) no pasan de 80
   caracteres por línea aunque la tarjeta ocupe todo el ancho.
