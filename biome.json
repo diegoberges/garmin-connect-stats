@@ -12,7 +12,10 @@
       "!!**/.vercel",
       "!src/lib/garmin/schema.d.ts",
       "!docs/garmin-personal-api.json",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!!.agents",
+      "!!.claude",
+      "!skills-lock.json"
     ]
   },
   "formatter": {
