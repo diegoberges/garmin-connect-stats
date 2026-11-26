@@ -435,6 +435,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - `StatCard` pinta pequeñas las unidades que van dentro del valor ("68 h 45 min").
   - Calendario anual: si no cabe en una fila, se parte en dos medias filas con celdas fluidas (container query).
   - Textos que dependen del cursor tienen variante táctil (`pointer-coarse:`).
+  - Con dedo (`pointer-coarse:`), los plegables ("Ver datos", "Cómo se calcula") y los selectores `FilterGroup` miden
+    unos 40 px de alto.
 - **Colores críticos** (trofeo, etiquetas de competición): van fijados en el propio componente con
   `<style>`, no con clases que dependan de que Tailwind las genere.
 - **Navegación entre páginas**:

@@ -266,6 +266,7 @@ const vo2Spec: ChartSpec = {
   series: [{ name: 'VO2máx', data: vo2.map((p) => p.value), color: 3 }],
   format: 'dec1',
   height: 220,
+  yTicks: 3,
 };
 const sex = Astro.locals.settings.sex;
 const vo2Age = fitness?.age;
@@ -634,7 +635,7 @@ const TONE = {
               style="min-height:260px"
             />
             <details class="mt-2 text-sm">
-              <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground">
+              <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground pointer-coarse:py-2.5">
                 Ver datos
               </summary>
               <section class="mt-2 max-h-72 overflow-auto" tabindex="0" aria-labelledby="datos-sueno">
@@ -852,7 +853,8 @@ const TONE = {
               )}
               {/* Al pie, alineada con la nota de VO2máx: la tarjeta se estira a la altura de su vecina */}
               <p class="pt-3 text-xs text-muted-foreground">
-                Cálculo de Garmin a partir de VO2máx, actividad vigorosa, FC en reposo e IMC.
+                Cálculo de Garmin a partir de VO2máx, actividad vigorosa, FC en reposo e IMC. Las metas son las suyas:
+                la del IMC no tiene en cuenta la masa muscular, así que tómala como orientativa.
               </p>
             </section>
           )}

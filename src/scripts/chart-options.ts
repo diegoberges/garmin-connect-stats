@@ -114,7 +114,7 @@ function seriesColors(spec: ChartSpec, env: ChartEnv, band: Band | undefined): s
   const slot = (s: ColorSlot) => env.css(`--viz-${s}`);
   const colors = spec.series.map((s, i) => {
     const c = slot(s.color ?? (((i % 4) + 1) as ColorSlot));
-    return s.faint ? `${c}99` : c;
+    return s.faint ? `${c}cc` : c;
   });
   return band ? [slot('seq-light'), ...colors] : colors;
 }
@@ -201,8 +201,8 @@ function yRange(spec: ChartSpec) {
   const pace = paceScale(spec);
   if (pace) return { min: pace.min, max: pace.max, tickAmount: pace.tickAmount, nice: false };
   const span = spanScale(spec);
-  if (span) return { ...span, tickAmount: undefined, nice: true };
-  return { min: spec.yMin, max: spec.yMax, tickAmount: undefined, nice: true };
+  if (span) return { ...span, tickAmount: spec.yTicks, nice: true };
+  return { min: spec.yMin, max: spec.yMax, tickAmount: spec.yTicks, nice: true };
 }
 
 /** Con `minSpan`: si los datos (y la banda) ocupan menos, el eje se abre a esa amplitud centrada en ellos. */
