@@ -9,6 +9,7 @@ import PageIndex from '../components/PageIndex.astro';
 import ErrorState from '../components/ErrorState.astro';
 import ChartCard from '../components/ChartCard.astro';
 import Collapsible from '../components/Collapsible.astro';
+import FilterGroup from '../components/FilterGroup.astro';
 import DataTable from '../components/DataTable.astro';
 import {
   clientFor,
@@ -362,6 +363,26 @@ const weekSpec = (name: string, ws: typeof rhr52, format: ChartSpec['format'], c
   format,
   height: 220,
 });
+// Vista de VFC y FC en reposo (30 días o 12 meses): por enlace (?vfc=12m, ?fc=12m), como el resto de filtros
+type HeartView = '30d' | '12m';
+const viewParam = (key: string, ok: boolean): HeartView =>
+  ok && Astro.url.searchParams.get(key) === '12m' ? '12m' : '30d';
+const hrvView = viewParam('vfc', has52(hrv52));
+const rhrView = viewParam('fc', has52(rhr52));
+const VIEW_ANCHOR = { vfc: 'vfc', fc: 'fc-reposo' } as const;
+function viewItems(key: keyof typeof VIEW_ANCHOR, current: HeartView) {
+  const href = (v: HeartView) => {
+    const q = new URLSearchParams(Astro.url.searchParams);
+    if (v === '12m') q.set(key, '12m');
+    else q.delete(key);
+    const qs = q.toString();
+    return `${qs ? `?${qs}` : Astro.url.pathname}#${VIEW_ANCHOR[key]}`;
+  };
+  return [
+    { href: href('30d'), label: '30 días', active: current === '30d' },
+    { href: href('12m'), label: '12 meses', active: current === '12m' },
+  ];
+}
 function changeText(c: typeof rhrChange, unit: string): string {
   if (!c) return '';
   if (Math.abs(c.diff) < 0.05) return ` · sin cambio (±0 ${unit}) del primer al último trimestre`;
@@ -545,38 +566,8 @@ const TONE = {
       {/* ---------- Recuperación ---------- */}
       <section class="space-y-4" aria-labelledby="recuperacion">
         <h2 id="recuperacion" class={sectionTitle}>
-          Recuperación · últimos {VIEW_DAYS} días
+          Recuperación
         </h2>
-        <div class="grid gap-6 lg:grid-cols-2">
-          <ChartCard
-            title="Variabilidad de la FC (VFC)"
-            subtitle="Media de 7 días frente a tu rango normal (60 días). Por debajo suele indicar fatiga o enfermedad."
-            spec={hrvSpec}
-            table={{
-              headers: ['Día', 'Noche', 'Media 7 d', 'Rango'],
-              rows: hrv.map((p) => [
-                shortDate(p.date),
-                int(p.daily),
-                int(p.avg7),
-                p.low !== undefined ? `${int(p.low)}–${int(p.high)}` : '—',
-              ]),
-            }}
-          />
-          <ChartCard
-            title="FC en reposo"
-            subtitle={`Frente a tu habitual (mediana de ${RHR_WINDOW} días). +${RHR_ALERT_BPM} ppm o más es una señal de alerta.`}
-            spec={rhrSpec}
-            table={{
-              headers: ['Día', 'ppm', 'Habitual', 'Diferencia'],
-              rows: rhr.map((p) => [
-                shortDate(p.date),
-                int(p.value),
-                int(p.base),
-                p.delta !== undefined ? `${p.delta > 0 ? '+' : ''}${Math.round(p.delta)}` : '—',
-              ]),
-            }}
-          />
-        </div>
         <section
           id="alertas"
           class:list={[card, 'grid scroll-mt-4 gap-6 p-4 lg:grid-cols-[14rem_1fr]']}
@@ -710,6 +701,86 @@ const TONE = {
             </div>
           </section>
         )}
+        <div class="grid gap-6 lg:grid-cols-2">
+          {hrvView === '12m' ? (
+            <ChartCard
+              id="vfc"
+              title="Variabilidad de la FC (VFC)"
+              subtitle={`Media semanal (geométrica) de los últimos 12 meses. Lo útil es tu tendencia, no el valor absoluto${changeText(hrvChange, 'ms')}.`}
+              spec={weekSpec('VFC', hrv52, 'ms', 1)}
+              table={{
+                headers: ['Semana', 'Media', 'Noches'],
+                rows: hrv52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
+              }}
+            >
+              <FilterGroup slot="controls" size="sm" label="Periodo de la VFC" items={viewItems('vfc', hrvView)} />
+            </ChartCard>
+          ) : (
+            <ChartCard
+              id="vfc"
+              title="Variabilidad de la FC (VFC)"
+              subtitle="Media de 7 días frente a tu rango normal (60 días). Por debajo suele indicar fatiga o enfermedad."
+              spec={hrvSpec}
+              table={{
+                headers: ['Día', 'Noche', 'Media 7 d', 'Rango'],
+                rows: hrv.map((p) => [
+                  shortDate(p.date),
+                  int(p.daily),
+                  int(p.avg7),
+                  p.low !== undefined ? `${int(p.low)}–${int(p.high)}` : '—',
+                ]),
+              }}
+            >
+              {has52(hrv52) && (
+                <FilterGroup slot="controls" size="sm" label="Periodo de la VFC" items={viewItems('vfc', hrvView)} />
+              )}
+            </ChartCard>
+          )}
+          {rhrView === '12m' ? (
+            <ChartCard
+              id="fc-reposo"
+              title="FC en reposo"
+              subtitle={`Media semanal de los últimos 12 meses. Bajar con los meses suele indicar mejor forma aeróbica${changeText(rhrChange, 'ppm')}.`}
+              spec={weekSpec('FC en reposo', rhr52, 'bpm', 2)}
+              table={{
+                headers: ['Semana', 'Media', 'Días'],
+                rows: rhr52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
+              }}
+            >
+              <FilterGroup
+                slot="controls"
+                size="sm"
+                label="Periodo de la FC en reposo"
+                items={viewItems('fc', rhrView)}
+              />
+            </ChartCard>
+          ) : (
+            <ChartCard
+              id="fc-reposo"
+              title="FC en reposo"
+              subtitle={`Frente a tu habitual (mediana de ${RHR_WINDOW} días). +${RHR_ALERT_BPM} ppm o más es una señal de alerta.`}
+              spec={rhrSpec}
+              table={{
+                headers: ['Día', 'ppm', 'Habitual', 'Diferencia'],
+                rows: rhr.map((p) => [
+                  shortDate(p.date),
+                  int(p.value),
+                  int(p.base),
+                  p.delta !== undefined ? `${p.delta > 0 ? '+' : ''}${Math.round(p.delta)}` : '—',
+                ]),
+              }}
+            >
+              {has52(rhr52) && (
+                <FilterGroup
+                  slot="controls"
+                  size="sm"
+                  label="Periodo de la FC en reposo"
+                  items={viewItems('fc', rhrView)}
+                />
+              )}
+            </ChartCard>
+          )}
+        </div>
       </section>
 
       {/* ---------- Vida sana ---------- */}
@@ -865,28 +936,6 @@ const TONE = {
               table={{
                 headers: ['Día', 'Pesaje', 'Media 7 d'],
                 rows: wTrend.map((w) => [shortDate(w.date), km(w.kg), km(w.avg7)]),
-              }}
-            />
-          )}
-          {has52(rhr52) && (
-            <ChartCard
-              title="FC en reposo · 12 meses"
-              subtitle={`Media semanal. Bajar con los meses suele indicar mejor forma aeróbica${changeText(rhrChange, 'ppm')}.`}
-              spec={weekSpec('FC en reposo', rhr52, 'bpm', 2)}
-              table={{
-                headers: ['Semana', 'Media', 'Días'],
-                rows: rhr52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
-              }}
-            />
-          )}
-          {has52(hrv52) && (
-            <ChartCard
-              title="VFC · 12 meses"
-              subtitle={`Media semanal (geométrica) de la VFC nocturna. Lo útil es tu tendencia, no el valor absoluto${changeText(hrvChange, 'ms')}.`}
-              spec={weekSpec('VFC', hrv52, 'ms', 1)}
-              table={{
-                headers: ['Semana', 'Media', 'Noches'],
-                rows: hrv52.map((w) => [shortDate(w.week), int(w.value), int(w.days)]),
               }}
             />
           )}

@@ -286,7 +286,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     última noche con datos no es la de hoy, aviso en ámbar de que el reloj no ha sincronizado.
   - Las señales son la lectura principal (`.type-readout`, LED); la disposición va después, a tamaño de valor, con el
     desglose plegado y, si algo tira de ella hacia abajo, "Pide atención: …" fuera en texto.
-- **Recuperación** (30 días): HRV y FC en reposo con banda de rango normal; horas de sueño frente a la necesidad.
+- **Recuperación**, en este orden: horas de sueño y alertas de fatiga (30 días), regularidad del sueño, y VFC y FC
+  en reposo con banda de rango normal. Estas dos llevan un selector "30 días | 12 meses" (`FilterGroup` en el hueco
+  `controls` de `ChartCard`, por enlace `?vfc=12m` / `?fc=12m` con ancla a la tarjeta); el de 12 meses solo aparece con
+  8 semanas de datos o más.
   - Regularidad del sueño: hora media de acostarse y de levantarse ± su desviación típica (< 30 min regular,
     30–60 algo irregular, > 60 irregular) y jet lag social (punto medio del sueño de las noches que acaban en
     sábado o domingo frente a las laborables; > 1 h, a vigilar). Gráfica `rangeBar` con formato `clock`.
@@ -299,8 +302,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Pasos frente a una meta por edad.
   - Peso con la media de 7 días (si hay pesajes en Garmin; sin captura real para comprobar unidades) e IMC
     con la altura del perfil (Garmin no la da) o, sin ella, el IMC que usa Garmin para la edad física.
-  - FC en reposo y VFC a 12 meses: medias semanales (la VFC, geométrica) y cambio del primer al último
-    trimestre. Se piden solo resúmenes y VFC (`getHeartHistory`, memo de 6 h).
+  - (FC en reposo y VFC a 12 meses: ahora en Recuperación, en la vista "12 meses" de su tarjeta.) Medias semanales
+    (la VFC, geométrica) y cambio del primer al último trimestre; se piden solo resúmenes y VFC (`getHeartHistory`,
+    memo de 6 h).
 - **Contexto** (evidencia limitada): Body Battery, estrés (se muestra como "activación fisiológica") y fases del sueño.
 
 - **Disposición** (en la tarjeta Hoy): 0–100, 50 = tu día normal. z de VFC (35 %), FC en reposo (25 %),
