@@ -581,18 +581,18 @@ const TONE = {
           class:list={[card, 'grid scroll-mt-4 gap-6 p-4 lg:grid-cols-[14rem_1fr]']}
           aria-labelledby="alertas-titulo"
         >
-          <dl class="grid grid-cols-3 gap-4 lg:grid-cols-1">
+          <dl class="grid grid-cols-2 content-start gap-4 sm:grid-cols-3 lg:grid-cols-1">
             <div>
               <dt class="type-label">Deuda de sueño (7 noches)</dt>
-              <dd class="type-value">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
+              <dd class="type-value whitespace-nowrap">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
             </div>
             <div>
               <dt class="type-label">Media por noche</dt>
-              <dd class="type-value">{hoursMinutes(avgSleep)}</dd>
+              <dd class="type-value whitespace-nowrap">{hoursMinutes(avgSleep)}</dd>
             </div>
             <div>
               <dt class="type-label">Noches de 7 h o más</dt>
-              <dd class="type-value">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
+              <dd class="type-value whitespace-nowrap">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
             </div>
           </dl>
           <div class="min-w-0">
@@ -836,7 +836,7 @@ const TONE = {
                 </ul>
               )}
               {/* Al pie, alineada con la nota de VO2máx: la tarjeta se estira a la altura de su vecina */}
-              <p class="mt-auto pt-3 text-xs text-muted-foreground">
+              <p class="pt-3 text-xs text-muted-foreground">
                 Cálculo de Garmin a partir de VO2máx, actividad vigorosa, FC en reposo e IMC.
               </p>
             </section>
