@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource/orbitron/700.css";
+@import "@fontsource/orbitron/900.css";
+@import "@fontsource/vt323";
 @import "flowbite/src/themes/default";
 @plugin "flowbite/plugin";
 @source "../../node_modules/flowbite";
@@ -183,4 +187,84 @@
 }
 .dark .apexcharts-toolbar .apexcharts-selected svg {
   fill: var(--foreground);
+}
+
+/* =====================================================================================
+   PRUEBA OCHENTERA (sin commit): tipografía y formas retro con los tonos neutros de shadcn,
+   sin neones. Todo en este bloque para quitarlo de una vez.
+   ===================================================================================== */
+@theme {
+  --font-sans: "Geist Mono Variable", ui-monospace, monospace;
+  --font-display: "Orbitron", "Geist Mono Variable", sans-serif;
+  --font-pixel: "VT323", ui-monospace, monospace;
+}
+:root {
+  --radius: 0px;
+}
+
+/* Rejilla en perspectiva al fondo, en el gris del borde */
+body::before {
+  content: "";
+  position: fixed;
+  inset: auto -50% 0;
+  height: 45vh;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(300px) rotateX(60deg);
+  transform-origin: bottom;
+  mask-image: linear-gradient(to top, black, transparent);
+}
+/* Líneas de barrido de monitor CRT, solo en oscuro */
+.dark body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, oklch(0 0 0 / 12%) 0 1px, transparent 1px 3px);
+}
+
+/* Títulos en Orbitron */
+main h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+main h2,
+main h3,
+header nav {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+main h2 {
+  font-size: 0.95em;
+}
+header nav button {
+  text-transform: inherit;
+}
+
+/* Cifras grandes en pantalla de LED */
+main .text-2xl,
+main .text-4xl {
+  font-family: var(--font-pixel);
+  font-size: 2.4rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+main h1.text-3xl {
+  font-size: 1.9rem;
+}
+
+/* Tarjetas: borde marcado y sombra dura desplazada, en gris */
+.bg-card {
+  border-radius: 0;
+  box-shadow: 4px 4px 0 var(--border);
+}
+.dark .bg-card {
+  box-shadow: 4px 4px 0 oklch(1 0 0 / 8%);
 }

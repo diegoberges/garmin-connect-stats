@@ -20,6 +20,9 @@
   "dependencies": {
     "@astrojs/vercel": "11.0.22",
     "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource/orbitron": "5.3.0",
+    "@fontsource/vt323": "5.3.0",
     "@garmin/fitsdk": "21.222.0",
     "@tailwindcss/vite": "4.3.5",
     "@vercel/analytics": "2.0.1",
