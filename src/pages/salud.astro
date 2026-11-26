@@ -827,7 +827,7 @@ const TONE = {
                         {l.label}
                         {l.stale && <span class="ml-1 text-xs text-muted-foreground">(dato antiguo)</span>}
                       </span>
-                      <span class="text-right tabular-nums">
+                      <span class="text-right whitespace-nowrap tabular-nums">
                         <span class="font-semibold">{l.value !== undefined ? leverFmt(l.value) : '—'}</span>
                         {l.target !== undefined && <span class="text-muted-foreground"> → {leverFmt(l.target)}</span>}
                       </span>
@@ -903,6 +903,7 @@ const TONE = {
                 </p>
               )}
               {vo2.length > 1 && (
+                <>
                   <div
                     class="mt-2 w-full min-w-0"
                     data-chart={JSON.stringify(vo2Spec)}
@@ -911,6 +912,7 @@ const TONE = {
                     style="min-height:220px"
                   />
                   <DataTable title="VO2máx" spec={vo2Spec} categoryLabel="Fecha" />
+                </>
               )}
               <p class="mt-2 text-xs text-muted-foreground">
                 Es el marcador con más evidencia: cada +3,5 ml/kg/min se asocia a un ~13 % menos de mortalidad.
@@ -922,7 +924,7 @@ const TONE = {
         <div class="grid gap-6 lg:grid-cols-2">
           <ChartCard
             title="Minutos de intensidad por semana"
-            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas; la última barra es esta semana, aún en curso`}
+            subtitle={`Moderados + vigorosos ×2 frente a los 150 de la OMS · ${weeksMet} de ${fullWeeks.length} semanas cumplidas (la última, en curso)`}
             how="Cada día se toma lo mayor entre los minutos que da Garmin y los de las zonas de FC de tus actividades (Z2–Z3 moderados, Z4–Z5 vigorosos), porque la API suele dar 0. Los vigorosos cuentan doble, como en la recomendación de la OMS. Orientativo."
             spec={intensitySpec}
             table={{
