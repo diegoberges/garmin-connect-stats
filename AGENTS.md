@@ -282,7 +282,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Con una sola señal fuera, el estado sigue siendo normal pero el veredicto la nombra ("En tu rango, salvo …").
     Una señal fuera va en ámbar con la etiqueta "Fuera de rango" en texto; la VFC por encima del rango, con un
     punto verde hueco ("no suma"). En la interfaz se dice siempre VFC (no HRV) y "Forma" (no "Forma (TSB)").
-  - En móvil, la disposición va después de las señales (primero la evidencia, luego la nota).
+  - Las señales son la lectura principal (`.type-readout`, LED); la disposición va después, a tamaño de valor, con el
+    desglose plegado y, si algo tira de ella hacia abajo, "Pide atención: …" fuera en texto.
 - **Recuperación** (30 días): HRV y FC en reposo con banda de rango normal; horas de sueño frente a la necesidad.
   - Regularidad del sueño: hora media de acostarse y de levantarse ± su desviación típica (< 30 min regular,
     30–60 algo irregular, > 60 irregular) y jet lag social (punto medio del sueño de las noches que acaban en

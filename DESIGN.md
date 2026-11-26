@@ -175,6 +175,7 @@ Tailwind (`text-2xl`, `text-3xl`…): el papel no puede depender de qué utilida
 - **Section** (`.type-section`; Orbitron 700, 1.125rem, mayúsculas, espaciado 0.06em): títulos de sección y de la tarjeta de estado principal.
 - **Card** (`.type-card`; Orbitron 700, 0.8125rem, mayúsculas, espaciado 0.08em): títulos de tarjeta y de gráfica (`ChartCard`).
 - **KPI** (`.type-kpi`; VT323, 2.4rem, interlineado 1, cifras tabulares): la cifra protagonista de una tarjeta.
+- **Readout** (`.type-readout`; VT323, 1.75rem, interlineado 1, cifras tabulares): la lectura de cada señal en una lista de instrumentos (las señales de Hoy). Más pequeña que el KPI para que varias convivan.
 - **Value** (`.type-value`; Geist Mono 600, 1.125rem, cifras tabulares): cifras secundarias agrupadas (paneles de totales).
 - **Title** (`.type-title`; Geist Mono 600, 1.125rem): frase de estado o veredicto dentro de una tarjeta.
 - **Body** (Geist Mono 400, 0.875rem): explicaciones, subtítulos de gráfica y tablas; las notas largas, con `max-w-prose`.

@@ -152,6 +152,8 @@ const settingsTarget = Astro.locals.settings.alert?.sleepTargetH;
 const readyDate =
   all.at(-1)?.sleepS === undefined && all.at(-1)?.hrvLastNight === undefined ? addDays(today, -1) : today;
 const ready = readiness(all, readyDate, tsb, settingsTarget ? settingsTarget * 3600 : undefined);
+// Lo que tira hacia abajo de la disposición: se dice fuera del desglose plegado
+const lowParts = ready?.parts.filter((x) => x.z < -1) ?? [];
 const PART_VALUE: Record<string, (v: number) => string> = {
   hrv: (x) => `${Math.round(x)} ms`,
   rhr: (x) => `${Math.round(x)} ppm`,
@@ -437,73 +439,80 @@ const TONE = {
               Cada señal se compara con tu propio rango de los últimos 1–2 meses, no con valores de referencia.
             </p>
           </div>
-          <ul class="divide-y divide-border lg:col-start-2 lg:row-span-2 lg:row-start-1">
-            {status.signals.map((s) => (
-              <li class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-                <span
-                  class:list={['mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', DOT[s.state]]}
-                  title={DOT_LABEL[s.state]}
-                />
-                {s.state !== 'warn' && <span class="sr-only">{DOT_LABEL[s.state]}:</span>}
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-baseline justify-between gap-3">
-                    <p class="text-sm font-medium">
-                      {s.label}
-                      {s.state === 'warn' && <span class="chip chip-warn ml-2 align-middle">Fuera de rango</span>}
+          <div class="space-y-4">
+            <ul class="divide-y divide-border">
+              {status.signals.map((s) => (
+                <li class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <span
+                    class:list={['mt-3 h-2.5 w-2.5 shrink-0 rounded-full', DOT[s.state]]}
+                    title={DOT_LABEL[s.state]}
+                  />
+                  {s.state !== 'warn' && <span class="sr-only">{DOT_LABEL[s.state]}:</span>}
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-baseline justify-between gap-3">
+                      <p class="text-sm font-medium">
+                        {s.label}
+                        {s.state === 'warn' && <span class="chip chip-warn ml-2 align-middle">Fuera de rango</span>}
+                      </p>
+                      <p class="type-readout whitespace-nowrap">{s.value}</p>
+                    </div>
+                    <p
+                      class:list={[
+                        'text-xs',
+                        s.state === 'warn' ? 'text-amber-800 dark:text-amber-300' : 'text-muted-foreground',
+                      ]}
+                    >
+                      {s.detail}
                     </p>
-                    <p class="text-sm font-semibold whitespace-nowrap tabular-nums">{s.value}</p>
                   </div>
-                  <p
-                    class:list={[
-                      'text-xs',
-                      s.state === 'warn' ? 'text-amber-800 dark:text-amber-300' : 'text-muted-foreground',
-                    ]}
-                  >
-                    {s.detail}
+                </li>
+              ))}
+            </ul>
+            {ready && (
+              <div class="p-3 bg-muted/50">
+                <div class="flex items-baseline justify-between gap-3">
+                  <h3 id="disposicion" class="type-card">
+                    Disposición{readyDate !== today ? ' (datos de ayer)' : ''}
+                  </h3>
+                  <p class="tabular-nums">
+                    <span class="type-value">{ready.score}</span>
+                    <span class="text-sm text-muted-foreground">/100</span>
                   </p>
                 </div>
-              </li>
-            ))}
-          </ul>
-          {ready && (
-            <div class="p-3 bg-muted/50 lg:col-start-1">
-              <div class="flex items-baseline justify-between gap-3">
-                <h3 id="disposicion" class="type-card">
-                  Disposición{readyDate !== today ? ' (datos de ayer)' : ''}
-                </h3>
-                <p class="tabular-nums">
-                  <span class="type-kpi">{ready.score}</span>
-                  <span class="text-sm text-muted-foreground">/100</span>
-                </p>
+                <p class="text-sm font-medium">{readinessLabel(ready.score)}</p>
+                {lowParts.length > 0 && (
+                  <p class="mt-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                    Pide atención: {lowParts.map((x) => x.label.toLowerCase()).join(', ')}, por debajo de tu normal.
+                  </p>
+                )}
+                <Collapsible summary="Desglose y cómo se calcula" class="mt-2">
+                  <ul class="space-y-0.5 text-xs">
+                    {ready.parts.map((part) => (
+                      <li class="flex justify-between gap-3 tabular-nums">
+                        <span>
+                          {part.label} · {PART_VALUE[part.key](part.value)}
+                        </span>
+                        <span
+                          class:list={[
+                            part.z < -1 ? 'font-medium text-amber-800 dark:text-amber-300' : 'text-muted-foreground',
+                          ]}
+                        >
+                          {part.z >= 0 ? '↑' : '↓'} {zText(part.z)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p class="mt-2 text-xs text-muted-foreground">
+                    50 es tu día normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo{' '}
+                    {READINESS_WEIGHTS.rhr * 100} %, sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y
+                    forma {READINESS_WEIGHTS.tsb * 100} %
+                    {ready.missing.length ? '; los que faltan se reparten entre el resto' : ''}. Orientativa: no es un
+                    modelo validado.
+                  </p>
+                </Collapsible>
               </div>
-              <p class="text-sm font-medium">{readinessLabel(ready.score)}</p>
-              <Collapsible summary="Desglose y cómo se calcula" class="mt-2" open={ready.parts.some((x) => x.z < -1)}>
-                <ul class="space-y-0.5 text-xs">
-                  {ready.parts.map((part) => (
-                    <li class="flex justify-between gap-3 tabular-nums">
-                      <span>
-                        {part.label} · {PART_VALUE[part.key](part.value)}
-                      </span>
-                      <span
-                        class:list={[
-                          part.z < -1 ? 'font-medium text-amber-800 dark:text-amber-300' : 'text-muted-foreground',
-                        ]}
-                      >
-                        {part.z >= 0 ? '↑' : '↓'} {zText(part.z)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p class="mt-2 text-xs text-muted-foreground">
-                  50 es tu día normal. Pesos: VFC {READINESS_WEIGHTS.hrv * 100} %, FC en reposo{' '}
-                  {READINESS_WEIGHTS.rhr * 100} %, sueño {READINESS_WEIGHTS.sleep * 100} % (frente a tu objetivo) y
-                  forma {READINESS_WEIGHTS.tsb * 100} %
-                  {ready.missing.length ? '; los que faltan se reparten entre el resto' : ''}. Orientativa: no es un
-                  modelo validado.
-                </p>
-              </Collapsible>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
