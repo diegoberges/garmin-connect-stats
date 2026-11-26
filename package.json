@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
+    "mock:reset": "rm -rf .data/mock",
     "gen:api": "pnpm dlx --package openapi-typescript@7.13.0 --package typescript@5.9.3 openapi-typescript docs/garmin-personal-api.json -o src/lib/garmin/schema.d.ts",
     "test": "vitest run",
     "lint": "biome lint",

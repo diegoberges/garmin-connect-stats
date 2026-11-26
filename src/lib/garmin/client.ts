@@ -6,6 +6,7 @@
 import createClient from 'openapi-fetch';
 import { createHash } from 'node:crypto';
 import { getAccessToken, forgetToken } from './auth';
+import { diskMockEnabled, withDiskMock } from './disk-mock';
 import type { paths } from './schema';
 
 export const GARMIN_API_BASE = process.env.GARMIN_API_BASE ?? 'https://personal.connectapi.garmin.com';
@@ -48,11 +49,18 @@ export function createGarminClient(apiKey: string, { fresh = false, ttlMs = DEFA
       return fetch(req);
     };
 
-    let res = await send(fresh);
-    if (res.status === 401) {
+    const live = async () => {
+      const first = await send(fresh);
+      if (first.status !== 401) return first;
       forgetToken(apiKey); // token caducado antes de tiempo: un reintento con token nuevo
-      res = await send(true);
-    }
+      return send(true);
+    };
+
+    // En local, lo ya pedido hoy sale del mock en disco (ver disk-mock.ts) y no gasta peticiones
+    const res =
+      diskMockEnabled() && request.method === 'GET'
+        ? await withDiskMock(keyHash, request.url, live, fresh)
+        : await live();
     const isJson = res.headers.get('content-type')?.includes('json');
     if (res.ok && isJson) {
       const body = await res.text();
