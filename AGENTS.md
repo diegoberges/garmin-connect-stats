@@ -46,6 +46,7 @@ pnpm lint            # Biome lint (incluye frontmatter y plantilla de los .astro
 pnpm fmt             # Biome format: ts/js/json/css y .astro completos; pnpm fmt:check solo comprueba
 pnpm fix             # biome check --write: formato + correcciones seguras de lint de una vez
 pnpm verify          # biome check + astro check + vitest (lo que hay que pasar antes de subir)
+pnpm mock:reset      # borra el mock local grabado (.data/mock) para volver a pedir los datos hoy
 pnpm gen:api         # regenera src/lib/garmin/schema.d.ts desde docs/garmin-personal-api.json
 ```
 
@@ -202,6 +203,18 @@ docs/garmin-personal-api.json # spec OpenAPI (la fuente de verdad de rutas y tip
 - **Filtros útiles de la búsqueda de actividades**:
   - `activityType` admite solo tipos padre (`running` incluye trail y cinta).
   - `eventType=race` devuelve las competiciones.
+
+### Mock local (solo dev): no gastar peticiones al refrescar
+
+Garmin bloquea si se le pide demasiado, así que en `astro dev` el cliente (`client.ts` → `disk-mock.ts`) graba
+cada respuesta GET correcta (JSON y ZIP del FIT) en `.data/mock/<hash de la key>/<día>/`:
+
+- la primera vez en el día que se pide una URL, va a Garmin y se guarda; después se sirve desde disco, aunque se
+  refresque o se reinicie el servidor (cabecera `X-Garmin-Mock: disk`);
+- al cambiar de día (Europe/Madrid) se vuelve a grabar y se borra lo del día anterior;
+- los errores (429, 5xx…) no se graban; las peticiones simultáneas a la misma URL se agrupan en una;
+- nunca se guardan la key ni el token; nunca se activa en producción ni en los tests;
+- `GARMIN_MOCK=0` lo desactiva y `pnpm mock:reset` lo borra (p. ej. para ver una actividad recién sincronizada).
 
 ### Capturas reales para desarrollar
 
