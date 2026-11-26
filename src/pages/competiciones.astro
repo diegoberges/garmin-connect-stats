@@ -106,7 +106,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
 
 <Base title="Competiciones">
   <div class="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-    <h1 class="text-3xl font-semibold tracking-tight">
+    <h1 class="type-display">
       Competiciones{races ? <span class="ml-2 text-base font-normal text-muted-foreground">{races.length}</span> : ''}
     </h1>
     <p class="text-sm text-muted-foreground">Actividades marcadas como competición en Garmin Connect</p>
@@ -122,12 +122,10 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {bestByCat.map(({ cat, race, count }) => (
             <div class:list={[card, 'p-4']}>
-              <p class="text-sm text-muted-foreground">
-                Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}
-              </p>
+              <p class="type-label">Mejor {cat === 'Media' ? 'media maratón' : cat === 'Maratón' ? 'maratón' : cat}</p>
               {race ? (
                 <>
-                  <p class="mt-1 text-2xl font-semibold tabular-nums">{duration(raceTime(race))}</p>
+                  <p class="mt-1 type-kpi">{duration(raceTime(race))}</p>
                   <p class="mt-1 text-xs text-muted-foreground">
                     {pace(raceTime(race) / race.distanceKm)} /km ·{' '}
                     <a
@@ -143,7 +141,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
                   </p>
                 </>
               ) : (
-                <p class="mt-1 text-2xl font-semibold text-muted-foreground">—</p>
+                <p class="mt-1 type-kpi text-muted-foreground">—</p>
               )}
             </div>
           ))}
@@ -262,7 +260,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
         </section>
       )}
       {races && races.length > 0 && (
-        <p class="text-xs text-muted-foreground">
+        <p class="max-w-prose text-xs text-muted-foreground">
           Tiempos y ritmos sobre el tiempo total, con las pausas (como en Strava). VDOT: el de Daniels que da la marca;
           entre paréntesis, frente a tu VO2máx estimado de las 4 semanas previas (positivo = rendiste por encima de lo
           que indicaba tu forma). Orientativo; en trail o con mucho desnivel no es comparable.
@@ -273,7 +271,7 @@ const card = 'rounded-xl border border-border bg-card text-card-foreground shado
       {everything && calYears.length > 0 && (
         <section id="calendario" class:list={[card, 'scroll-mt-4 p-4']} aria-labelledby="calendario-titulo">
           <div class="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 id="calendario-titulo" class="text-base font-semibold">
+            <h2 id="calendario-titulo" class="type-card">
               Calendario {calYear}
             </h2>
             <nav aria-label="Año del calendario" class="flex flex-wrap gap-1">

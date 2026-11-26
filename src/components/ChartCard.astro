@@ -17,7 +17,7 @@ const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== u
 ---
 
 <section class:list={['min-w-0 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm', className]}>
-  <h2 class="leading-none font-semibold tracking-tight">{title}</h2>
+  <h2 class="type-card">{title}</h2>
   {subtitle && <p class="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
   {hasData ? (
     <div

@@ -168,6 +168,38 @@ Tokens `--viz-*` en `global.css`, con valores propios para oscuro (`#3987e5`, `#
 
 ### Hierarchy
 
+Cada papel es una clase de `global.css` (`@layer components`). Usa la clase del papel, no tamaños de
+Tailwind (`text-2xl`, `text-3xl`…): el papel no puede depender de qué utilidad lleve cada página.
+
+- **Display** (`.type-display`; Orbitron 900, 1.9rem y 1.5rem por debajo de 640 px, mayúsculas, espaciado 0.04em): el título de cada página (`h1`). Si el título es un desplegable, la clase va en el `h1` y el botón hereda la letra.
+- **Section** (`.type-section`; Orbitron 700, 1.125rem, mayúsculas, espaciado 0.06em): títulos de sección y de la tarjeta de estado principal.
+- **Card** (`.type-card`; Orbitron 700, 0.8125rem, mayúsculas, espaciado 0.08em): títulos de tarjeta y de gráfica (`ChartCard`).
+- **KPI** (`.type-kpi`; VT323, 2.4rem, interlineado 1, cifras tabulares): la cifra protagonista de una tarjeta.
+- **Value** (`.type-value`; Geist Mono 600, 1.125rem, cifras tabulares): cifras secundarias agrupadas (paneles de totales).
+- **Title** (`.type-title`; Geist Mono 600, 1.125rem): frase de estado o veredicto dentro de una tarjeta.
+- **Body** (Geist Mono 400, 0.875rem): explicaciones, subtítulos de gráfica y tablas; las notas largas, con `max-w-prose`.
+- **Label** (`.type-label`; Geist Mono 500, 0.75rem, grisáceo, en minúsculas normales): el nombre de una cifra.
+
+Los títulos llevan `text-wrap: balance` y los párrafos `text-wrap: pretty` (en `main`).
+
+### Named Rules
+
+**La regla del color que significa.** El color solo aparece para decir algo: estado (verde/ámbar/rojo) o serie de una gráfica. Ningún elemento lleva color por decoración.
+
+**La regla del texto primero.** Ningún estado se transmite solo con color: siempre hay una palabra ("Dentro de tu rango", "Carga baja") o una flecha con texto.
+
+**La regla de las cuatro series.** Una gráfica tiene como mucho cuatro series de color; si hacen falta más, se divide en gráficas sincronizadas.
+
+## Typography
+
+**Display Font:** Orbitron 700/900 (con Geist Mono de respaldo)
+**Body Font:** Geist Mono Variable (con `ui-monospace`)
+**Numeric Font:** VT323 (con `ui-monospace`)
+
+**Character:** Geist Mono da a todo el panel la voz de un instrumento de medida, alineando cifras sin esfuerzo. Orbitron pone la etiqueta de hardware en los títulos y VT323 convierte las cifras protagonistas en una pantalla de LED.
+
+### Hierarchy
+
 - **Display** (Orbitron 900, 1.9rem, mayúsculas, espaciado 0.04em): el título de cada página (`main h1`).
 - **Headline** (Orbitron 700, 0.95em, mayúsculas, espaciado 0.06em): títulos de sección y de tarjeta (`main h2`, `main h3`) y la navegación principal.
 - **Numeric** (VT323, 2.4rem, interlineado 1): cifras grandes de KPI (todo `.text-2xl` y `.text-4xl` dentro de `main`).

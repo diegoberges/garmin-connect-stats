@@ -454,7 +454,7 @@ const cs = criticalSpeed(records);
 const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.min(8, Math.max(1, kmWeekly.length - 1));
 
 const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
-const sectionTitle = 'text-base font-semibold tracking-tight';
+const sectionTitle = 'type-section';
 // Mismo código de color que la tarjeta "Hoy" de Salud: verde bien, ámbar atención, rojo mal
 const ZONE_TONE: Record<FormZone, string> = {
   fresh: 'border-l-green-500',
@@ -467,7 +467,7 @@ const ZONE_TONE: Record<FormZone, string> = {
 
 <Base title="Rendimiento">
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-3xl font-semibold tracking-tight">Rendimiento</h1>
+    <h1 class="type-display">Rendimiento</h1>
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
 
@@ -483,7 +483,7 @@ const ZONE_TONE: Record<FormZone, string> = {
           <h2 id="estado" class={sectionTitle}>
             Estado de forma · hoy
           </h2>
-          <p class="mt-2 text-xl font-bold">Calibrando</p>
+          <p class="type-title mt-2">Calibrando</p>
           <p class="mt-1 text-sm text-muted-foreground">
             Hacen falta {FITNESS_DAYS} días de historial de actividades para estimar tu forma física y tu forma.
             Mientras tanto se muestran la carga y la fatiga.
@@ -497,7 +497,7 @@ const ZONE_TONE: Record<FormZone, string> = {
               <h2 id="estado" class={sectionTitle}>
                 Estado de forma · hoy
               </h2>
-              <p class="mt-2 text-xl font-bold">{zone.label}</p>
+              <p class="type-title mt-2">{zone.label}</p>
               <p class="mt-1 text-sm text-muted-foreground">{zone.text}</p>
               <p class="mt-3 text-xs text-muted-foreground">
                 Forma = forma física (carga media de {FITNESS_DAYS} días) − fatiga (de {FATIGUE_DAYS} días), en % de tu
@@ -506,15 +506,15 @@ const ZONE_TONE: Record<FormZone, string> = {
             </div>
             <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
               <div>
-                <dt class="text-xs text-muted-foreground">Forma</dt>
-                <dd class="text-3xl font-semibold tracking-tight tabular-nums">
+                <dt class="type-label">Forma</dt>
+                <dd class="type-kpi">
                   {nowP.formPct! > 0 ? '+' : ''}
                   {Math.round(nowP.formPct!)} %
                 </dd>
               </div>
               <div>
-                <dt class="text-xs text-muted-foreground">Forma física</dt>
-                <dd class="text-3xl font-semibold tracking-tight tabular-nums">{int(nowP.fitness)}</dd>
+                <dt class="type-label">Forma física</dt>
+                <dd class="type-kpi">{int(nowP.fitness)}</dd>
                 {fitnessChange !== undefined && (
                   <dd class="text-xs tabular-nums text-muted-foreground">
                     {fitnessChange >= 0 ? '↑ +' : '↓ −'}
@@ -523,13 +523,13 @@ const ZONE_TONE: Record<FormZone, string> = {
                 )}
               </div>
               <div>
-                <dt class="text-xs text-muted-foreground">Fatiga</dt>
-                <dd class="text-3xl font-semibold tracking-tight tabular-nums">{int(nowP.fatigue)}</dd>
+                <dt class="type-label">Fatiga</dt>
+                <dd class="type-kpi">{int(nowP.fatigue)}</dd>
               </div>
               {ratioNow !== undefined && (
                 <div>
-                  <dt class="text-xs text-muted-foreground">Ratio agudo:crónico</dt>
-                  <dd class="text-3xl font-semibold tracking-tight tabular-nums">{km(ratioNow, 2)}</dd>
+                  <dt class="type-label">Ratio agudo:crónico</dt>
+                  <dd class="type-kpi">{km(ratioNow, 2)}</dd>
                   <dd
                     class:list={[
                       'text-xs',
@@ -544,8 +544,8 @@ const ZONE_TONE: Record<FormZone, string> = {
               )}
               {ramp !== undefined && (
                 <div>
-                  <dt class="text-xs text-muted-foreground">Rampa (forma física, 7 días)</dt>
-                  <dd class="text-3xl font-semibold tracking-tight tabular-nums">
+                  <dt class="type-label">Rampa (forma física, 7 días)</dt>
+                  <dd class="type-kpi">
                     {ramp >= 0 ? '+' : '−'}
                     {km(Math.abs(ramp))}
                   </dd>
@@ -561,8 +561,8 @@ const ZONE_TONE: Record<FormZone, string> = {
               )}
               {mono && (
                 <div>
-                  <dt class="text-xs text-muted-foreground">Monotonía · strain (7 días)</dt>
-                  <dd class="text-3xl font-semibold tracking-tight tabular-nums">
+                  <dt class="type-label">Monotonía · strain (7 días)</dt>
+                  <dd class="type-kpi">
                     {km(mono.monotony, 2)} · {int(mono.strain)}
                   </dd>
                   <dd
@@ -626,7 +626,7 @@ const ZONE_TONE: Record<FormZone, string> = {
         </div>
         <section class:list={[card, 'min-w-0 p-4']}>
           <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 class="text-base font-semibold">Forma física, fatiga y forma</h3>
+            <h3 class="type-card">Forma física, fatiga y forma</h3>
             <p class="text-xs text-muted-foreground">
               TRIMP de Banister por sesión · FC reposo {hr.restingHr}, máx. {hr.maxHr}
               {hrRef ? ' (zonas de Garmin)' : ' (estimadas)'}
@@ -722,7 +722,7 @@ const ZONE_TONE: Record<FormZone, string> = {
             const captionId = `volumen-${period.label.toLowerCase()}`;
             return (
               <section class:list={[card, 'min-w-0 p-4']} aria-labelledby={captionId}>
-                <h3 id={captionId} class="text-base font-semibold">
+                <h3 id={captionId} class="type-card">
                   {period.label} en curso
                 </h3>
                 <p class="text-sm text-muted-foreground">
@@ -835,34 +835,34 @@ const ZONE_TONE: Record<FormZone, string> = {
               Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}
             </p>
             <div>
-              <dt class="text-xs text-muted-foreground">Distancia</dt>
-              <dd class="text-xl font-bold tabular-nums">
+              <dt class="type-label">Distancia</dt>
+              <dd class="type-value">
                 {km(t.km)} <span class="text-sm font-normal text-muted-foreground">km</span>
               </dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">Sesiones</dt>
-              <dd class="text-xl font-bold tabular-nums">{int(t.runs)}</dd>
+              <dt class="type-label">Sesiones</dt>
+              <dd class="type-value">{int(t.runs)}</dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">Tiempo</dt>
-              <dd class="text-xl font-bold tabular-nums">{hoursMinutes(t.movingS)}</dd>
+              <dt class="type-label">Tiempo</dt>
+              <dd class="type-value">{hoursMinutes(t.movingS)}</dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">Ritmo medio</dt>
-              <dd class="text-xl font-bold tabular-nums">
+              <dt class="type-label">Ritmo medio</dt>
+              <dd class="type-value">
                 {pace(t.paceSPerKm)} <span class="text-sm font-normal text-muted-foreground">/km</span>
               </dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">FC media</dt>
-              <dd class="text-xl font-bold tabular-nums">
+              <dt class="type-label">FC media</dt>
+              <dd class="type-value">
                 {int(t.avgHr)} <span class="text-sm font-normal text-muted-foreground">ppm</span>
               </dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">Desnivel +</dt>
-              <dd class="text-xl font-bold tabular-nums">
+              <dt class="type-label">Desnivel +</dt>
+              <dd class="type-value">
                 {int(t.elevationGainM)} <span class="text-sm font-normal text-muted-foreground">m</span>
               </dd>
             </div>
@@ -879,7 +879,7 @@ const ZONE_TONE: Record<FormZone, string> = {
         </div>
 
         <section class:list={[card, 'min-w-0 p-4']}>
-          <h3 class="text-base font-semibold">Mejores marcas</h3>
+          <h3 class="type-card">Mejores marcas</h3>
           <p class="text-sm text-muted-foreground">
             Mejor tramo dentro de cualquier carrera en los últimos 12 meses (desde el {shortDate(yearAgo)}{' '}
             {yearAgo.slice(0, 4)}) frente a tu mejor marca
@@ -999,7 +999,7 @@ const ZONE_TONE: Record<FormZone, string> = {
           <div class="grid gap-6 lg:grid-cols-2">
             <section class:list={[card, 'min-w-0 p-4']}>
               <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 class="text-base font-semibold">Factor de eficiencia</h3>
+                <h3 class="type-card">Factor de eficiencia</h3>
                 {efChange !== undefined && (
                   <span
                     class:list={[
@@ -1045,7 +1045,7 @@ const ZONE_TONE: Record<FormZone, string> = {
 
         <div class="grid gap-6 lg:grid-cols-2">
           <section class:list={[card, 'min-w-0 p-4']}>
-            <h3 class="text-base font-semibold">Desacoplamiento en tiradas largas</h3>
+            <h3 class="type-card">Desacoplamiento en tiradas largas</h3>
             <p class="text-sm text-muted-foreground">
               Cuánto cae la eficiencia de la 1.ª a la 2.ª mitad (con ritmo ajustado por pendiente y sin los 10 primeros
               minutos). Por debajo del 5 % suele indicar buena base aeróbica (regla orientativa; el calor y la
@@ -1094,7 +1094,7 @@ const ZONE_TONE: Record<FormZone, string> = {
           </section>
 
           <section class:list={[card, 'min-w-0 p-4']}>
-            <h3 class="text-base font-semibold">Predicción de carrera</h3>
+            <h3 class="type-card">Predicción de carrera</h3>
             {vdotBase ? (
               <>
                 <p class="text-sm text-muted-foreground">
@@ -1198,16 +1198,16 @@ const ZONE_TONE: Record<FormZone, string> = {
         </h2>
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div class:list={[card, 'p-4']}>
-            <p class="text-sm text-muted-foreground">Número de Eddington (carrera)</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums">{edd.value}</p>
+            <p class="type-label">Número de Eddington (carrera)</p>
+            <p class="mt-1 type-kpi">{edd.value}</p>
             <p class="mt-1 text-xs text-muted-foreground">
               {edd.value} días con al menos {edd.value} km. Para llegar a {edd.value + 1}: {edd.toNext}{' '}
               {edd.toNext === 1 ? 'día más' : 'días más'} de {edd.value + 1} km o más.
             </p>
           </div>
           <div class:list={[card, 'p-4']}>
-            <p class="text-sm text-muted-foreground">Racha de días con actividad</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums">
+            <p class="type-label">Racha de días con actividad</p>
+            <p class="mt-1 type-kpi">
               {streak.currentDays.length} {streak.currentDays.length === 1 ? 'día' : 'días'}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">
@@ -1220,8 +1220,8 @@ const ZONE_TONE: Record<FormZone, string> = {
             </p>
           </div>
           <div class:list={[card, 'p-4']}>
-            <p class="text-sm text-muted-foreground">Semanas seguidas corriendo</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums">
+            <p class="type-label">Semanas seguidas corriendo</p>
+            <p class="mt-1 type-kpi">
               {streak.currentWeeks.length} {streak.currentWeeks.length === 1 ? 'semana' : 'semanas'}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">

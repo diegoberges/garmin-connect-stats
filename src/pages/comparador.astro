@@ -110,7 +110,7 @@ const avgSpeedText = (s: { km: number; movingS: number }) => {
 const signed = (p?: number) => (p === undefined ? '' : `${p >= 0 ? '+' : '−'}${Math.abs(Math.round(p))} %`);
 
 const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
-const sectionTitle = 'text-base font-semibold tracking-tight';
+const sectionTitle = 'type-section';
 const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
   new Date(`${today}T00:00:00Z`),
 );
@@ -120,12 +120,12 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     {client && !error ? (
       <div>
-        <h1>
+        <h1 class="type-display">
           <button
             data-dropdown-toggle="cmp-type-menu"
             data-dropdown-placement="bottom-start"
             type="button"
-            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-3xl font-semibold tracking-tight hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`Tipo de actividad: ${typeTitle}`}
           >
             Comparador · {typeTitle}
@@ -169,7 +169,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
         </div>
       </div>
     ) : (
-      <h1 class="text-3xl font-semibold tracking-tight">Comparador</h1>
+      <h1 class="type-display">Comparador</h1>
     )}
   </div>
 
@@ -214,8 +214,8 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                 const delta = y.year !== thisYear && ytdCurrent ? pctVs(mainOf(ytdCurrent), mainOf(y)) : undefined;
                 return (
                   <div class:list={[card, 'p-4']}>
-                    <p class="text-sm text-muted-foreground">{y.year}</p>
-                    <p class="mt-1 text-2xl font-semibold tabular-nums">{fmtMetric(y)}</p>
+                    <p class="type-label">{y.year}</p>
+                    <p class="mt-1 type-kpi">{fmtMetric(y)}</p>
                     <p class="text-xs text-muted-foreground">{int(y.sessions)} sesiones</p>
                     {delta !== undefined &&
                       (Math.abs(delta) < 1 ? (

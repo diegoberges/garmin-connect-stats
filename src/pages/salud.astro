@@ -308,7 +308,7 @@ const phasesSpec: ChartSpec = {
 };
 
 const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
-const sectionTitle = 'text-base font-semibold tracking-tight';
+const sectionTitle = 'type-section';
 const TONE = {
   ok: 'border-l-green-500',
   warn: 'border-l-amber-400',
@@ -318,7 +318,7 @@ const TONE = {
 ---
 
 <Base title="Salud">
-  <h1 class="text-3xl font-semibold tracking-tight">Salud</h1>
+  <h1 class="type-display">Salud</h1>
   <p class="mb-6 text-sm text-muted-foreground">{dayLabel(today)}</p>
 
   {!client ? (
@@ -334,7 +334,7 @@ const TONE = {
             <h2 id="hoy" class={sectionTitle}>
               Hoy
             </h2>
-            <p class="mt-2 text-xl font-bold">{state.title}</p>
+            <p class="type-title mt-2">{state.title}</p>
             <p class="mt-1 text-sm text-muted-foreground">{state.text}</p>
             <p class="mt-3 text-xs text-muted-foreground">
               Cada señal se compara con tu propio rango de los últimos 1–2 meses, no con valores de referencia.
@@ -342,11 +342,11 @@ const TONE = {
             {ready && (
               <div class="mt-4 rounded-lg p-3 bg-muted/50">
                 <div class="flex items-baseline justify-between gap-3">
-                  <h3 id="disposicion" class="text-sm font-semibold">
+                  <h3 id="disposicion" class="type-card">
                     Disposición{readyDate !== today ? ' (datos de ayer)' : ''}
                   </h3>
                   <p class="tabular-nums">
-                    <span class="text-3xl font-semibold tracking-tight">{ready.score}</span>
+                    <span class="type-kpi">{ready.score}</span>
                     <span class="text-sm text-muted-foreground">/100</span>
                   </p>
                 </div>
@@ -443,20 +443,20 @@ const TONE = {
         <div class:list={[card, 'grid gap-6 p-4 lg:grid-cols-[14rem_1fr]']}>
           <dl class="grid grid-cols-3 gap-4 lg:grid-cols-1">
             <div>
-              <dt class="text-xs text-muted-foreground">Deuda de sueño (7 noches)</dt>
-              <dd class="text-xl font-bold tabular-nums">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
+              <dt class="type-label">Deuda de sueño (7 noches)</dt>
+              <dd class="type-value">{debt.nights ? hoursMinutes(debt.debtS) : '—'}</dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">Media por noche</dt>
-              <dd class="text-xl font-bold tabular-nums">{hoursMinutes(avgSleep)}</dd>
+              <dt class="type-label">Media por noche</dt>
+              <dd class="type-value">{hoursMinutes(avgSleep)}</dd>
             </div>
             <div>
-              <dt class="text-xs text-muted-foreground">Noches de 7 h o más</dt>
-              <dd class="text-xl font-bold tabular-nums">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
+              <dt class="type-label">Noches de 7 h o más</dt>
+              <dd class="type-value">{pct7h !== undefined ? `${Math.round(pct7h)} %` : '—'}</dd>
             </div>
           </dl>
           <div class="min-w-0">
-            <h3 class="text-base font-semibold">Horas de sueño</h3>
+            <h3 class="type-card">Horas de sueño</h3>
             <p class="text-sm text-muted-foreground">
               La duración pesa más que las fases, que en reloj de muñeca son poco fiables. La línea es la necesidad que
               calcula Garmin.
@@ -471,10 +471,10 @@ const TONE = {
           </div>
         </div>
         <section id="alertas" class:list={[card, 'scroll-mt-4 p-4']} aria-labelledby="alertas-titulo">
-          <h3 id="alertas-titulo" class="text-base font-semibold">
+          <h3 id="alertas-titulo" class="type-card">
             Alertas de fatiga por sueño
           </h3>
-          <p class="text-sm text-muted-foreground">
+          <p class="max-w-prose text-sm text-muted-foreground">
             Días de los últimos {VIEW_DAYS} en los que saltó la regla: anoche menos de{' '}
             {String(alertT.lastNightH).replace('.', ',')} h y al menos {alertT.minShortNights} noches de menos de{' '}
             {String(alertT.shortNightH).replace('.', ',')} h en 7 días. Nivel alto si además baja la VFC o sube la FC en
@@ -543,9 +543,9 @@ const TONE = {
         <div class:list={['grid gap-6', fitness?.fitnessAge !== undefined && lastVo2 && 'lg:grid-cols-2']}>
           {fitness?.fitnessAge !== undefined && (
             <section class:list={[card, 'p-5']}>
-              <h3 class="text-base font-semibold">Edad física</h3>
+              <h3 class="type-card">Edad física</h3>
               <p class="mt-2 flex items-baseline gap-2">
-                <span class="text-4xl font-bold tabular-nums">{km(fitness.fitnessAge)}</span>
+                <span class="type-kpi">{km(fitness.fitnessAge)}</span>
                 <span class="text-sm text-muted-foreground">años</span>
               </p>
               {ageDiff !== undefined && (
@@ -588,11 +588,11 @@ const TONE = {
           {lastVo2 && (
             <section class:list={[card, 'min-w-0 p-5']}>
               <div class="flex items-baseline justify-between gap-3">
-                <h3 class="text-base font-semibold">VO2máx</h3>
+                <h3 class="type-card">VO2máx</h3>
                 <span class="text-xs text-muted-foreground">a {shortDate(lastVo2.date)}</span>
               </div>
               <p class="mt-2 flex items-baseline gap-2">
-                <span class="text-4xl font-bold tabular-nums">{km(lastVo2.value)}</span>
+                <span class="type-kpi">{km(lastVo2.value)}</span>
                 <span class="text-sm text-muted-foreground">ml/kg/min</span>
               </p>
               {vo2Change !== undefined && (

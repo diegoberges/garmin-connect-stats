@@ -21,8 +21,8 @@ const deltaText = hasDelta ? `${delta! > 0 ? '+' : ''}${Math.round(delta!)} %` :
 ---
 
 <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
-  <p class="text-sm font-medium text-muted-foreground">{label}</p>
-  <p class="mt-1 text-2xl font-semibold tabular-nums">
+  <p class="type-label">{label}</p>
+  <p class="mt-1 type-kpi">
     {value}{unit && <span class="ml-1 text-base font-normal text-muted-foreground">{unit}</span>}
   </p>
   {hasDelta && (

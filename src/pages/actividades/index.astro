@@ -140,13 +140,13 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     {client && !error ? (
       <div>
-        <h1>
+        <h1 class="type-display">
           <button
             id="type-toggle"
             data-dropdown-toggle="type-menu"
             data-dropdown-placement="bottom-start"
             type="button"
-            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 text-3xl font-semibold tracking-tight hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`Tipo de actividad: ${title}`}
           >
             {title}
@@ -186,7 +186,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         </div>
       </div>
     ) : (
-      <h1 class="text-3xl font-semibold tracking-tight">Actividades</h1>
+      <h1 class="type-display">Actividades</h1>
     )}
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
@@ -247,7 +247,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
       )}
 
       <section id="sesiones" class="scroll-mt-4">
-        <h2 class="mb-3 text-base font-semibold">Sesiones ({activities.length})</h2>
+        <h2 class="type-card mb-3">Sesiones ({activities.length})</h2>
         <ActivityTable activities={pageItems} showType={isAll} caption={`Sesiones, página ${page} de ${pages}`} />
         <Pagination page={page} pages={pages} total={activities.length} pageSize={PAGE_SIZE} anchor="sesiones" />
       </section>

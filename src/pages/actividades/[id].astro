@@ -382,7 +382,7 @@ const routeSpec: ChartSpec | undefined =
 const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
 
 const card = 'rounded-xl border border-border bg-card text-card-foreground shadow-sm';
-const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground';
+const label = 'type-label';
 ---
 
 <Base title={run?.name ?? 'Actividad'}>
@@ -402,7 +402,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
           <span class="rounded-sm px-2 py-0.5 text-xs font-medium text-foreground/80 bg-muted">
             {activityLabel(run.typeKey)}
           </span>
-          <h1 class="mt-2 flex items-center gap-2 text-3xl font-semibold tracking-tight">
+          <h1 class="type-display mt-2 flex items-center gap-2">
             {run.name}
             {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
           </h1>
@@ -422,7 +422,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
               {headline.map((h) => (
                 <div class="min-w-0">
                   <dt class={label}>{h.label}</dt>
-                  <dd class="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+                  <dd class="mt-1 type-kpi">
                     {h.value}
                     {h.unit && <span class="ml-0.5 text-sm font-normal text-muted-foreground">{h.unit}</span>}
                   </dd>
@@ -470,7 +470,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
         {charts.length > 0 && (
           <section class:list={[card, 'min-w-0 p-4']}>
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 class="text-base font-semibold">A lo largo de la actividad</h2>
+              <h2 class="type-card">A lo largo de la actividad</h2>
               {charts.length > 1 && (
                 <p class="text-xs text-muted-foreground">
                   Pasa el cursor: las gráficas marcan el mismo punto. Arrastra sobre una para ampliar un tramo en todas
@@ -497,7 +497,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
         <div class:list={['grid items-start gap-6', splitRows.length > 1 && 'lg:grid-cols-2']}>
           {splitRows.length > 1 && (
             <section class:list={[card, 'min-w-0 p-4']}>
-              <h2 class="text-base font-semibold">Parciales por km</h2>
+              <h2 class="type-card">Parciales por km</h2>
               <section class="mt-3 overflow-x-auto" tabindex="0" aria-labelledby="tabla-parciales">
                 <table class="w-full text-sm">
                   <caption id="tabla-parciales" class="sr-only">
@@ -579,7 +579,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
           <div class="min-w-0 space-y-6">
             {zoneTotal > 0 && (
               <section class:list={[card, 'p-4']}>
-                <h2 class="text-base font-semibold">Zonas de frecuencia cardiaca</h2>
+                <h2 class="type-card">Zonas de frecuencia cardiaca</h2>
                 <ul class="mt-3 space-y-2.5 text-sm">
                   {zoneRows.map((z, i) => (
                     <li class="grid grid-cols-[2rem_1fr_3rem_4.5rem] items-center gap-3">
@@ -603,7 +603,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
 
             {paceZoneS && paceZoneTotal > 0 && (
               <section class:list={[card, 'p-4']}>
-                <h2 class="text-base font-semibold">Zonas de ritmo (ajustado por pendiente)</h2>
+                <h2 class="type-card">Zonas de ritmo (ajustado por pendiente)</h2>
                 <p class="text-xs text-muted-foreground">
                   Ritmos de Daniels con tu VDOT de esa fecha ({km(zoneVdot)}, mejores marcas de los 180 días previos):
                   un cambio de forma no reescribe actividades antiguas.
@@ -631,7 +631,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
 
             {rr && (
               <section class:list={[card, 'p-4']}>
-                <h2 class="text-base font-semibold">Variabilidad de la FC durante la sesión</h2>
+                <h2 class="type-card">Variabilidad de la FC durante la sesión</h2>
                 <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
                   <div>
                     <dt class="text-muted-foreground">RMSSD</dt>
@@ -681,7 +681,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
                   .filter((g) => g.rows.length > 0)
                   .map((g) => (
                     <div>
-                      <h2 class="text-base font-semibold">{g.title}</h2>
+                      <h2 class="type-card">{g.title}</h2>
                       <dl class="mt-3 space-y-2 text-sm">
                         {g.rows.map(([l, v]) => (
                           <div class="flex items-baseline justify-between gap-2">
@@ -699,7 +699,7 @@ const label = 'text-xs font-medium tracking-wide uppercase text-muted-foreground
 
         {showRoute && (
           <section class:list={[card, 'min-w-0 p-4']} aria-labelledby="misma-ruta">
-            <h2 id="misma-ruta" class="text-base font-semibold">
+            <h2 id="misma-ruta" class="type-card">
               En la misma ruta · {routeMatches.length} veces
             </h2>
             <p class="text-sm text-muted-foreground">
