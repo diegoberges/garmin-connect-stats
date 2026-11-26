@@ -190,8 +190,8 @@
 }
 
 /* =====================================================================================
-   PRUEBA OCHENTERA (sin commit): tipografía y formas retro con los tonos neutros de shadcn,
-   sin neones. Todo en este bloque para quitarlo de una vez.
+   TOQUE OCHENTERO (estilo oficial, ver DESIGN.md): tipografía y formas retro con los tonos neutros
+   de shadcn, sin neones. Todo en este bloque para poder ajustarlo de una vez.
    ===================================================================================== */
 @theme {
   --font-sans: "Geist Mono Variable", ui-monospace, monospace;

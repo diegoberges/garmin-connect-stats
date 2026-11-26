@@ -15,6 +15,10 @@
       "!pnpm-lock.yaml",
       "!!.agents",
       "!!.claude",
+      "!!.codex",
+      "!!.github/skills",
+      "!!.github/agents",
+      "!!.github/hooks",
       "!skills-lock.json"
     ]
   },
