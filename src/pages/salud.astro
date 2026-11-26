@@ -867,25 +867,19 @@ const TONE = {
             Métricas de Garmin con evidencia limitada: útiles para contexto, no para decidir.
           </p>
         </div>
-        <Collapsible summary="Ver Body Battery, activación fisiológica y fases del sueño">
-          <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            <ChartCard
-              title="Body Battery"
-              subtitle="Rango diario mínimo–máximo (algoritmo propietario)"
-              spec={bbSpec}
-            />
-            <ChartCard
-              title="Activación fisiológica"
-              subtitle="El «estrés» de Garmin mide activación, no estrés psicológico. Lo más útil es el valor durante el sueño."
-              spec={stressSpec}
-            />
-            <ChartCard
-              title="Fases del sueño"
-              subtitle="Orientativas: el reloj de muñeca las estima con poca precisión"
-              spec={phasesSpec}
-            />
-          </div>
-        </Collapsible>
+        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <ChartCard title="Body Battery" subtitle="Rango diario mínimo–máximo (algoritmo propietario)" spec={bbSpec} />
+          <ChartCard
+            title="Activación fisiológica"
+            subtitle="El «estrés» de Garmin mide activación, no estrés psicológico. Lo más útil es el valor durante el sueño."
+            spec={stressSpec}
+          />
+          <ChartCard
+            title="Fases del sueño"
+            subtitle="Orientativas: el reloj de muñeca las estima con poca precisión"
+            spec={phasesSpec}
+          />
+        </div>
       </section>
 
       <p class="text-xs text-muted-foreground">
