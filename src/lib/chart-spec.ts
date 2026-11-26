@@ -38,6 +38,8 @@ export interface ChartSpec {
   reversed?: boolean;
   yMin?: number;
   yMax?: number;
+  /** Amplitud mínima del eje Y: con datos muy estables, que ±1 no parezca un gran cambio. */
+  minSpan?: number;
   height?: number;
   /** Línea horizontal de referencia (p. ej. objetivo de pasos). */
   reference?: { value: number; label: string };

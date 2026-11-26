@@ -412,6 +412,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     le pasa `table` (`specTable` en `lib/chart-table.ts`), y las gráficas hechas a mano usan `<DataTable>` igual.
   - Títulos: `ChartCard` usa `h3` (dentro de una sección con `h2`); `headingLevel={2}` si cuelga del `h1`.
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
+  - Series tenues (`faint`, p. ej. el valor de cada noche detrás de la media): discontinuas y con marcador de línea en
+    la leyenda (banda: cuadrado; resto: círculo), para no depender solo de un tono más claro.
+  - `minSpan`: amplitud mínima del eje Y (múltiplos de 5) para que datos estables no parezcan grandes cambios
+    (12 meses: 20 ms de VFC, 10 ppm de FC en reposo).
   - Eje X: si las etiquetas no caben (~70 px cada una, también en gráficas a media anchura), se muestran menos.
   - La etiqueta de una línea de referencia (`reference`) va sobre el fondo de la tarjeta, para leerse encima de las barras.
   - Formato `clock`: hora del día en minutos desde las 12:00, para que una noche no se parta en la medianoche.

@@ -34,6 +34,8 @@ export function fmt(format: ValueFormat, v: number | null | undefined): string {
       return `${v.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km/h`;
     case 'hm': {
       const m = Math.round(v / 60);
+      // El cero del eje, sin unidad: "0 min" junto a "2 h" confunde
+      if (m === 0) return '0';
       if (m < 60) return `${m} min`;
       return m % 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m / 60} h`;
     }
@@ -112,7 +114,7 @@ function seriesColors(spec: ChartSpec, env: ChartEnv, band: Band | undefined): s
   const slot = (s: ColorSlot) => env.css(`--viz-${s}`);
   const colors = spec.series.map((s, i) => {
     const c = slot(s.color ?? (((i % 4) + 1) as ColorSlot));
-    return s.faint ? `${c}66` : c;
+    return s.faint ? `${c}99` : c;
   });
   return band ? [slot('seq-light'), ...colors] : colors;
 }
@@ -123,7 +125,13 @@ function strokeOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Optio
     return { show: true, width: spec.stacked && !isDense(spec) ? 2 : 0, colors: [env.css('--viz-surface')] };
   }
   const widths = spec.series.map((s) => (s.faint ? 1.5 : 2));
-  return { curve: 'straight', width: band ? [0, ...widths] : widths };
+  // Las tenues, discontinuas: así no dependen solo de un tono más claro del mismo color
+  const dashes = spec.series.map((s) => (s.faint ? 4 : 0));
+  return {
+    curve: 'straight',
+    width: band ? [0, ...widths] : widths,
+    dashArray: band ? [0, ...dashes] : dashes,
+  };
 }
 
 function markersOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['markers'] {
@@ -189,7 +197,22 @@ function yRange(spec: ChartSpec) {
   if (time) return { min: 0, max: time.max, tickAmount: time.tickAmount, nice: false };
   const pace = paceScale(spec);
   if (pace) return { min: pace.min, max: pace.max, tickAmount: pace.tickAmount, nice: false };
+  const span = spanScale(spec);
+  if (span) return { ...span, tickAmount: undefined, nice: true };
   return { min: spec.yMin, max: spec.yMax, tickAmount: undefined, nice: true };
+}
+
+/** Con `minSpan`: si los datos (y la banda) ocupan menos, el eje se abre a esa amplitud centrada en ellos. */
+function spanScale(spec: ChartSpec): { min: number; max: number } | undefined {
+  if (!spec.minSpan) return undefined;
+  const values = [...spec.series.flatMap((s) => s.data), ...(spec.band?.data ?? [])].flatMap(pointValues);
+  if (!values.length) return undefined;
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  if (hi - lo >= spec.minSpan) return undefined;
+  // Centrado en los datos y en múltiplos de 5, para que las marcas del eje sean redondas
+  const min = Math.floor(((lo + hi) / 2 - spec.minSpan / 2) / 5) * 5;
+  return { min, max: Math.max(min + spec.minSpan, Math.ceil(hi / 5) * 5) };
 }
 
 function yAxisOf(spec: ChartSpec, env: ChartEnv): Options['yaxis'] {
@@ -296,7 +319,14 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       position: 'top',
       horizontalAlign: 'left',
       labels: { colors: env.css('--viz-text') },
-      markers: { size: 6, shape: 'circle' },
+      // Banda: cuadrado; serie tenue: línea (discontinua en la gráfica); el resto, círculo
+      markers: {
+        size: 6,
+        shape: [
+          ...(band ? ['square' as const] : []),
+          ...spec.series.map((s) => (s.faint ? ('line' as const) : ('circle' as const))),
+        ],
+      },
       fontSize: '12px',
     },
     tooltip: {
