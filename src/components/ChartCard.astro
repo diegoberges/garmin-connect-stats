@@ -1,17 +1,22 @@
 ---
 /**
- * Tarjeta con gráfica + vista de tabla accesible ("Ver datos").
+ * Tarjeta con gráfica + vista de tabla accesible ("Ver datos"). El subtítulo dice en una línea qué se compara;
+ * la fórmula y la evidencia van en `how` ("Cómo se calcula", plegado). Lo que se pase como hijo se añade al
+ * final (p. ej. una gráfica secundaria plegada).
  */
 import type { ChartSpec } from '../lib/chart-spec';
+import Collapsible from './Collapsible.astro';
 
 interface Props {
   title: string;
   subtitle?: string;
   spec: ChartSpec;
   table?: { headers: string[]; rows: string[][] };
+  /** Fórmula, fuentes y límites: se pliega bajo "Cómo se calcula". */
+  how?: string;
   class?: string;
 }
-const { title, subtitle, spec, table, class: className } = Astro.props;
+const { title, subtitle, spec, table, how, class: className } = Astro.props;
 const captionId = `datos-${crypto.randomUUID()}`;
 const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== undefined));
 ---
@@ -60,6 +65,12 @@ const hasData = spec.series.some((s) => s.data.some((v) => v !== null && v !== u
       </section>
     </details>
   )}
+  {how && (
+    <Collapsible summary="Cómo se calcula" class="mt-1">
+      <p class="max-w-prose text-xs text-muted-foreground">{how}</p>
+    </Collapsible>
+  )}
+  <slot />
 </section>
 
 <script>
