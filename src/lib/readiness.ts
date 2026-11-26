@@ -40,7 +40,7 @@ const LABELS: Record<ReadinessKey, string> = {
   hrv: 'VFC de anoche',
   rhr: 'FC en reposo',
   sleep: 'Sueño de anoche',
-  tsb: 'Forma (TSB)',
+  tsb: 'Forma',
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));

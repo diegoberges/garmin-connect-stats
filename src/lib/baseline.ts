@@ -120,9 +120,9 @@ function signOf(v: number): string {
 }
 
 function hrvSignal(days: DayHealth[], fmt: Fmt): Signal {
-  const base = { key: 'hrv', label: 'HRV (7 días)' } as const;
+  const base = { key: 'hrv', label: 'VFC (7 días)' } as const;
   const hrv = lastWith(hrvTrend(days), (p) => p.avg7 !== undefined);
-  if (!hrv) return { ...base, state: 'nodata', value: '—', detail: 'Sin datos de HRV nocturna' };
+  if (!hrv) return { ...base, state: 'nodata', value: '—', detail: 'Sin datos de VFC nocturna' };
   const value = fmt.ms(hrv.avg7!);
   if (hrv.low === undefined || hrv.high === undefined) {
     return {
