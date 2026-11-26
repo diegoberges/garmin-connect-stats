@@ -175,13 +175,13 @@ function sleepDebtSignal(days: DayHealth[], fmt: Fmt): Signal | undefined {
   if (debt.nights < 3) return undefined;
   return {
     key: 'sleep',
-    label: 'Deuda de sueño (7 noches)',
+    label: 'Deuda de sueño',
     state: debt.debtS >= SLEEP_DEBT_ALERT_S ? 'warn' : 'ok',
     value: fmt.hm(debt.debtS),
     detail:
       debt.debtS < 600
-        ? 'Has cubierto tu necesidad de sueño'
-        : 'Lo que te faltó frente a la necesidad que calcula Garmin',
+        ? 'Has cubierto tu necesidad de sueño en 7 noches'
+        : 'Lo que te faltó en 7 noches frente a la necesidad que calcula Garmin',
   };
 }
 
