@@ -474,6 +474,18 @@ const PREDICT_LABEL: Record<number, string> = {
 };
 const predictions = vdotBase ? PREDICT.map((d) => ({ d, t: predictTime(vdotBase.v, d) })) : [];
 const cs = criticalSpeed(records);
+// Contraste: el pronóstico por fisiología (VO2máx estimado como VDOT) frente al de tus marcas, que es el principal
+const marks10k = predictions.find((p) => p.d === 10000)?.t;
+const fisio10k = predNow?.t10k;
+const gap10k = marks10k && fisio10k ? marks10k - fisio10k : undefined;
+function gapTextFor(gap: number | undefined): string {
+  if (gap === undefined) return '.';
+  if (Math.abs(gap) < 60) return ': casi lo mismo que con tus marcas, así que ambas estimaciones cuadran.';
+  if (gap > 0)
+    return `, ${duration(gap)} más rápido que con tus marcas: puede ser margen que aún no has demostrado en carrera o que la estimación por FC sea optimista.`;
+  return `, ${duration(-gap)} más lento que con tus marcas: tus marcas van por delante de lo que sugiere la FC en los rodajes.`;
+}
+const gapText = gapTextFor(gap10k);
 const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.min(8, Math.max(1, kmWeekly.length - 1));
 
 // ---------- ¿Estás mejorando? (cuatro señales frente a hace 6 semanas o a tu histórico) ----------
@@ -559,6 +571,11 @@ const ZONE_TONE: Record<FormZone, string> = {
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
   {client && !error && (
+    <p class="mb-2 text-xs text-muted-foreground">
+      El periodo cambia las gráficas de Eficiencia, Carga y Carrera; el resto de bloques dice su propia ventana.
+    </p>
+  )}
+  {client && !error && (
     <PageIndex
       class="mb-4"
       items={[
@@ -603,7 +620,8 @@ const ZONE_TONE: Record<FormZone, string> = {
               <Collapsible summary="Cómo se calcula" class="mt-3">
                 <p class="text-xs text-muted-foreground">
                   Forma = forma física (carga media de {FITNESS_DAYS} días) − fatiga (de {FATIGUE_DAYS} días), en % de
-                  tu forma física. Las zonas son orientativas, no umbrales validados.
+                  tu forma física. La forma física es carga (TRIMP de Banister), no una nota: sirve para compararte
+                  contigo mismo, no con otros ni con el VO2máx. Las zonas son orientativas, no umbrales validados.
                 </p>
               </Collapsible>
             </div>
@@ -617,7 +635,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                   </dd>
                 </div>
                 <div>
-                  <dt class="type-label">Forma física</dt>
+                  <dt class="type-label">Forma física (carga)</dt>
                   <dd class="type-kpi">{int(nowP.fitness)}</dd>
                   {fitnessChange !== undefined && (
                     <dd class="text-xs tabular-nums text-muted-foreground">
@@ -848,7 +866,7 @@ const ZONE_TONE: Record<FormZone, string> = {
 
         <div class="grid gap-6 lg:grid-cols-2">
           <section class:list={[card, 'min-w-0 p-4']}>
-            <h3 class="type-card">Desacoplamiento en tiradas largas</h3>
+            <h3 class="type-card">Desacoplamiento · últimas tiradas largas</h3>
             <p class="text-sm text-muted-foreground">
               Cuánto cae la eficiencia de la 1.ª a la 2.ª mitad. Por debajo del 5 % suele indicar buena base aeróbica.
             </p>
@@ -901,7 +919,7 @@ const ZONE_TONE: Record<FormZone, string> = {
           </section>
 
           <section class:list={[card, 'min-w-0 p-4']}>
-            <h3 class="type-card">Predicción de carrera</h3>
+            <h3 class="type-card">Predicción de carrera · marcas de 12 meses</h3>
             {vdotBase ? (
               <>
                 <p class="text-sm text-muted-foreground">
@@ -922,6 +940,13 @@ const ZONE_TONE: Record<FormZone, string> = {
                     ))}
                   </tbody>
                 </table>
+                {fisio10k && marks10k && (
+                  <p class="mt-3 text-sm text-muted-foreground">
+                    Según tu VO2máx estimado (media de 28 días), el 10K saldría en{' '}
+                    <b class="text-foreground tabular-nums">{duration(fisio10k)}</b>
+                    {gapText}
+                  </p>
+                )}
                 {cs && (
                   <p class="mt-3 text-sm">
                     <span class="text-muted-foreground">Velocidad crítica (≈ ritmo umbral):</span>{' '}
@@ -977,9 +1002,10 @@ const ZONE_TONE: Record<FormZone, string> = {
             }}
           >
             {hasPredTrend && (
-              <Collapsible summary="Pronóstico de 10K y media con esta estimación" class="mt-1">
+              <Collapsible summary="Pronóstico semana a semana con esta estimación" class="mt-1">
                 <p class="text-xs text-muted-foreground">
-                  Ritmo previsto cada semana tomando la media de 28 días como VDOT
+                  Ritmo previsto cada semana tomando la media de 28 días como VDOT (la predicción principal, con tus
+                  marcas, está en Eficiencia y progreso)
                   {predNow?.t10k && predNow.tHalf
                     ? ` · ahora: 10K en ${duration(predNow.t10k)}, media en ${duration(predNow.tHalf)}`
                     : ''}
@@ -1002,7 +1028,7 @@ const ZONE_TONE: Record<FormZone, string> = {
       {/* ---------- Constancia ---------- */}
       <section class="space-y-4" aria-labelledby="constancia">
         <h2 id="constancia" class={sectionTitle}>
-          Constancia
+          Constancia · todo el historial
         </h2>
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div class:list={[card, 'p-4']}>
@@ -1065,7 +1091,7 @@ const ZONE_TONE: Record<FormZone, string> = {
       <section id="seccion-carga" class="scroll-mt-4 space-y-4" aria-labelledby="carga">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 id="carga" class={sectionTitle}>
-            Carga de entrenamiento · {scopeLabel.toLowerCase()}
+            Carga de entrenamiento
           </h2>
           <RangeSelector
             options={LOAD_SCOPES.map((o) => ({ value: o.scope, label: o.label }))}
@@ -1167,7 +1193,7 @@ const ZONE_TONE: Record<FormZone, string> = {
       {/* ---------- Volumen por deporte ---------- */}
       <section class="space-y-4" aria-labelledby="volumen">
         <h2 id="volumen" class={sectionTitle}>
-          Volumen por deporte
+          Volumen · semana y mes en curso
         </h2>
         <div class="grid gap-6 lg:grid-cols-2">
           {volumes.map((period) => {
