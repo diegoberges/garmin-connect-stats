@@ -157,6 +157,7 @@ src/
     races.ts                  # categorías de competición, tiempo de carrera (total) y mejores marcas
     progression.ts            # VO2máx estimado por sesión, pronósticos en el tiempo, VDOT de carrera vs forma
     consistency.ts            # número de Eddington, rachas y calendario anual
+    progress.ts               # Rendimiento: "¿Estás mejorando?" (direcciones, marcas del año y veredicto)
     data-quality.ts           # avisos de calidad de datos (duplicadas, sin FC, GPS, FC imposible)
     activity-analysis.ts      # zonas de ritmo de Daniels por fecha y actividades en la misma ruta
     rr.ts                     # VFC intra-sesión con los intervalos RR del FIT
@@ -313,6 +314,13 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   sueño frente al objetivo (25 %) y forma TSB (15 %), cada una limitada a ±3; orientativa.
 
 ### Rendimiento (`/rendimiento`)
+
+- Orden: Estado de forma (hoy), **¿Estás mejorando?**, Eficiencia y progreso, Constancia, Carga, Volumen y Carrera.
+- **¿Estás mejorando?** (`lib/progress.ts`): cuatro lecturas frente a hace 6 semanas, cada una con flecha, palabra y
+  enlace a su detalle: ritmo a la FC habitual de rodaje (±1 % estable), VO2máx estimado (±0,5), marcas de los últimos
+  12 meses que igualan o mejoran el histórico, y forma física (±5 %). Veredicto: 2 o más a favor y ninguna en contra,
+  "Sí, estás mejorando"; al revés, "Vas a menos"; si no, estable o mixto. Los cambios se redondean como se muestran
+  antes de clasificarlos.
 
 - **Carga**:
   - **Una sola métrica**: TRIMP de Banister por sesión, `min × HRr × 0,64 × e^(1,92 × HRr)` (mujeres:
