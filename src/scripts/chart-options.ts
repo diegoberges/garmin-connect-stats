@@ -13,6 +13,8 @@ export interface ChartEnv {
   /** ancho de la ventana (px), para el modo móvil */
   viewportWidth: number;
   dark: boolean;
+  /** puntero táctil (pointer: coarse) */
+  coarse?: boolean;
 }
 
 type Band = NonNullable<ChartSpec['band']>;
@@ -138,7 +140,7 @@ function markersOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Opti
   if (isBarSpec(spec)) return undefined;
   // Sin puntos en la banda ni en las series tenues
   const base = spec.categories.length <= 31 ? 3 : 0;
-  const perSeries = spec.series.map((s) => (s.faint ? 0 : base));
+  const perSeries = spec.series.map((s) => ((s.points ?? !s.faint) ? base : 0));
   return {
     size: band ? [0, ...perSeries] : perSeries,
     strokeWidth: 2,
@@ -147,8 +149,9 @@ function markersOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Opti
   };
 }
 
-function fillOf(spec: ChartSpec, band: Band | undefined): Options['fill'] {
-  if (band) return { opacity: [0.22, ...spec.series.map(() => 1)] };
+function fillOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['fill'] {
+  // En oscuro la banda necesita algo más de opacidad para leerse sobre la tarjeta
+  if (band) return { opacity: [env.dark ? 0.32 : 0.22, ...spec.series.map(() => 1)] };
   return { opacity: spec.type === 'area' ? 0.15 : 1 };
 }
 
@@ -306,7 +309,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
         horizontal: false,
       },
     },
-    fill: fillOf(spec, band),
+    fill: fillOf(spec, env, band),
     dataLabels: { enabled: false },
     grid: {
       borderColor: env.css('--viz-grid'),
@@ -330,6 +333,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
           ...spec.series.map((s) => (s.faint ? ('line' as const) : ('circle' as const))),
         ],
       },
+      onItemClick: { toggleDataSeries: !env.coarse },
       fontSize: '12px',
     },
     tooltip: {

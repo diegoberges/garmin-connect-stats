@@ -157,6 +157,7 @@ src/
     races.ts                  # categorías de competición, tiempo de carrera (total) y mejores marcas
     progression.ts            # VO2máx estimado por sesión, pronósticos en el tiempo, VDOT de carrera vs forma
     consistency.ts            # número de Eddington, rachas y calendario anual
+    progress.ts               # Rendimiento: "¿Estás mejorando?" (direcciones, marcas del año y veredicto)
     data-quality.ts           # avisos de calidad de datos (duplicadas, sin FC, GPS, FC imposible)
     activity-analysis.ts      # zonas de ritmo de Daniels por fecha y actividades en la misma ruta
     rr.ts                     # VFC intra-sesión con los intervalos RR del FIT
@@ -314,6 +315,13 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 
 ### Rendimiento (`/rendimiento`)
 
+- Orden: Estado de forma (hoy), **¿Estás mejorando?**, Eficiencia y progreso, Constancia, Carga, Volumen y Carrera.
+- **¿Estás mejorando?** (`lib/progress.ts`): cuatro lecturas frente a hace 6 semanas, cada una con flecha, palabra y
+  enlace a su detalle: ritmo a la FC habitual de rodaje (±1 % estable), VO2máx estimado (±0,5), marcas de los últimos
+  12 meses que igualan o mejoran el histórico, y forma física (±5 %). Veredicto: 2 o más a favor y ninguna en contra,
+  "Sí, estás mejorando"; al revés, "Vas a menos"; si no, estable o mixto. Los cambios se redondean como se muestran
+  antes de clasificarlos.
+
 - **Carga**:
   - **Una sola métrica**: TRIMP de Banister por sesión, `min × HRr × 0,64 × e^(1,92 × HRr)` (mujeres:
     0,86 y 1,67), con la FC en reposo y máxima de las zonas generales de Garmin (si faltan, estimadas y
@@ -326,10 +334,11 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Forma física (media exponencial de 42 días), fatiga (7 días) y forma en % de la forma física, con zonas orientativas.
   - Estado "calibrando" con menos de 42 días desde la primera carga.
 - Carga semanal por tipo con aviso si sube más de un 25 % sobre la media de 4 semanas; días de fuerza.
-- Volumen por deporte (sesiones, km, tiempo y desnivel) de la semana y el mes en curso frente al mismo
-  tramo del periodo anterior.
+- Volumen (todos los deportes): una línea con sesiones y tiempo de esta semana frente a la pasada a estas alturas; el
+  detalle por deporte (sesiones, km, tiempo y desnivel, semana y mes en curso) va plegado.
 - **Distribución de intensidad**: Z1–Z2 baja, Z3 moderada, Z4–Z5 alta, con la referencia del 80 % suave.
-- **Carrera**: esta semana frente al mismo tramo de la anterior, totales del periodo y km por semana.
+- **Carrera**: una tarjeta con esta semana (la pasada a estas alturas entre paréntesis, en gris: a mitad de semana
+  siempre "falta", así que no se pinta en rojo) y los totales del periodo, junto a los km por semana. Racha a 0: "En pausa".
 - **Mejores marcas**: últimos 12 meses frente al histórico, a partir de `fastestSplit_*` de cada actividad.
 - **Eficiencia** (fase 3):
   - Factor de eficiencia (m/min ÷ FC) solo en rodajes comparables: asfalto/cinta, 30–120 min,
@@ -416,6 +425,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
   - Series tenues (`faint`, p. ej. el valor de cada noche detrás de la media): discontinuas y con marcador de línea en
     la leyenda (banda: cuadrado; resto: círculo), para no depender solo de un tono más claro.
+  - `points` en una serie: puntos donde está el dato medido (cada rodaje o carrera) y no en la media que lo suaviza.
+  - Con dedo, la leyenda no alterna series (eran blancos de 16 px que el teclado no alcanza); con ratón, sí.
+  - En oscuro las bandas van algo más opacas (0,32 frente a 0,22) para leerse sobre la tarjeta.
   - `minSpan`: amplitud mínima del eje Y (múltiplos de 5) para que datos estables no parezcan grandes cambios
     (12 meses: 20 ms de VFC, 10 ppm de FC en reposo).
   - Eje X: si las etiquetas no caben (ancho según la más larga, mínimo ~70 px; también a media anchura), se muestran menos.

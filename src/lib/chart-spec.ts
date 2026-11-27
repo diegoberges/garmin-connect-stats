@@ -26,6 +26,9 @@ export interface ChartSeries {
   color?: ColorSlot;
   /** Línea fina y translúcida (p. ej. el valor diario detrás de la media de 7 días). */
   faint?: boolean;
+  /** Puntos en cada valor: por defecto en las series normales sí y en las tenues no. `true` en una tenue los pone
+   * (p. ej. cada rodaje, que es el dato medido) y `false` en una normal los quita (p. ej. la media). */
+  points?: boolean;
 }
 
 export interface ChartSpec {

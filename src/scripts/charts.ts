@@ -17,6 +17,7 @@ const envFor = (el: HTMLElement): ChartEnv => ({
   width: el.clientWidth || window.innerWidth,
   viewportWidth: window.innerWidth,
   dark: document.documentElement.classList.contains('dark'),
+  coarse: matchMedia('(pointer: coarse)').matches,
 });
 
 /** Gráficas ya pintadas. */

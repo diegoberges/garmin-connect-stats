@@ -87,6 +87,19 @@ describe('buildOptions', () => {
     expect((o.legend as { markers: { shape: string[] } }).markers.shape).toEqual(['circle', 'line']);
   });
 
+  it('points: puntos en la serie medida y no en la media', () => {
+    const spec: ChartSpec = {
+      type: 'line',
+      categories: cats(5),
+      series: [
+        { name: 'Media', data: [1, 2, 3, 4, 5], color: 1, points: false },
+        { name: 'Cada rodaje', data: [1, 2, 3, 4, 5], color: 1, faint: true, points: true },
+      ],
+      format: 'int',
+    };
+    expect((buildOptions(spec, env).markers as { size: number[] }).size).toEqual([0, 3]);
+  });
+
   it('amplitud mínima del eje: datos estables no parecen grandes cambios', () => {
     const spec: ChartSpec = {
       type: 'line',
