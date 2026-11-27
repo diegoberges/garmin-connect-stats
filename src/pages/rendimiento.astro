@@ -230,7 +230,7 @@ const formSpec: ChartSpec = {
     { name: 'Forma', data: visible.map((p) => (p.formPct === undefined ? null : Math.round(p.formPct))), color: 3 },
   ],
   format: 'pct',
-  height: 170,
+  height: 200,
   group: 'pmc',
 };
 
@@ -381,8 +381,15 @@ const paceRefSpec: ChartSpec | undefined = refHr
           name: 'Media 28 días',
           data: efShown.map((p) => (p.avg28 ? Math.round(paceAtHr(p.avg28, refHr)) : null)),
           color: 1,
+          points: false,
         },
-        { name: 'Cada rodaje', data: efShown.map((p) => Math.round(paceAtHr(p.ef, refHr))), color: 1, faint: true },
+        {
+          name: 'Cada rodaje',
+          data: efShown.map((p) => Math.round(paceAtHr(p.ef, refHr))),
+          color: 1,
+          faint: true,
+          points: true,
+        },
       ],
       format: 'pace',
       reversed: true,
@@ -413,6 +420,7 @@ const vo2Spec: ChartSpec = {
         return v === undefined ? null : Math.round(v * 10) / 10;
       }),
       color: 1,
+      points: false,
     },
     {
       name: 'Cada carrera',
@@ -422,6 +430,7 @@ const vo2Spec: ChartSpec = {
       }),
       color: 1,
       faint: true,
+      points: true,
     },
     ...(garminByDate.length
       ? [{ name: 'Garmin', data: vo2Dates.map((d) => garminAt(d) ?? null), color: 3 as ColorSlot }]
@@ -507,6 +516,13 @@ function gapTextFor(gap: number | undefined): string {
 }
 const gapText = gapTextFor(gap10k);
 const weeklyKm8 = kmWeekly.slice(-9, -1).reduce((s, w) => s + w.km, 0) / Math.min(8, Math.max(1, kmWeekly.length - 1));
+
+/** El estado del desacoplamiento en palabra (además del color): < 5 % buena base, < 10 % vigilar, si no, alto. */
+const decouplingWord = (pct: number) => {
+  if (pct < 5) return 'buena base';
+  if (pct < 10) return 'vigilar';
+  return 'alto';
+};
 
 // ---------- ¿Estás mejorando? (cuatro señales frente a hace 6 semanas o a tu histórico) ----------
 const vo2Now = vo2At(vo2TrendAll, today);
@@ -925,7 +941,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                         ]}
                       >
                         {d.pct >= 0 ? '' : '−'}
-                        {km(Math.abs(d.pct))} %
+                        {km(Math.abs(d.pct))} %<span class="block text-xs font-normal">{decouplingWord(d.pct)}</span>
                       </td>
                     </tr>
                   ))}
@@ -1368,7 +1384,7 @@ const ZONE_TONE: Record<FormZone, string> = {
             {firstRun ? ` desde ${yearDate(firstRun)}` : ' histórica'}.
           </p>
           {recordRows.length ? (
-            <section class="mt-3 overflow-x-auto" tabindex="0" aria-labelledby="tabla-marcas">
+            <section class="mt-3 max-w-3xl overflow-x-auto" tabindex="0" aria-labelledby="tabla-marcas">
               <table class="w-full text-sm">
                 <caption id="tabla-marcas" class="sr-only">
                   Mejores marcas: últimos 12 meses frente a la histórica
@@ -1403,10 +1419,10 @@ const ZONE_TONE: Record<FormZone, string> = {
                               <span class="hidden sm:inline"> · </span>
                               <a
                                 href={`/actividades/${period.activityId}`}
-                                class="block text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground sm:inline"
+                                class="block text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground pointer-coarse:py-2 sm:inline"
                                 title={period.activityName}
                               >
-                                {shortDate(period.date)}
+                                {yearDate(period.date)}
                               </a>
                             </span>
                           </>
@@ -1423,7 +1439,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                               <span class="hidden sm:inline"> · </span>
                               <a
                                 href={`/actividades/${best.activityId}`}
-                                class="block text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground sm:inline"
+                                class="block text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground pointer-coarse:py-2 sm:inline"
                                 title={best.activityName}
                               >
                                 {yearDate(best.date)}
