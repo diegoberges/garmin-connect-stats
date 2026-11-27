@@ -334,10 +334,11 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Forma física (media exponencial de 42 días), fatiga (7 días) y forma en % de la forma física, con zonas orientativas.
   - Estado "calibrando" con menos de 42 días desde la primera carga.
 - Carga semanal por tipo con aviso si sube más de un 25 % sobre la media de 4 semanas; días de fuerza.
-- Volumen por deporte (sesiones, km, tiempo y desnivel) de la semana y el mes en curso frente al mismo
-  tramo del periodo anterior.
+- Volumen (todos los deportes): una línea con sesiones y tiempo de esta semana frente a la pasada a estas alturas; el
+  detalle por deporte (sesiones, km, tiempo y desnivel, semana y mes en curso) va plegado.
 - **Distribución de intensidad**: Z1–Z2 baja, Z3 moderada, Z4–Z5 alta, con la referencia del 80 % suave.
-- **Carrera**: esta semana frente al mismo tramo de la anterior, totales del periodo y km por semana.
+- **Carrera**: una tarjeta con esta semana (la pasada a estas alturas entre paréntesis, en gris: a mitad de semana
+  siempre "falta", así que no se pinta en rojo) y los totales del periodo, junto a los km por semana. Racha a 0: "En pausa".
 - **Mejores marcas**: últimos 12 meses frente al histórico, a partir de `fastestSplit_*` de cada actividad.
 - **Eficiencia** (fase 3):
   - Factor de eficiencia (m/min ÷ FC) solo en rodajes comparables: asfalto/cinta, 30–120 min,

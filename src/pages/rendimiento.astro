@@ -8,7 +8,6 @@ import Base from '../layouts/Base.astro';
 import ConnectPrompt from '../components/ConnectPrompt.astro';
 import PageIndex from '../components/PageIndex.astro';
 import ErrorState from '../components/ErrorState.astro';
-import StatCard from '../components/StatCard.astro';
 import ChartCard from '../components/ChartCard.astro';
 import Collapsible from '../components/Collapsible.astro';
 import DataTable from '../components/DataTable.astro';
@@ -193,6 +192,13 @@ const loadWarnings = [
   spike && change?.pct !== undefined ? `carga semanal +${Math.round(change.pct)} % (subida brusca)` : undefined,
 ].filter((x): x is string => x !== undefined);
 const volumes = periodVolumes(all, today);
+const sumGroups = (m: Map<string, { sessions: number; timeS: number }>) =>
+  [...m.values()].reduce((a, v) => ({ sessions: a.sessions + v.sessions, timeS: a.timeS + v.timeS }), {
+    sessions: 0,
+    timeS: 0,
+  });
+const weekAll = sumGroups(volumes[0].current);
+const weekAllPrev = sumGroups(volumes[0].previous);
 
 const pmcCats = visible.map((p) => shortDate(p.date));
 const pmcTable = {
@@ -298,8 +304,22 @@ const runsInPeriod = runs.filter((r) => r.date >= from);
 const elapsed = Math.round((Date.parse(today) - Date.parse(thisWeek)) / 86_400_000);
 const cur = totals(runsBetween(runs, thisWeek, today));
 const prev = totals(runsBetween(runs, lastWeek, addDays(lastWeek, elapsed)));
-const vsLabel = 'vs mismo tramo semana pasada';
 const t = totals(runsInPeriod);
+// Esta semana frente a la pasada a estas alturas: en gris, sin rojo, porque a mitad de semana siempre "falta"
+const weekFigures = [
+  { label: 'Distancia', value: km(cur.km), unit: 'km', before: `${km(prev.km)} km` },
+  { label: 'Sesiones', value: int(cur.runs), unit: '', before: int(prev.runs) },
+  { label: 'Tiempo', value: hoursMinutes(cur.movingS), unit: '', before: hoursMinutes(prev.movingS) },
+  { label: 'Ritmo medio', value: pace(cur.paceSPerKm), unit: '/km', before: `${pace(prev.paceSPerKm)} /km` },
+];
+const periodFigures = [
+  { label: 'Distancia', value: km(t.km), unit: 'km' },
+  { label: 'Sesiones', value: int(t.runs), unit: '' },
+  { label: 'Tiempo', value: hoursMinutes(t.movingS), unit: '' },
+  { label: 'Ritmo medio', value: pace(t.paceSPerKm), unit: '/km' },
+  { label: 'FC media', value: int(t.avgHr), unit: 'ppm' },
+  { label: 'Desnivel +', value: int(t.elevationGainM), unit: 'm' },
+];
 const kmWeekly = weeklyTotals(runsInPeriod, weeks, today);
 const kmSpec: ChartSpec = {
   type: 'bar',
@@ -1042,7 +1062,9 @@ const ZONE_TONE: Record<FormZone, string> = {
           <div class:list={[card, 'p-4']}>
             <p class="type-label">Racha de días con actividad</p>
             <p class="mt-1 type-kpi">
-              {streak.currentDays.length} {streak.currentDays.length === 1 ? 'día' : 'días'}
+              {streak.currentDays.length
+                ? `${streak.currentDays.length} ${streak.currentDays.length === 1 ? 'día' : 'días'}`
+                : 'En pausa'}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">
               {streak.currentDays.from ? `Desde el ${shortDate(streak.currentDays.from)}. ` : ''}La más larga:{' '}
@@ -1195,87 +1217,96 @@ const ZONE_TONE: Record<FormZone, string> = {
         <h2 id="volumen" class={sectionTitle}>
           Volumen · semana y mes en curso
         </h2>
-        <div class="grid gap-6 lg:grid-cols-2">
-          {volumes.map((period) => {
-            const groups = SPORT_GROUPS.filter((g) => period.current.has(g.group) || period.previous.has(g.group));
-            const captionId = `volumen-${period.label.toLowerCase()}`;
-            return (
-              <section class:list={[card, 'min-w-0 p-4']} aria-labelledby={captionId}>
-                <h3 id={captionId} class="type-card">
-                  {period.label} en curso
-                </h3>
-                <p class="text-sm text-muted-foreground">
-                  Desde el {shortDate(period.from)} frente al mismo tramo anterior ({shortDate(period.prevFrom)}–
-                  {shortDate(period.prevTo)})
-                </p>
-                {groups.length === 0 ? (
-                  <p class="mt-3 text-sm">Sin actividades.</p>
-                ) : (
-                  <div class="mt-3 overflow-x-auto">
-                    <table class="w-full text-sm">
-                      <caption class="sr-only">
-                        Volumen por deporte · {period.label.toLowerCase()} en curso frente al mismo tramo anterior
-                      </caption>
-                      <thead class="border-b border-border text-xs text-muted-foreground">
-                        <tr>
-                          <th scope="col" class="py-1 pr-3 text-left font-medium">
-                            Deporte
-                          </th>
-                          <th scope="col" class="hidden py-1 pr-3 text-right font-medium sm:table-cell">
-                            Sesiones
-                          </th>
-                          <th scope="col" class="py-1 pr-3 text-right font-medium">
-                            Km
-                          </th>
-                          <th scope="col" class="py-1 pr-3 text-right font-medium">
-                            Tiempo
-                          </th>
-                          <th scope="col" class="hidden py-1 text-right font-medium sm:table-cell">
-                            Desnivel&nbsp;+
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="tabular-nums">
-                        {groups.map(({ group, label }) => {
-                          const c = period.current.get(group) ?? { sessions: 0, km: 0, timeS: 0, elevationM: 0 };
-                          const prevV = period.previous.get(group) ?? { sessions: 0, km: 0, timeS: 0, elevationM: 0 };
-                          return (
-                            <tr class="border-t border-border">
-                              <th scope="row" class="py-2 pr-3 text-left font-medium">
-                                {label}
-                              </th>
-                              <td class="hidden py-2 pr-3 text-right whitespace-nowrap sm:table-cell">
-                                {c.sessions}
-                                <span class="block text-xs text-muted-foreground sm:inline">
-                                  {vs(c.sessions, prevV.sessions)}
-                                </span>
-                              </td>
-                              <td class="py-2 pr-3 text-right whitespace-nowrap">
-                                {c.km > 0 ? km(c.km) : '—'}
-                                <span class="block text-xs text-muted-foreground sm:inline">
-                                  {c.km > 0 ? vs(c.km, prevV.km) : ''}
-                                </span>
-                              </td>
-                              <td class="py-2 pr-3 text-right whitespace-nowrap">
-                                {hoursMinutes(c.timeS)}
-                                <span class="block text-xs text-muted-foreground sm:inline">
-                                  {vs(c.timeS, prevV.timeS)}
-                                </span>
-                              </td>
-                              <td class="hidden py-2 text-right whitespace-nowrap sm:table-cell">
-                                {c.elevationM > 0 ? `${int(c.elevationM)} m` : '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+        <p class="max-w-[80ch] text-sm text-muted-foreground">
+          Todos los deportes. Esta semana llevas{' '}
+          <span class="font-semibold text-foreground tabular-nums">
+            {int(weekAll.sessions)} {weekAll.sessions === 1 ? 'sesión' : 'sesiones'} y {hoursMinutes(weekAll.timeS)}
+          </span>{' '}
+          ({int(weekAllPrev.sessions)} y {hoursMinutes(weekAllPrev.timeS)} la semana pasada a estas alturas).
+        </p>
+        <Collapsible summary="Ver por deporte (semana y mes en curso)">
+          <div class="grid gap-6 lg:grid-cols-2">
+            {volumes.map((period) => {
+              const groups = SPORT_GROUPS.filter((g) => period.current.has(g.group) || period.previous.has(g.group));
+              const captionId = `volumen-${period.label.toLowerCase()}`;
+              return (
+                <section class:list={[card, 'min-w-0 p-4']} aria-labelledby={captionId}>
+                  <h3 id={captionId} class="type-card">
+                    {period.label} en curso
+                  </h3>
+                  <p class="text-sm text-muted-foreground">
+                    Desde el {shortDate(period.from)} frente al mismo tramo anterior ({shortDate(period.prevFrom)}–
+                    {shortDate(period.prevTo)})
+                  </p>
+                  {groups.length === 0 ? (
+                    <p class="mt-3 text-sm">Sin actividades.</p>
+                  ) : (
+                    <div class="mt-3 overflow-x-auto">
+                      <table class="w-full text-sm">
+                        <caption class="sr-only">
+                          Volumen por deporte · {period.label.toLowerCase()} en curso frente al mismo tramo anterior
+                        </caption>
+                        <thead class="border-b border-border text-xs text-muted-foreground">
+                          <tr>
+                            <th scope="col" class="py-1 pr-3 text-left font-medium">
+                              Deporte
+                            </th>
+                            <th scope="col" class="hidden py-1 pr-3 text-right font-medium sm:table-cell">
+                              Sesiones
+                            </th>
+                            <th scope="col" class="py-1 pr-3 text-right font-medium">
+                              Km
+                            </th>
+                            <th scope="col" class="py-1 pr-3 text-right font-medium">
+                              Tiempo
+                            </th>
+                            <th scope="col" class="hidden py-1 text-right font-medium sm:table-cell">
+                              Desnivel&nbsp;+
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody class="tabular-nums">
+                          {groups.map(({ group, label }) => {
+                            const c = period.current.get(group) ?? { sessions: 0, km: 0, timeS: 0, elevationM: 0 };
+                            const prevV = period.previous.get(group) ?? { sessions: 0, km: 0, timeS: 0, elevationM: 0 };
+                            return (
+                              <tr class="border-t border-border">
+                                <th scope="row" class="py-2 pr-3 text-left font-medium">
+                                  {label}
+                                </th>
+                                <td class="hidden py-2 pr-3 text-right whitespace-nowrap sm:table-cell">
+                                  {c.sessions}
+                                  <span class="block text-xs text-muted-foreground sm:inline">
+                                    {vs(c.sessions, prevV.sessions)}
+                                  </span>
+                                </td>
+                                <td class="py-2 pr-3 text-right whitespace-nowrap">
+                                  {c.km > 0 ? km(c.km) : '—'}
+                                  <span class="block text-xs text-muted-foreground sm:inline">
+                                    {c.km > 0 ? vs(c.km, prevV.km) : ''}
+                                  </span>
+                                </td>
+                                <td class="py-2 pr-3 text-right whitespace-nowrap">
+                                  {hoursMinutes(c.timeS)}
+                                  <span class="block text-xs text-muted-foreground sm:inline">
+                                    {vs(c.timeS, prevV.timeS)}
+                                  </span>
+                                </td>
+                                <td class="hidden py-2 text-right whitespace-nowrap sm:table-cell">
+                                  {c.elevationM > 0 ? `${int(c.elevationM)} m` : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </Collapsible>
       </section>
 
       {/* ---------- Carrera ---------- */}
@@ -1283,75 +1314,41 @@ const ZONE_TONE: Record<FormZone, string> = {
         <h2 id="carrera" class={sectionTitle}>
           Carrera
         </h2>
-        <div>
-          <p class="mb-2 text-sm text-muted-foreground">Esta semana · desde el {shortDate(thisWeek)}</p>
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard
-              label="Distancia"
-              value={km(cur.km)}
-              unit="km"
-              delta={pctChange(cur.km, prev.km)}
-              deltaLabel={vsLabel}
-            />
-            <StatCard
-              label="Sesiones"
-              value={int(cur.runs)}
-              hint={`${int(prev.runs)} la semana pasada a estas alturas`}
-            />
-            <StatCard
-              label="Ritmo medio"
-              value={pace(cur.paceSPerKm)}
-              unit="/km"
-              delta={pctChange(cur.paceSPerKm, prev.paceSPerKm)}
-              deltaLabel={vsLabel}
-              higherIsBetter={false}
-            />
-            <StatCard
-              label="Tiempo"
-              value={hoursMinutes(cur.movingS)}
-              delta={pctChange(cur.movingS, prev.movingS)}
-              deltaLabel={vsLabel}
-            />
-          </div>
-        </div>
         <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
-          <dl class:list={[card, 'grid grid-cols-2 content-start gap-4 p-4']}>
-            <p class="col-span-2 text-sm text-muted-foreground">
-              Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}
-            </p>
+          <div class:list={[card, 'space-y-5 p-4']}>
             <div>
-              <dt class="type-label">Distancia</dt>
-              <dd class="type-value">
-                {km(t.km)} <span class="text-sm font-normal text-muted-foreground">km</span>
-              </dd>
+              <h3 class="type-card">Esta semana</h3>
+              <p class="text-xs text-muted-foreground">
+                Desde el {shortDate(thisWeek)}; entre paréntesis, la semana pasada a estas alturas
+              </p>
+              <dl class="mt-2 grid grid-cols-2 gap-4">
+                {weekFigures.map((f) => (
+                  <div>
+                    <dt class="type-label">{f.label}</dt>
+                    <dd class="type-value whitespace-nowrap">
+                      {f.value}
+                      {f.unit && <span class="text-sm font-normal text-muted-foreground"> {f.unit}</span>}
+                    </dd>
+                    <dd class="text-xs text-muted-foreground tabular-nums">({f.before})</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
-            <div>
-              <dt class="type-label">Sesiones</dt>
-              <dd class="type-value">{int(t.runs)}</dd>
+            <div class="border-t border-border pt-4">
+              <h3 class="type-card">Periodo · {WEEK_OPTIONS.find((o) => o.value === weeks)!.label}</h3>
+              <dl class="mt-2 grid grid-cols-2 gap-4">
+                {periodFigures.map((f) => (
+                  <div>
+                    <dt class="type-label">{f.label}</dt>
+                    <dd class="type-value whitespace-nowrap">
+                      {f.value}
+                      {f.unit && <span class="text-sm font-normal text-muted-foreground"> {f.unit}</span>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
-            <div>
-              <dt class="type-label">Tiempo</dt>
-              <dd class="type-value">{hoursMinutes(t.movingS)}</dd>
-            </div>
-            <div>
-              <dt class="type-label">Ritmo medio</dt>
-              <dd class="type-value">
-                {pace(t.paceSPerKm)} <span class="text-sm font-normal text-muted-foreground">/km</span>
-              </dd>
-            </div>
-            <div>
-              <dt class="type-label">FC media</dt>
-              <dd class="type-value">
-                {int(t.avgHr)} <span class="text-sm font-normal text-muted-foreground">ppm</span>
-              </dd>
-            </div>
-            <div>
-              <dt class="type-label">Desnivel&nbsp;+</dt>
-              <dd class="type-value">
-                {int(t.elevationGainM)} <span class="text-sm font-normal text-muted-foreground">m</span>
-              </dd>
-            </div>
-          </dl>
+          </div>
           <ChartCard
             title="Kilómetros por semana"
             subtitle="Carrera, trail y cinta · semanas de lunes a domingo"
