@@ -16,6 +16,8 @@ export const FATIGUE_DAYS = 7;
 /** Días de historial previos al periodo visible para que la media de 42 días arranque estabilizada */
 export const WARMUP_DAYS = 120;
 export const WEEKLY_SPIKE_PCT = 25;
+/** Ventana fija del estado de hoy (más el calentamiento): no depende del periodo que se esté mirando. */
+export const TODAY_WINDOW_DAYS = 365;
 
 /** FC de referencia para el TRIMP (de la configuración de zonas de Garmin) y sexo (de tu perfil). */
 export interface HrParams {
@@ -227,4 +229,13 @@ export function bestEfforts(activities: Activity[]): BestEffort[] {
     }
     return best ? [best] : [];
   });
+}
+
+/**
+ * Modelo de carga para las cifras de hoy (forma, forma física, fatiga, ratio, rampa, monotonía): siempre con
+ * todas las actividades que se le pasen y la misma ventana fija, para que no cambie con el periodo ni con el
+ * filtro de carga de las gráficas.
+ */
+export function todayModel(activities: Activity[], today: string, p: HrParams): PmcPoint[] {
+  return pmc(dailyLoad(activities, addDays(today, -(TODAY_WINDOW_DAYS + WARMUP_DAYS)), today, p));
 }

@@ -47,6 +47,7 @@ import {
   monotonyStrain,
   pmc,
   rampRate,
+  todayModel,
   weeklyChange,
   weeklyLoad,
   type FormZone,
@@ -122,12 +123,17 @@ if (client && !error) {
 }
 
 // ---------- Carga (TRIMP de Banister, la única métrica de carga) ----------
-const hr: HrParams = { ...(hrRef ?? estimateHrParams(all)), sex: Astro.locals.settings.sex };
+// Todo el historial si está; si no, lo del periodo (entonces las cifras de hoy pueden variar algo con él)
+const allHistory = everything ?? all;
+const hr: HrParams = { ...(hrRef ?? estimateHrParams(allHistory)), sex: Astro.locals.settings.sex };
 const scoped = all.filter(inLoadScope(scope));
+// Gráficas de la sección Carga: el periodo y el filtro de carga elegidos
 const model = pmc(dailyLoad(scoped, loadFrom, today, hr));
 const visible = model.filter((p) => p.date >= from);
-const nowP = model.at(-1);
-const weekAgo = model.at(-8);
+// Cifras de hoy (estado de forma, sus indicadores y "¿Estás mejorando?"): todas las actividades y ventana fija
+const todayPoints = todayModel(allHistory, today, hr);
+const nowP = todayPoints.at(-1);
+const weekAgo = todayPoints.at(-8);
 const fitnessChange = nowP && weekAgo ? nowP.fitness - weekAgo.fitness : undefined;
 const hasForm = visible.some((p) => p.formPct !== undefined);
 // Sin gráfica de forma, la de forma física/fatiga muestra su propio eje x
@@ -135,7 +141,8 @@ const zone = nowP?.formPct !== undefined ? formZone(nowP.formPct) : undefined;
 
 const allWeeks = weeklyLoad(scoped, weeks + 5, today, hr);
 const shownWeeks = allWeeks.slice(-weeks);
-const change = weeklyChange(allWeeks);
+// Subida de la carga semanal (aviso de hoy): todas las actividades, independiente del periodo y del filtro
+const change = weeklyChange(weeklyLoad(allHistory, 6, today, hr));
 const spike = change?.pct !== undefined && change.pct >= WEEKLY_SPIKE_PCT;
 // Los días de fuerza se cuentan siempre, aunque el filtro de carga los deje fuera
 const strength4 =
@@ -144,8 +151,8 @@ const strength4 =
     .reduce((a, w) => a + w.strengthDays, 0) / 4;
 const ratioNow = nowP?.formPct !== undefined ? acwr(nowP) : undefined;
 const ratioZone = ratioNow !== undefined ? acwrZone(ratioNow) : undefined;
-const ramp = rampRate(model);
-const mono = monotonyStrain(model);
+const ramp = rampRate(todayPoints);
+const mono = monotonyStrain(todayPoints);
 const acwrPoints = visible.map((p) => (p.formPct !== undefined ? acwr(p) : undefined));
 const acwrSpec: ChartSpec = {
   type: 'line',
@@ -529,7 +536,7 @@ const vo2Now = vo2At(vo2TrendAll, today);
 const vo2Before = vo2At(vo2TrendAll, sixWeeksAgo);
 const vo2Change =
   vo2Now !== undefined && vo2Before !== undefined ? Math.round((vo2Now - vo2Before) * 10) / 10 : undefined;
-const fitnessBefore = model.at(-43)?.fitness;
+const fitnessBefore = todayPoints.at(-43)?.fitness;
 const fitnessRaw = nowP?.formPct !== undefined ? relChange(nowP.fitness, fitnessBefore) : undefined;
 const fitnessTrend = fitnessRaw === undefined ? undefined : Math.round(fitnessRaw);
 const yearRecords = recordsThisYear(recordRows);

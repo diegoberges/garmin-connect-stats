@@ -10,6 +10,9 @@ import {
   type HrParams,
   monotonyStrain,
   pmc,
+  todayModel,
+  TODAY_WINDOW_DAYS,
+  WARMUP_DAYS,
   rampRate,
   sessionLoad,
   weeklyChange,
@@ -159,5 +162,33 @@ describe('ratio agudo:crónico', () => {
     expect(acwrZone(1.4).zone).toBe('elevated');
     expect(acwrZone(1.6).zone).toBe('risk');
     expect(acwr({ fitness: 0.2, fatigue: 3 })).toBeUndefined();
+  });
+});
+
+describe('cifras de hoy con ventana fija', () => {
+  // Una carrera cada 3 días durante ~2 años
+  const today = '2026-11-27';
+  const acts = Array.from({ length: 240 }, (_, i) => {
+    const d = new Date(Date.parse(`${today}T12:00:00Z`) - i * 3 * 86_400_000).toISOString().slice(0, 10);
+    return act(d, { avgHr: 150 });
+  });
+
+  it('no dependen de cuánto historial anterior a la ventana se le pase', () => {
+    const start = new Date(Date.parse(`${today}T12:00:00Z`) - (TODAY_WINDOW_DAYS + WARMUP_DAYS) * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const all = todayModel(acts, today, HR).at(-1)!;
+    const recent = todayModel(
+      acts.filter((a) => a.date >= start),
+      today,
+      HR,
+    ).at(-1)!;
+    expect(all.fitness).toBeCloseTo(recent.fitness, 10);
+    expect(all.fatigue).toBeCloseTo(recent.fatigue, 10);
+    expect(all.date).toBe(today);
+  });
+
+  it('cubre un año más el calentamiento', () => {
+    expect(todayModel(acts, today, HR)).toHaveLength(TODAY_WINDOW_DAYS + WARMUP_DAYS + 1);
   });
 });

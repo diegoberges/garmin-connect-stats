@@ -322,6 +322,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   "Sí, estás mejorando"; al revés, "Vas a menos"; si no, estable o mixto. Los cambios se redondean como se muestran
   antes de clasificarlos.
 
+- **Cifras de hoy** (Estado de forma, sus indicadores de carga y la forma física de "¿Estás mejorando?"): siempre con
+  todas las actividades del historial y una ventana fija de 365 días más el calentamiento (`todayModel` en `load.ts`).
+  No cambian con el periodo ni con el filtro de carga, que solo afectan a las gráficas. Si el historial completo falla,
+  se usa lo del periodo. (Con `GARMIN_FIXTURES=1` el historial completo es escaso, así que esas cifras salen más bajas.)
 - **Carga**:
   - **Una sola métrica**: TRIMP de Banister por sesión, `min × HRr × 0,64 × e^(1,92 × HRr)` (mujeres:
     0,86 y 1,67), con la FC en reposo y máxima de las zonas generales de Garmin (si faltan, estimadas y
