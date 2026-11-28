@@ -41,6 +41,9 @@ export interface ChartSpec {
   reversed?: boolean;
   yMin?: number;
   yMax?: number;
+  /** Eje x de fechas reales (categorías en ISO, "2026-11-21"): la distancia entre puntos respeta el tiempo que
+   * pasa entre ellos (p. ej. una ruta repetida con meses de diferencia). */
+  timeAxis?: boolean;
   /** Número de intervalos del eje Y (p. ej. 3 para no llenar de decimales un eje estrecho). */
   yTicks?: number;
   /** Amplitud mínima del eje Y: con datos muy estables, que ±1 no parezca un gran cambio. */

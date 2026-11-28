@@ -12,12 +12,40 @@ export interface ChartEnv {
   width: number;
   /** ancho de la ventana (px), para el modo móvil */
   viewportWidth: number;
-  dark: boolean;
   /** puntero táctil (pointer: coarse) */
   coarse?: boolean;
 }
 
 type Band = NonNullable<ChartSpec['band']>;
+
+/** Textos de ApexCharts en español (lo que no se define aquí sale de su inglés por defecto). */
+const ES_LOCALE = {
+  name: 'es',
+  options: {
+    toolbar: {
+      exportToSVG: 'Descargar SVG',
+      exportToPNG: 'Descargar PNG',
+      exportToCSV: 'Descargar CSV',
+      menu: 'Menú',
+      selection: 'Seleccionar',
+      selectionZoom: 'Ampliar selección',
+      zoomIn: 'Acercar',
+      zoomOut: 'Alejar',
+      pan: 'Desplazar',
+      reset: 'Restablecer zoom',
+    },
+    a11y: {
+      legendItem: '{name}, {state}. Pulsa Intro o Espacio para mostrarla u ocultarla.',
+      visible: 'visible',
+      hidden: 'oculta',
+      zoomedIn: 'Ampliada',
+      zoomedOut: 'Reducida',
+      zoomReset: 'Zoom restablecido',
+      pannedLeft: 'Desplazada a la izquierda',
+      pannedRight: 'Desplazada a la derecha',
+    },
+  },
+};
 type Options = ApexCharts.ApexOptions;
 
 export function fmt(format: ValueFormat, v: number | null | undefined): string {
@@ -149,13 +177,37 @@ function markersOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Opti
   };
 }
 
-function fillOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['fill'] {
-  // En oscuro la banda necesita algo más de opacidad para leerse sobre la tarjeta
-  if (band) return { opacity: [env.dark ? 0.32 : 0.22, ...spec.series.map(() => 1)] };
+function fillOf(spec: ChartSpec, band: Band | undefined): Options['fill'] {
+  // Sobre la tarjeta oscura, la banda necesita algo de opacidad para leerse
+  if (band) return { opacity: [0.32, ...spec.series.map(() => 1)] };
   return { opacity: spec.type === 'area' ? 0.15 : 1 };
 }
 
+/** "21 nov 26" desde una marca de tiempo (eje de fechas). */
+const dateTick = (ms: number) => {
+  const d = new Date(ms);
+  const month = d.toLocaleDateString('es-ES', { month: 'short', timeZone: 'UTC' }).replace('.', '');
+  return `${d.getUTCDate()} ${month} ${String(d.getUTCFullYear()).slice(2)}`;
+};
+
+function timeAxisOf(spec: ChartSpec, env: ChartEnv): Options['xaxis'] {
+  return {
+    type: 'datetime',
+    categories: spec.categories,
+    labels: {
+      show: !spec.hideXLabels,
+      style: { colors: env.css('--viz-muted') },
+      datetimeUTC: true,
+      formatter: (_v: string, ts?: number) => (ts === undefined ? '' : dateTick(ts)),
+    },
+    axisBorder: { color: env.css('--viz-axis') },
+    axisTicks: { show: false },
+    tooltip: { enabled: false },
+  };
+}
+
 function xAxisOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['xaxis'] {
+  if (spec.timeAxis) return timeAxisOf(spec, env);
   const muted = env.css('--viz-muted');
   // Ancho de etiqueta según la más larga (~9 px por carácter a 12 px, con holgura; mínimo 70, el de "28 oct")
   const longest = Math.max(0, ...spec.categories.map((c) => c.length));
@@ -291,6 +343,8 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       stacked: spec.stacked,
       ...zoomOf(spec),
       fontFamily: 'inherit',
+      locales: [ES_LOCALE],
+      defaultLocale: 'es',
       foreColor: env.css('--viz-muted'),
       background: 'transparent',
       animations: { enabled: false },
@@ -309,7 +363,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
         horizontal: false,
       },
     },
-    fill: fillOf(spec, env, band),
+    fill: fillOf(spec, band),
     dataLabels: { enabled: false },
     grid: {
       borderColor: env.css('--viz-grid'),
@@ -337,9 +391,10 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       fontSize: '12px',
     },
     tooltip: {
-      theme: env.dark ? 'dark' : 'light',
+      theme: 'dark',
       shared: !isBar || spec.stacked,
       intersect: false,
+      ...(spec.timeAxis ? { x: { formatter: (ts: number) => dateTick(ts) } } : {}),
       y: { formatter: (v: number) => fmt(spec.format, v) },
     },
     annotations: annotationsOf(spec, env),

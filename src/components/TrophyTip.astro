@@ -23,23 +23,17 @@ const { label, class: className = 'h-4 w-4' } = Astro.props;
     display: inline-flex;
     vertical-align: -2px;
     cursor: help;
-    color: #f59e0b;
+    color: #fbbf24;
     padding: 0;
     border: 0;
     background: none;
     font: inherit;
   }
-  :global(.dark) .trophy-tip {
-    color: #fbbf24;
-  }
   /* Anillo de foco visible al llegar con el teclado (no al tocar o hacer clic) */
   .trophy-tip:focus-visible {
-    outline: 2px solid #1d4ed8;
+    outline: 2px solid #60a5fa;
     outline-offset: 2px;
     border-radius: 4px;
-  }
-  :global(.dark) .trophy-tip:focus-visible {
-    outline-color: #60a5fa;
   }
   .trophy-tip-text {
     position: absolute;

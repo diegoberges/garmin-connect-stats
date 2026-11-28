@@ -65,22 +65,17 @@ const { route, style = 'street' } = Astro.props;
     dot(route[route.length - 1], '#ef4444');
     map.fitBounds(line.getBounds(), { padding: [20, 20] });
 
-    // Tema: el filtro de las teselas es CSS; aquí solo se ajusta el color de la línea
-    new MutationObserver(() => line.setStyle({ color: css('--viz-1') })).observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
     // La rueda solo hace zoom tras un clic en el mapa, para no atrapar el scroll de la página
     map.once('click', () => map.scrollWheelZoom.enable());
   }
 </script>
 
 <style is:global>
-  /* Modo oscuro: mismas teselas de OSM invertidas (el recorrido y los marcadores no se tocan) */
-  .dark .route-map .leaflet-tile-pane {
+  /* Teselas de OSM invertidas para el modo oscuro (el recorrido y los marcadores no se tocan) */
+  .route-map .leaflet-tile-pane {
     filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
   }
-  .dark .route-map {
+  .route-map {
     background: #1b1b1d;
   }
 </style>

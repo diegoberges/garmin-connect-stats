@@ -497,7 +497,7 @@ const TONE = {
               </p>
             )}
             {nightText && !nightIsToday && (
-              <p class="mt-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+              <p class="mt-1 text-xs font-medium text-amber-300">
                 Aún no hay datos de anoche (el reloj no ha sincronizado): se muestra la {nightText}.
               </p>
             )}
@@ -524,12 +524,7 @@ const TONE = {
                       </p>
                       <p class="type-readout whitespace-nowrap">{s.value}</p>
                     </div>
-                    <p
-                      class:list={[
-                        'text-xs',
-                        s.state === 'warn' ? 'text-amber-800 dark:text-amber-300' : 'text-muted-foreground',
-                      ]}
-                    >
+                    <p class:list={['text-xs', s.state === 'warn' ? 'text-amber-300' : 'text-muted-foreground']}>
                       {s.detail}
                     </p>
                   </div>
@@ -549,7 +544,7 @@ const TONE = {
                 </div>
                 <p class="text-sm font-medium">{readinessLabel(ready.score)}</p>
                 {lowParts.length > 0 && (
-                  <p class="mt-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                  <p class="mt-1 text-xs font-medium text-amber-300">
                     Pide atención:{' '}
                     {lowParts.map((x) => `${x.label.toLowerCase()} (${PART_VALUE[x.key](x.value)})`).join(', ')}, por
                     debajo de tu normal.
@@ -562,11 +557,7 @@ const TONE = {
                         <span>
                           {part.label} · {PART_VALUE[part.key](part.value)}
                         </span>
-                        <span
-                          class:list={[
-                            part.z < -1 ? 'font-medium text-amber-800 dark:text-amber-300' : 'text-muted-foreground',
-                          ]}
-                        >
+                        <span class:list={[part.z < -1 ? 'font-medium text-amber-300' : 'text-muted-foreground']}>
                           {part.z >= 0 ? '↑' : '↓'} {zText(part.z)}
                         </span>
                       </li>
@@ -698,9 +689,7 @@ const TONE = {
                 {regularity.socialJetlag !== undefined && (
                   <div>
                     <dt class="type-label">Jet lag social</dt>
-                    <dd
-                      class:list={['type-value', regularity.socialJetlag > 60 && 'text-amber-800 dark:text-amber-300']}
-                    >
+                    <dd class:list={['type-value', regularity.socialJetlag > 60 && 'text-amber-300']}>
                       {hoursMinutes(regularity.socialJetlag * 60)}
                     </dd>
                   </div>
@@ -821,12 +810,7 @@ const TONE = {
                 <span class="text-sm text-muted-foreground">años</span>
               </p>
               {ageDiff !== undefined && (
-                <p
-                  class:list={[
-                    'text-sm font-medium',
-                    ageDiff >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400',
-                  ]}
-                >
+                <p class:list={['text-sm font-medium', ageDiff >= 0 ? 'text-green-400' : 'text-red-400']}>
                   {ageDiff >= 0 ? `${km(ageDiff)} años menos` : `${km(-ageDiff)} años más`} que tu edad ({age})
                 </p>
               )}

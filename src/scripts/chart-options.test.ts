@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChartSpec } from '../lib/chart-spec';
 import { buildOptions, fmt, type ChartEnv } from './chart-options';
 
-const env: ChartEnv = { css: (n) => `var(${n})`, width: 900, viewportWidth: 1280, dark: false };
+const env: ChartEnv = { css: (n) => `var(${n})`, width: 900, viewportWidth: 1280 };
 const cats = (n: number) => Array.from({ length: n }, (_, i) => `d${i}`);
 
 describe('fmt', () => {
