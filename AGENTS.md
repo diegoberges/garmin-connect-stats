@@ -362,7 +362,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 
 ### Actividades
 
-- `/actividades`: el título es un desplegable con los tipos del periodo. Indicadores, gráficas y tabla
+- `/actividades`: el título es un desplegable con los tipos del periodo (y "Correr" = carrera + trail + cinta si hay
+  más de un tipo de carrera, `?tipo=correr`). Indicadores, gráficas y tabla
   se adaptan a la familia (`activity-kinds.ts`):
   - a pie: ritmo en min/km;
   - ciclismo: km/h;
@@ -375,6 +376,9 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   nada).
 
 - `/actividades/[id]`:
+  - arriba, "← Actividades" (o "← Competiciones") vuelve a la lista de la que vienes con sus filtros y página (por el
+    referer) y "‹ Anterior / Siguiente ›" recorren el historial por fecha; si la actividad no existe, página 404 con
+    el diseño de la web;
   - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave, con la carga
     TRIMP de la sesión, el RPE y la sensación (si se anotaron) y la potencia (solo con sensor);
   - ritmo (y GAP), FC, altitud, cadencia y respiración con el cursor y el **zoom** sincronizados; su "Ver datos" es una tabla por km (o cada 5 min) con la

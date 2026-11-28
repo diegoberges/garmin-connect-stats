@@ -76,7 +76,28 @@ if (client && Number.isInteger(id) && id > 0) {
     error = err;
   }
 }
-if (client && !error && !run) return new Response('Actividad no encontrada', { status: 404 });
+const notFound = Boolean(client && !error && !run);
+if (notFound) Astro.response.status = 404;
+
+// Vuelta: a la lista de la que vienes (con sus filtros y página) si es Actividades o Competiciones
+const BACK: Record<string, string> = { '/actividades': 'Actividades', '/competiciones': 'Competiciones' };
+function backLink(): { href: string; label: string } {
+  try {
+    const ref = new URL(Astro.request.headers.get('referer') ?? '');
+    if (ref.origin === Astro.url.origin && BACK[ref.pathname])
+      return { href: `${ref.pathname}${ref.search}`, label: BACK[ref.pathname] };
+  } catch {
+    // Sin referer (o no válido): a la lista de actividades
+  }
+  return { href: '/actividades', label: 'Actividades' };
+}
+const back = backLink();
+
+// Sesión anterior y siguiente (en el historial completo, por fecha y hora)
+const ordered = history?.toSorted((a, b) => a.startLocal.localeCompare(b.startLocal)) ?? [];
+const pos = run ? ordered.findIndex((a) => a.id === run!.id) : -1;
+const prevAct = pos > 0 ? ordered[pos - 1] : undefined;
+const nextAct = pos >= 0 && pos < ordered.length - 1 ? ordered[pos + 1] : undefined;
 
 // ---------- Derivados ----------
 const kind = run ? kindOf(run.typeKey) : 'other';
@@ -225,7 +246,7 @@ if (kind !== 'other' && paceSeries.some((v) => v !== null)) {
       categories: xCats,
       series: [
         { name: cycling ? 'Velocidad' : 'Ritmo', data: paceSeries, color: 1 },
-        ...(gapSeries ? [{ name: 'Ajustado por pendiente', data: gapSeries, color: 4 as const }] : []),
+        ...(gapSeries ? [{ name: 'Ajustado por pendiente', data: gapSeries, color: 1 as const, faint: true }] : []),
       ],
       format: cycling ? 'kmh' : swim ? 'pace100' : 'pace',
       reversed: !cycling,
@@ -433,22 +454,56 @@ const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
 const label = 'type-label';
 ---
 
-<Base title={run?.name ?? 'Actividad'}>
-  <a
-    href="/actividades"
-    class="text-sm text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
-    >← Actividades</a
+<Base title={run?.name ?? (notFound ? 'Actividad no encontrada' : 'Actividad')}>
+  <nav
+    class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm"
+    aria-label="Navegación entre actividades"
   >
+    <a
+      href={back.href}
+      class="inline-flex min-h-8 items-center text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground pointer-coarse:min-h-10"
+      >← {back.label}</a
+    >
+    {(prevAct || nextAct) && (
+      <span class="flex gap-4">
+        {prevAct && (
+          <a
+            href={`/actividades/${prevAct.id}`}
+            class="inline-flex min-h-8 items-center text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground pointer-coarse:min-h-10"
+            title={prevAct.name}
+          >
+            ‹ Anterior
+          </a>
+        )}
+        {nextAct && (
+          <a
+            href={`/actividades/${nextAct.id}`}
+            class="inline-flex min-h-8 items-center text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground pointer-coarse:min-h-10"
+            title={nextAct.name}
+          >
+            Siguiente ›
+          </a>
+        )}
+      </span>
+    )}
+  </nav>
   {!client ? (
     <ConnectPrompt />
   ) : error ? (
     <ErrorState error={error} />
+  ) : notFound ? (
+    <div class="mt-3 border border-border bg-card p-6 text-sm">
+      <h1 class="type-section">Actividad no encontrada</h1>
+      <p class="mt-2 text-muted-foreground">
+        No existe o no es de tu cuenta de Garmin. Vuelve a la lista y elige otra.
+      </p>
+    </div>
   ) : (
     run && (
       <div class="mt-3 space-y-6">
         <header>
           <span class="chip">{activityLabel(run.typeKey)}</span>
-          <h1 class="type-display mt-2 flex items-center gap-2">
+          <h1 class="type-display type-display-long mt-2 flex items-center gap-2">
             {run.name}
             {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
           </h1>
@@ -636,7 +691,7 @@ const label = 'type-label';
                 </table>
               </section>
               <p class="mt-2 text-xs text-muted-foreground">
-                Barra más larga = km más rápido (resaltado en azul).
+                Barra más larga = km más rápido; el mejor, en color pleno y con el ritmo subrayado.
                 <span class="hidden sm:inline">
                   «vs media»: diferencia con la media de los km completos ({cycling ? 'km/h' : 's/km; + es más lento'}).
                 </span>
