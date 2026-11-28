@@ -636,9 +636,11 @@ const label = 'type-label';
                 </table>
               </section>
               <p class="mt-2 text-xs text-muted-foreground">
-                Barra más larga = km más rápido (resaltado en azul). «vs media»: diferencia con la media de los km
-                completos ({cycling ? 'km/h' : 's/km; + es más lento'})
-                {showSplitGap ? '. GAP: ritmo ajustado por pendiente (Minetti)' : ''}.
+                Barra más larga = km más rápido (resaltado en azul).
+                <span class="hidden sm:inline">
+                  «vs media»: diferencia con la media de los km completos ({cycling ? 'km/h' : 's/km; + es más lento'}).
+                </span>
+                {showSplitGap ? 'GAP: ritmo ajustado por pendiente (Minetti).' : ''}
               </p>
             </section>
           )}
@@ -677,8 +679,8 @@ const label = 'type-label';
                 </p>
                 <ul class="mt-3 space-y-2.5 text-sm">
                   {paceZoneRows.map((z, i) => (
-                    <li class="grid grid-cols-[7.5rem_1fr_3rem_4.5rem] items-center gap-3">
-                      <span class="font-semibold">{z.label}</span>
+                    <li class="grid grid-cols-[1fr_3rem_4.5rem] items-center gap-x-3 gap-y-1 sm:grid-cols-[7.5rem_1fr_3rem_4.5rem]">
+                      <span class="col-span-3 font-semibold sm:col-span-1">{z.label}</span>
                       <span class="min-w-0">
                         <span class="block h-2.5 overflow-hidden bg-muted">
                           <span
@@ -844,7 +846,7 @@ const label = 'type-label';
                 </tbody>
               </table>
             </section>
-            <p class="mt-2 text-xs text-muted-foreground">
+            <p class="hidden sm:block mt-2 text-xs text-muted-foreground">
               Eficiencia: metros por minuto ÷ FC media (más alto = más rápido con el mismo esfuerzo).
             </p>
           </section>

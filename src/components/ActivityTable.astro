@@ -2,7 +2,7 @@
 /** Listado de actividades; cada fila se formatea según su familia (ritmo, velocidad o nada). */
 import type { Activity } from '../lib/garmin/types';
 import { hasDistance, kindOf, speedUnit, speedValue } from '../lib/activity-kinds';
-import { activityLabel, dayLabel, duration, int, km, pace, speed } from '../lib/format';
+import { activityLabel, dayLabel, duration, hoursMinutes, int, km, pace, speed } from '../lib/format';
 import TrophyTip from './TrophyTip.astro';
 
 interface Props {
@@ -28,6 +28,8 @@ function speedText(a: Activity, i: number): string {
   if (v === undefined) return '—';
   return k === 'cycling' ? `${speed(v)} ${speedUnit(k)}` : `${pace(v)} ${speedUnit(k)}`;
 }
+/** El nombre ya dice el tipo (Garmin lo añade al nombre automático): sin etiqueta repetida. */
+const nameSaysType = (a: Activity) => a.name.toLowerCase().includes(activityLabel(a.typeKey).toLowerCase());
 const distanceText = (a: Activity, i: number) =>
   !hasDistance(kinds[i]) || a.distanceKm <= 0
     ? '—'
@@ -52,7 +54,7 @@ const distanceText = (a: Activity, i: number) =>
             Distancia
           </th>
         )}
-        <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">Tiempo</th>
+        <th scope="col" class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>Tiempo</th>
         {anySpeed && (
           <th scope="col" class="px-2.5 py-3 sm:px-4 text-right">
             Ritmo / vel.
@@ -88,11 +90,12 @@ const distanceText = (a: Activity, i: number) =>
             {/* En móvil la fecha va bajo el nombre, junto al tipo: así caben las cifras sin desplazarse de lado */}
             <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:mt-0 sm:ml-2 sm:inline-flex">
               <span class="whitespace-nowrap sm:hidden">{dayLabel(a.date)}</span>
-              {showType && <span class="chip">{activityLabel(a.typeKey)}</span>}
+              {showType && !nameSaysType(a) && <span class="chip">{activityLabel(a.typeKey)}</span>}
+              <span class="whitespace-nowrap sm:hidden">· {hoursMinutes(a.movingS)}</span>
             </span>
           </td>
           {anyDistance && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{distanceText(a, i)}</td>}
-          <td class="px-2.5 py-3 sm:px-4 text-right">{duration(a.movingS)}</td>
+          <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>{duration(a.movingS)}</td>
           {anySpeed && <td class="px-2.5 py-3 sm:px-4 text-right whitespace-nowrap">{speedText(a, i)}</td>}
           <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>{int(a.avgHr)}</td>
           <td class:list={[secondary, 'px-2.5 py-3 sm:px-4 text-right']}>{int(a.maxHr)}</td>
