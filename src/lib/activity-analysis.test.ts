@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Activity } from './garmin/types';
-import { danielsSpeed, haversineM, paceZoneBounds, sameRoute, timeInPaceZones, vdotForDate } from './activity-analysis';
+import {
+  danielsSpeed,
+  haversineM,
+  paceZoneBounds,
+  routeComparison,
+  sameRoute,
+  timeInPaceZones,
+  vdotForDate,
+} from './activity-analysis';
 import { vdot } from './efficiency';
 import { vo2AtSpeed } from './progression';
 
@@ -75,5 +83,34 @@ describe('misma ruta', () => {
     ];
     expect(sameRoute(target, acts).map((a) => a.id)).toEqual([2, 1]);
     expect(sameRoute(act(7, { startLat: undefined }), acts)).toEqual([]);
+  });
+});
+
+describe('esta vez frente a las anteriores en la misma ruta', () => {
+  const at = (id: number, day: string, movingS: number, avgHr: number) =>
+    act(id, { startLocal: `${day} 08:00:00`, date: day, movingS, avgHr });
+  const pace = (a: Activity) => a.movingS / a.distanceKm;
+
+  it('media de las anteriores (las 5 últimas), no de las posteriores', () => {
+    const target = at(10, '2026-11-20', 2900, 150);
+    const matches = [
+      at(1, '2026-01-01', 9999, 999), // queda fuera: hay 5 más recientes
+      at(2, '2026-03-01', 3000, 152),
+      at(3, '2026-05-01', 3000, 152),
+      at(4, '2026-07-01', 3000, 152),
+      at(5, '2026-09-01', 3000, 152),
+      at(6, '2026-10-01', 3000, 152),
+      target,
+      at(11, '2026-11-25', 1000, 100), // posterior: no cuenta
+    ];
+    const c = routeComparison(target, matches, pace)!;
+    expect(c.previous).toBe(5);
+    expect(c.valueDiff).toBeCloseTo(-10, 5); // 290 frente a 300 s/km
+    expect(c.hrDiff).toBeCloseTo(-2, 5);
+  });
+
+  it('sin veces anteriores, nada', () => {
+    const target = at(10, '2026-11-20', 2900, 150);
+    expect(routeComparison(target, [target], pace)).toBeUndefined();
   });
 });

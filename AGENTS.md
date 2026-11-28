@@ -381,7 +381,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - zonas de FC (las de Garmin en esa fecha) y **zonas de ritmo** con el GAP y los ritmos de Daniels del
     VDOT de los 180 días previos a la actividad (así quedan versionadas por fecha);
   - VFC intra-sesión (RMSSD, SDNN, pNN50) si el FIT trae intervalos RR;
-  - actividades en la misma ruta (salida a < 250 m y distancia ±5 %) con su ritmo y eficiencia.
+  - actividades en la misma ruta (salida a < 250 m y distancia ±5 %) con su ritmo y eficiencia, en una gráfica con eje
+    de fechas reales (`timeAxis`), y arriba del resumen el veredicto "En esta ruta": ritmo (o velocidad) y FC frente
+    a la media de las 5 veces anteriores como mucho (`routeComparison`; estable si cambia menos de 3 s/km, 0,3 km/h o
+    2 ppm). Sin veces anteriores, no hay veredicto.
 - `/competiciones`: `eventType=race` de todo el historial, por años (la API puede ignorar el filtro: también se
   filtra por `eventTypeKey === 'race'` en `getRaces`); mejor marca de 5K, 10K, media y
   maratón con trofeo; etiquetas por distancia (maratón > media > 10K > 5K).
@@ -426,6 +429,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Las bandas de rango normal se hacen con `band` (rangeArea) y siempre llevan leyenda.
   - Series tenues (`faint`, p. ej. el valor de cada noche detrás de la media): discontinuas y con marcador de línea en
     la leyenda (banda: cuadrado; resto: círculo), para no depender solo de un tono más claro.
+  - `timeAxis`: eje x de fechas reales (categorías ISO), para que la distancia entre puntos respete el tiempo.
   - `points` en una serie: puntos donde está el dato medido (cada rodaje o carrera) y no en la media que lo suaviza.
   - Con dedo, la leyenda no alterna series y `charts.ts` le quita el papel de botón (role, tabindex y etiqueta); con
     ratón, sí alterna. Los textos de ApexCharts (leyenda, zoom) van en español con `ES_LOCALE` en `chart-options.ts`.

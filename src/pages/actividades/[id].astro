@@ -24,7 +24,14 @@ import type { ChartSpec } from '../../lib/chart-spec';
 import { addDays, isoDate } from '../../lib/dates';
 import { estimateHrParams, sessionLoad } from '../../lib/load';
 import { efficiencyFactor } from '../../lib/efficiency';
-import { PACE_ZONES, paceZoneBounds, sameRoute, timeInPaceZones, vdotForDate } from '../../lib/activity-analysis';
+import {
+  PACE_ZONES,
+  paceZoneBounds,
+  routeComparison,
+  sameRoute,
+  timeInPaceZones,
+  vdotForDate,
+} from '../../lib/activity-analysis';
 import { card } from '../../lib/ui';
 import Collapsible from '../../components/Collapsible.astro';
 import DataTable from '../../components/DataTable.astro';
@@ -376,7 +383,8 @@ const routeSpec: ChartSpec | undefined =
   routeMatches.length >= 3
     ? {
         type: 'line',
-        categories: routeMatches.map((a) => `${shortDate(a.date)} ${a.date.slice(2, 4)}`),
+        categories: routeMatches.map((a) => a.date),
+        timeAxis: true,
         series: [
           {
             name: cycling ? 'Velocidad' : 'Ritmo',
@@ -392,6 +400,32 @@ const routeSpec: ChartSpec | undefined =
         height: 200,
       }
     : undefined;
+
+// Esta vez frente a la media de las anteriores en la misma ruta: la comparación con "tu normal" del detalle
+const routeCmp =
+  run && showRoute && (kind === 'foot' || cycling) ? routeComparison(run, routeMatches, routeSpeed) : undefined;
+function routeVerdict(c: NonNullable<typeof routeCmp>): string {
+  const times = c.previous === 1 ? 'la vez anterior' : `la media de tus ${c.previous} veces anteriores`;
+  let speedPart = '';
+  if (c.valueDiff !== undefined) {
+    const d = c.valueDiff;
+    if (cycling)
+      speedPart =
+        Math.abs(d) < 0.3
+          ? 'A la misma velocidad que '
+          : `${km(Math.abs(d))} km/h ${d > 0 ? 'más rápido' : 'más lento'} que `;
+    else
+      speedPart =
+        Math.abs(d) < 3 ? 'Al mismo ritmo que ' : `${int(Math.abs(d))} s/km ${d < 0 ? 'más rápido' : 'más lento'} que `;
+  }
+  let hrPart = '';
+  if (c.hrDiff !== undefined) {
+    const h = c.hrDiff;
+    hrPart = Math.abs(h) < 2 ? ', con la misma FC' : `, con ${int(Math.abs(h))} ppm ${h < 0 ? 'menos' : 'más'} de FC`;
+  }
+  return speedPart ? `${speedPart}${times}${hrPart}.` : '';
+}
+const routeText = routeCmp ? routeVerdict(routeCmp) : '';
 
 /** Intensidad creciente de un mismo color para las zonas (escala ordinal) */
 const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
@@ -430,6 +464,19 @@ const label = 'type-label';
             </div>
           )}
           <section class:list={[card, 'flex flex-col p-5', hasMap && 'lg:col-span-2']}>
+            {routeText && (
+              <p class="mb-4 border-b border-border pb-3 text-sm">
+                <span class="type-label block">En esta ruta</span>
+                {routeText}{' '}
+                <a
+                  href="#misma-ruta"
+                  class="whitespace-nowrap text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground"
+                  data-no-loading
+                >
+                  Ver las {routeMatches.length}
+                </a>
+              </p>
+            )}
             <dl class="grid grid-cols-3 gap-3">
               {headline.map((h) => (
                 <div class="min-w-0">

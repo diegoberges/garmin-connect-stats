@@ -183,7 +183,31 @@ function fillOf(spec: ChartSpec, band: Band | undefined): Options['fill'] {
   return { opacity: spec.type === 'area' ? 0.15 : 1 };
 }
 
+/** "21 nov 26" desde una marca de tiempo (eje de fechas). */
+const dateTick = (ms: number) => {
+  const d = new Date(ms);
+  const month = d.toLocaleDateString('es-ES', { month: 'short', timeZone: 'UTC' }).replace('.', '');
+  return `${d.getUTCDate()} ${month} ${String(d.getUTCFullYear()).slice(2)}`;
+};
+
+function timeAxisOf(spec: ChartSpec, env: ChartEnv): Options['xaxis'] {
+  return {
+    type: 'datetime',
+    categories: spec.categories,
+    labels: {
+      show: !spec.hideXLabels,
+      style: { colors: env.css('--viz-muted') },
+      datetimeUTC: true,
+      formatter: (_v: string, ts?: number) => (ts === undefined ? '' : dateTick(ts)),
+    },
+    axisBorder: { color: env.css('--viz-axis') },
+    axisTicks: { show: false },
+    tooltip: { enabled: false },
+  };
+}
+
 function xAxisOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['xaxis'] {
+  if (spec.timeAxis) return timeAxisOf(spec, env);
   const muted = env.css('--viz-muted');
   // Ancho de etiqueta según la más larga (~9 px por carácter a 12 px, con holgura; mínimo 70, el de "28 oct")
   const longest = Math.max(0, ...spec.categories.map((c) => c.length));
@@ -370,6 +394,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       theme: 'dark',
       shared: !isBar || spec.stacked,
       intersect: false,
+      ...(spec.timeAxis ? { x: { formatter: (ts: number) => dateTick(ts) } } : {}),
       y: { formatter: (v: number) => fmt(spec.format, v) },
     },
     annotations: annotationsOf(spec, env),

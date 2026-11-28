@@ -75,3 +75,40 @@ export function sameRoute(target: Activity, activities: Activity[]): Activity[] 
     )
     .sort((a, b) => a.startLocal.localeCompare(b.startLocal));
 }
+
+export interface RouteComparison {
+  /** cuántas veces anteriores se comparan (las últimas, como mucho 5) */
+  previous: number;
+  /** esta vez menos la media de las anteriores, en la unidad de `value` (s/km en ritmo, km/h en velocidad) */
+  valueDiff?: number;
+  /** FC media de esta vez menos la media de las anteriores (ppm) */
+  hrDiff?: number;
+}
+
+/**
+ * Esta actividad frente a la media de las anteriores en la misma ruta (las 5 últimas antes de su fecha). Es la
+ * comparación con "tu normal" del detalle: misma ruta, así que el ritmo y la FC son comparables.
+ */
+export function routeComparison(
+  target: Activity,
+  matches: Activity[],
+  value: (a: Activity) => number | undefined,
+): RouteComparison | undefined {
+  const before = matches
+    .filter((a) => a.id !== target.id && a.startLocal < target.startLocal)
+    .sort((a, b) => a.startLocal.localeCompare(b.startLocal))
+    .slice(-5);
+  if (!before.length) return undefined;
+  const avg = (xs: (number | undefined)[]) => {
+    const ok = xs.filter((x): x is number => x !== undefined && Number.isFinite(x));
+    return ok.length ? ok.reduce((a, b) => a + b, 0) / ok.length : undefined;
+  };
+  const mine = value(target);
+  const theirs = avg(before.map(value));
+  const hrTheirs = avg(before.map((a) => a.avgHr));
+  return {
+    previous: before.length,
+    valueDiff: mine !== undefined && theirs !== undefined ? mine - theirs : undefined,
+    hrDiff: target.avgHr !== undefined && hrTheirs !== undefined ? target.avgHr - hrTheirs : undefined,
+  };
+}
