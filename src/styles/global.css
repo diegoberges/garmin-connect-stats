@@ -8,8 +8,6 @@
 @plugin "flowbite/plugin";
 @source "../../node_modules/flowbite";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -43,26 +41,6 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
-.dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -118,58 +96,30 @@ html {
 }
 
 :root {
-  /* Controles nativos (barras de desplazamiento, select, inputs) en el tema que se ve. La base sigue al
-     sistema; el <meta name="color-scheme"> que fija el botón de tema lo sobrescribe (sin JS, sistema). */
-  color-scheme: light dark;
-
-  &:has(> head > meta[name="color-scheme"][content="dark"]) {
-    color-scheme: dark;
-  }
-  &:has(> head > meta[name="color-scheme"][content="light"]) {
-    color-scheme: light;
-  }
-  /* Sin JS no hay clase .dark y la página sale en claro: que los controles nativos también */
-  @media (scripting: none) {
-    color-scheme: light;
-  }
+  /* Solo modo oscuro: controles nativos y barras de desplazamiento en oscuro */
+  color-scheme: dark;
 
   /* Barras de desplazamiento y controles nativos con la paleta de la app (el pulgar con contraste ≥ 3:1
      frente a la pista). No se anima: en WebKit parpadea. */
-  --scrollbar-thumb: var(--color-neutral-400);
-  --scrollbar-track: var(--color-neutral-100);
+  --scrollbar-thumb: var(--color-neutral-500);
+  --scrollbar-track: var(--color-neutral-900);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   accent-color: var(--primary);
 
-  /* Tokens de gráficas (paleta validada: ver skill dataviz). Oscuro con pasos propios, no invertido. */
-  --viz-surface: #ffffff;
-  --viz-text: oklch(0.556 0 0); /* --muted-foreground */
-  --viz-muted: #898781;
-  --viz-grid: oklch(0.922 0 0); /* --border */
-  --viz-axis: oklch(0.85 0 0);
-  --viz-1: #2a78d6; /* azul */
-  --viz-2: #eb6834; /* naranja */
-  --viz-3: #1baf7a; /* aqua */
-  --viz-4: #eda100; /* amarillo */
-  --viz-seq-light: #86b6ef; /* azul claro (rango / banda) */
-}
-.dark {
-  --scrollbar-thumb: var(--color-neutral-500);
-  --scrollbar-track: var(--color-neutral-900);
-  accent-color: var(--primary);
-
-  --viz-surface: oklch(0.205 0 0); /* --card */
-  --viz-text: oklch(0.708 0 0);
+  /* Tokens de gráficas (paleta validada para fondo oscuro: ver skill dataviz). */
+  --viz-surface: oklch(0.205 0 0);
+  --viz-text: oklch(0.708 0 0); /* --muted-foreground */
   --viz-muted: #898781;
   --viz-grid: oklch(1 0 0 / 10%); /* --border */
   --viz-axis: oklch(1 0 0 / 18%);
-  --viz-1: #3987e5;
-  --viz-2: #d95926;
-  --viz-3: #199e70;
-  --viz-4: #c98500;
-  --viz-seq-light: #1c5cab;
+  --viz-1: #3987e5; /* azul */
+  --viz-2: #d95926; /* naranja */
+  --viz-3: #199e70; /* aqua */
+  --viz-4: #c98500; /* amarillo */
+  --viz-seq-light: #1c5cab; /* azul de banda (rango normal) */
 }
 
-/* Restos de clases gray-* (y las de Flowbite) en la escala neutra de shadcn, en claro y en oscuro */
+/* Restos de clases gray-* (y las de Flowbite) en la escala neutra de shadcn */
 :root {
   --color-gray-50: var(--color-neutral-50);
   --color-gray-100: var(--color-neutral-100);
@@ -184,18 +134,18 @@ html {
   --color-gray-950: var(--color-neutral-950);
 }
 
-/* Botones de zoom de ApexCharts en modo oscuro (por defecto vienen pensados para fondo claro) */
-.dark .apexcharts-toolbar {
+/* Botones de zoom de ApexCharts (por defecto vienen pensados para fondo claro) */
+.apexcharts-toolbar {
   background: transparent;
 }
-.dark .apexcharts-toolbar .apexcharts-selected,
-.dark .apexcharts-toolbar > div:hover {
+.apexcharts-toolbar .apexcharts-selected,
+.apexcharts-toolbar > div:hover {
   background: var(--color-neutral-700);
 }
-.dark .apexcharts-toolbar svg {
+.apexcharts-toolbar svg {
   fill: var(--color-neutral-400);
 }
-.dark .apexcharts-toolbar .apexcharts-selected svg {
+.apexcharts-toolbar .apexcharts-selected svg {
   fill: var(--foreground);
 }
 
@@ -227,8 +177,8 @@ body::before {
   transform-origin: bottom;
   mask-image: linear-gradient(to top, black, transparent);
 }
-/* Líneas de barrido de monitor CRT, solo en oscuro */
-.dark body::after {
+/* Líneas de barrido de monitor CRT */
+body::after {
   content: "";
   position: fixed;
   inset: 0;
@@ -238,7 +188,7 @@ body::before {
 }
 /* Sin líneas de barrido si el sistema pide más contraste, ni al imprimir: oscurecen un poco el texto */
 @media (prefers-contrast: more), print {
-  .dark body::after {
+  body::after {
     display: none;
   }
 }
@@ -360,28 +310,16 @@ body::before {
   }
   .chip-ok {
     font-weight: 600;
-    background: var(--color-green-100);
-    color: var(--color-green-800);
-  }
-  .chip-warn {
-    font-weight: 600;
-    background: var(--color-amber-100);
-    color: var(--color-amber-900);
-  }
-  .chip-alert {
-    font-weight: 600;
-    background: var(--color-red-100);
-    color: var(--color-red-800);
-  }
-  .dark .chip-ok {
     background: var(--color-green-900);
     color: var(--color-green-300);
   }
-  .dark .chip-warn {
+  .chip-warn {
+    font-weight: 600;
     background: var(--color-amber-900);
     color: var(--color-amber-100);
   }
-  .dark .chip-alert {
+  .chip-alert {
+    font-weight: 600;
     background: var(--color-red-900);
     color: var(--color-red-200);
   }
@@ -390,8 +328,5 @@ body::before {
 /* Tarjetas: borde marcado y sombra dura desplazada, en gris */
 .bg-card {
   border-radius: 0;
-  box-shadow: 4px 4px 0 var(--border);
-}
-.dark .bg-card {
   box-shadow: 4px 4px 0 oklch(1 0 0 / 8%);
 }

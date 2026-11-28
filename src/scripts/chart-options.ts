@@ -12,7 +12,6 @@ export interface ChartEnv {
   width: number;
   /** ancho de la ventana (px), para el modo móvil */
   viewportWidth: number;
-  dark: boolean;
   /** puntero táctil (pointer: coarse) */
   coarse?: boolean;
 }
@@ -178,9 +177,9 @@ function markersOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Opti
   };
 }
 
-function fillOf(spec: ChartSpec, env: ChartEnv, band: Band | undefined): Options['fill'] {
-  // En oscuro la banda necesita algo más de opacidad para leerse sobre la tarjeta
-  if (band) return { opacity: [env.dark ? 0.32 : 0.22, ...spec.series.map(() => 1)] };
+function fillOf(spec: ChartSpec, band: Band | undefined): Options['fill'] {
+  // Sobre la tarjeta oscura, la banda necesita algo de opacidad para leerse
+  if (band) return { opacity: [0.32, ...spec.series.map(() => 1)] };
   return { opacity: spec.type === 'area' ? 0.15 : 1 };
 }
 
@@ -340,7 +339,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
         horizontal: false,
       },
     },
-    fill: fillOf(spec, env, band),
+    fill: fillOf(spec, band),
     dataLabels: { enabled: false },
     grid: {
       borderColor: env.css('--viz-grid'),
@@ -368,7 +367,7 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       fontSize: '12px',
     },
     tooltip: {
-      theme: env.dark ? 'dark' : 'light',
+      theme: 'dark',
       shared: !isBar || spec.stacked,
       intersect: false,
       y: { formatter: (v: number) => fmt(spec.format, v) },

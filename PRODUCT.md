@@ -45,7 +45,7 @@ Lo que no da la app de Garmin Connect:
 - Los umbrales heurísticos están centralizados en `src/lib/` (baseline, load, efficiency, sleep-alert); la interfaz debe indicar cuándo algo es orientativo o tiene evidencia limitada.
 - Ninguna petición GET cambia nada (hay precarga con Speculation Rules); todo lo que modifica va por POST.
 - Navegadores: Baseline ampliamente disponible sin alternativas; lo más nuevo solo con degradación elegante.
-- Modo claro y oscuro, siguiendo al sistema por defecto.
+- Solo modo oscuro (sin modo claro ni botón de tema).
 - Pendiente (no decidido): base de datos para el histórico y modo multiusuario.
 
 ## Brand Commitments

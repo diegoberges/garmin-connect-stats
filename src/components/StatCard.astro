@@ -35,11 +35,7 @@ const unitClass = 'ml-1 mr-1.5 text-base font-normal text-muted-foreground last:
       <span
         class:list={[
           'font-medium tabular-nums',
-          flat
-            ? 'text-muted-foreground'
-            : good
-              ? 'text-green-700 dark:text-green-400'
-              : 'text-red-700 dark:text-red-400',
+          flat ? 'text-muted-foreground' : good ? 'text-green-400' : 'text-red-400',
         ]}
       >
         {arrow} {deltaText}

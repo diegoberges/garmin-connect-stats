@@ -76,7 +76,6 @@ const WEEK_OPTIONS = [
 const requested = Number(Astro.url.searchParams.get('semanas'));
 const weeks = WEEK_OPTIONS.some((o) => o.value === requested) ? requested : 12;
 const scope = parseLoadScope(Astro.url.searchParams.get('carga'));
-const scopeLabel = LOAD_SCOPES.find((s) => s.scope === scope)!.label;
 
 const client = clientFor(Astro.locals);
 const today = isoDate();
@@ -591,9 +590,9 @@ if (nowP?.formPct !== undefined) {
 }
 const progress = progressVerdict(progressItems.map((i) => i.dir));
 const DIR_TEXT: Record<ProgressDir, { arrow: string; word: string; cls: string }> = {
-  better: { arrow: '↑', word: 'Mejor', cls: 'text-green-700 dark:text-green-400' },
+  better: { arrow: '↑', word: 'Mejor', cls: 'text-green-400' },
   same: { arrow: '→', word: 'Estable', cls: 'text-muted-foreground' },
-  worse: { arrow: '↓', word: 'Peor', cls: 'text-amber-800 dark:text-amber-300' },
+  worse: { arrow: '↓', word: 'Peor', cls: 'text-amber-300' },
 };
 const PROGRESS_TONE = { ok: 'border-l-green-500', warn: 'border-l-amber-400', muted: 'border-l-muted-foreground' };
 
@@ -693,9 +692,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                 </div>
               </dl>
               {loadWarnings.length > 0 && (
-                <p class="mt-4 text-sm font-medium text-amber-800 dark:text-amber-300">
-                  Pide atención: {loadWarnings.join(' · ')}.
-                </p>
+                <p class="mt-4 text-sm font-medium text-amber-300">Pide atención: {loadWarnings.join(' · ')}.</p>
               )}
               <Collapsible summary="Más indicadores de carga" class="mt-4">
                 <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
@@ -706,9 +703,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                       <dd
                         class:list={[
                           'text-xs',
-                          ratioZone!.zone === 'optimal'
-                            ? 'text-muted-foreground'
-                            : 'font-medium text-amber-800 dark:text-amber-300',
+                          ratioZone!.zone === 'optimal' ? 'text-muted-foreground' : 'font-medium text-amber-300',
                         ]}
                       >
                         {ratioZone!.label}
@@ -725,7 +720,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                       <dd
                         class:list={[
                           'text-xs',
-                          ramp > RAMP_ALERT ? 'font-medium text-red-700 dark:text-red-400' : 'text-muted-foreground',
+                          ramp > RAMP_ALERT ? 'font-medium text-red-400' : 'text-muted-foreground',
                         ]}
                       >
                         {rampText(ramp)}
@@ -741,9 +736,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                       <dd
                         class:list={[
                           'text-xs',
-                          mono.monotony > MONOTONY_HIGH
-                            ? 'font-medium text-amber-800 dark:text-amber-300'
-                            : 'text-muted-foreground',
+                          mono.monotony > MONOTONY_HIGH ? 'font-medium text-amber-300' : 'text-muted-foreground',
                         ]}
                       >
                         {mono.monotony > MONOTONY_HIGH
@@ -761,7 +754,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                           <span
                             class:list={[
                               'ml-1 tabular-nums',
-                              spike ? 'font-medium text-red-700 dark:text-red-400' : 'text-muted-foreground',
+                              spike ? 'font-medium text-red-400' : 'text-muted-foreground',
                             ]}
                           >
                             ({change.pct >= 0 ? '+' : '−'}
@@ -837,11 +830,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                 <span
                   class:list={[
                     'text-sm font-medium tabular-nums',
-                    Math.abs(efChange) < 1
-                      ? 'text-muted-foreground'
-                      : efChange > 0
-                        ? 'text-green-700 dark:text-green-400'
-                        : 'text-red-700 dark:text-red-400',
+                    Math.abs(efChange) < 1 ? 'text-muted-foreground' : efChange > 0 ? 'text-green-400' : 'text-red-400',
                   ]}
                 >
                   {Math.abs(efChange) < 1
@@ -940,11 +929,7 @@ const ZONE_TONE: Record<FormZone, string> = {
                       <td
                         class:list={[
                           'py-2 text-right font-semibold whitespace-nowrap',
-                          d.pct < 5
-                            ? 'text-green-700 dark:text-green-400'
-                            : d.pct < 10
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-red-700 dark:text-red-400',
+                          d.pct < 5 ? 'text-green-400' : d.pct < 10 ? 'text-amber-400' : 'text-red-400',
                         ]}
                       >
                         {d.pct >= 0 ? '' : '−'}

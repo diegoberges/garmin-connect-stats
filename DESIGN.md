@@ -3,30 +3,24 @@
 name: Garmin Connect Stats
 description: Panel personal de salud y rendimiento con métricas transparentes frente a tu propio rango
 colors:
-background: "oklch(1 0 0)"
-foreground: "oklch(0.145 0 0)"
-card: "oklch(1 0 0)"
-primary: "oklch(0.205 0 0)"
-primary-foreground: "oklch(0.985 0 0)"
-muted: "oklch(0.97 0 0)"
-muted-foreground: "oklch(0.556 0 0)"
-border: "oklch(0.922 0 0)"
-ring: "oklch(0.708 0 0)"
-destructive: "oklch(0.577 0.245 27.325)"
-background-dark: "oklch(0.145 0 0)"
-foreground-dark: "oklch(0.985 0 0)"
-card-dark: "oklch(0.205 0 0)"
-muted-dark: "oklch(0.269 0 0)"
-muted-foreground-dark: "oklch(0.708 0 0)"
-border-dark: "oklch(1 0 0 / 10%)"
+background: "oklch(0.145 0 0)"
+foreground: "oklch(0.985 0 0)"
+card: "oklch(0.205 0 0)"
+primary: "oklch(0.922 0 0)"
+primary-foreground: "oklch(0.205 0 0)"
+muted: "oklch(0.269 0 0)"
+muted-foreground: "oklch(0.708 0 0)"
+border: "oklch(1 0 0 / 10%)"
+ring: "oklch(0.556 0 0)"
+destructive: "oklch(0.704 0.191 22.216)"
 status-ok: "oklch(0.723 0.219 149.579)"
 status-warn: "oklch(0.828 0.189 84.429)"
 status-alert: "oklch(0.637 0.237 25.331)"
-viz-blue: "#2a78d6"
-viz-orange: "#eb6834"
-viz-aqua: "#1baf7a"
-viz-yellow: "#eda100"
-viz-band: "#86b6ef"
+viz-blue: "#3987e5"
+viz-orange: "#d95926"
+viz-aqua: "#199e70"
+viz-yellow: "#c98500"
+viz-band: "#1c5cab"
 typography:
 display:
 fontFamily: "Orbitron, Geist Mono Variable, sans-serif"
@@ -99,9 +93,9 @@ textColor: "{colors.foreground}"
 
 **Creative North Star: "El cuaderno de laboratorio"**
 
-Un cuaderno de laboratorio no adorna: anota la medida, la fórmula y el margen de error, y deja que el dato hable. Este panel trabaja igual. La base es la escala neutra de shadcn/ui (blancos, grises y casi negros sin tinte), la letra es monoespaciada como la de un instrumento y el único color con significado es el del estado: verde, ámbar o rojo, siempre acompañado de texto. Las gráficas usan su propia paleta de cuatro tonos, validada en claro y en oscuro.
+Un cuaderno de laboratorio no adorna: anota la medida, la fórmula y el margen de error, y deja que el dato hable. Este panel trabaja igual. La base es la escala neutra de shadcn/ui en su versión oscura (casi negros y grises sin tinte), la letra es monoespaciada como la de un instrumento y el único color con significado es el del estado: verde, ámbar o rojo, siempre acompañado de texto. Las gráficas usan su propia paleta de cuatro tonos, validada sobre fondo oscuro.
 
-Sobre esa sobriedad hay un guiño de hardware ochentero contenido: títulos en Orbitron en mayúsculas, cifras grandes en una pantalla de LED (VT323), esquinas rectas, sombras duras desplazadas y, al fondo, una rejilla en perspectiva en el gris del borde. En oscuro se suman unas líneas de barrido de monitor CRT muy tenues. Nada de neones: el guiño vive en la forma y la tipografía, nunca en el color.
+Sobre esa sobriedad hay un guiño de hardware ochentero contenido: títulos en Orbitron en mayúsculas, cifras grandes en una pantalla de LED (VT323), esquinas rectas, sombras duras desplazadas y, al fondo, una rejilla en perspectiva en el gris del borde. Encima, unas líneas de barrido de monitor CRT muy tenues. Nada de neones: el guiño vive en la forma y la tipografía, nunca en el color.
 
 El carácter es **preciso y tranquilo**. La densidad es alta pero ordenada: muchas cifras por pantalla, cada una con su etiqueta, su comparación y una línea que dice cuánta confianza merece.
 
@@ -110,7 +104,7 @@ El carácter es **preciso y tranquilo**. La densidad es alta pero ordenada: much
 - Escala neutra sin tinte; el color se reserva para el estado y las gráficas.
 - Todo el texto en monoespaciada (Geist Mono); títulos en Orbitron mayúsculas; cifras grandes en LED (VT323).
 - Esquinas rectas (0 px) y sombra dura de 4 px en las tarjetas.
-- Modo claro y oscuro con el mismo peso; el oscuro tiene sus propios pasos, no es el claro invertido.
+- Solo modo oscuro: no hay modo claro ni botón de tema.
 - Pensado para dos escenas: el vistazo matinal en el móvil y el análisis con calma en escritorio.
 
 ## Colors
@@ -119,14 +113,14 @@ Escala neutra de shadcn/ui ("new-york", base neutral) en OKLCH, más tres tonos 
 
 ### Primary
 
-- **Tinta de laboratorio** (`primary`): casi negro en claro, casi blanco en oscuro. Botones principales, enlace de saltar al contenido y `accent-color` de los controles nativos.
+- **Tinta de laboratorio** (`primary`): casi blanco. Botones principales, enlace de saltar al contenido y `accent-color` de los controles nativos.
 
 ### Neutral
 
-- **Papel** (`background`, `card`): blanco puro en claro. En oscuro, el fondo es un casi negro y la tarjeta un escalón más claro, para que la tarjeta se lea como superficie sin sombra difusa.
-- **Gris de margen** (`muted`, `muted-dark`): fondo de los grupos de pestañas, de las cabeceras de tabla y del elemento activo del menú.
+- **Papel** (`background`, `card`): el fondo es un casi negro y la tarjeta un escalón más claro, para que la tarjeta se lea como superficie sin sombra difusa.
+- **Gris de margen** (`muted`): fondo de los grupos de pestañas, de las cabeceras de tabla y del elemento activo del menú.
 - **Grafito** (`muted-foreground`): etiquetas, subtítulos, unidades y textos de confianza ("orientativo").
-- **Línea de cuadrícula** (`border`): bordes, separadores de tabla, sombra dura de las tarjetas y rejilla de fondo. En oscuro es blanco al 10 %.
+- **Línea de cuadrícula** (`border`): bordes, separadores de tabla, sombra dura de las tarjetas y rejilla de fondo. Es blanco al 10 %.
 - **Rojo de error** (`destructive`): solo errores de la aplicación, no estados de salud.
 
 ### Status
@@ -138,11 +132,11 @@ Los tonos de Tailwind 500/400 se usan como borde izquierdo de 4 px de las tarjet
 - **Rojo alerta** (`status-alert`): mal estado, riesgo, alerta alta.
 - Sin datos o calibrando: borde en grafito (`muted-foreground`).
 
-Las variaciones de las cifras usan `green-700`/`red-700` en claro y `green-400`/`red-400` en oscuro, para que el texto tenga contraste suficiente.
+Las variaciones de las cifras usan `green-400`/`red-400` (y los avisos `amber-300`), para que el texto tenga contraste suficiente sobre la tarjeta oscura.
 
 ### Data Visualization
 
-Tokens `--viz-*` en `global.css`, con valores propios para oscuro (`#3987e5`, `#d95926`, `#199e70`, `#c98500`, banda `#1c5cab`).
+Tokens `--viz-*` en `global.css`, validados sobre fondo oscuro (`#3987e5`, `#d95926`, `#199e70`, `#c98500`, banda `#1c5cab`).
 
 - **Azul** (`viz-blue`): serie principal (forma física, media de 7 días).
 - **Naranja** (`viz-orange`): serie secundaria o de contraste (fatiga).
@@ -192,16 +186,16 @@ Los títulos llevan `text-wrap: balance` y los párrafos `text-wrap: pretty` (en
 ## Layout
 
 - Contenedor centrado de 72rem (`max-w-6xl`) con 16 px de margen lateral, igual en la barra superior y en el contenido.
-- Barra superior fija y translúcida (fondo al 80 % con desenfoque): perfil a la izquierda; Salud, Rendimiento, Actividades y el botón de tema a la derecha. En móvil, la navegación se desplaza en horizontal antes que partirse.
+- Barra superior fija y translúcida (fondo al 80 % con desenfoque): perfil a la izquierda; Salud, Rendimiento y Actividades a la derecha. En móvil, la navegación se desplaza en horizontal antes que partirse.
 - Las páginas se organizan en secciones con un título en Orbitron y, a la derecha, su selector de periodo o filtro (pestañas).
 - Rejillas de tarjetas que pasan de una columna en móvil a dos o tres en escritorio; las cifras de una tarjeta de estado se reparten en una subrejilla de tres columnas en escritorio.
 - Relleno interno de tarjeta de 20 px; separación entre secciones de unos 32 px.
 - Tablas en móvil: las columnas secundarias se ocultan por debajo de `sm` (640 px).
-- Diseño comprobado a 500 px (móvil) y 1280 px (escritorio), en claro y oscuro.
+- Diseño comprobado a 390 px (móvil) y 1280 px (escritorio).
 
 ## Elevation & Depth
 
-Sistema plano con una sola sombra, dura y sin desenfoque, que hace de canto de tarjeta impresa. No hay sombras difusas de elevación; la profundidad en oscuro sale del escalón tonal entre fondo y tarjeta. Los desplegables y el menú usan la sombra media de shadcn (`shadow-md`) porque flotan sobre el contenido.
+Sistema plano con una sola sombra, dura y sin desenfoque, que hace de canto de tarjeta impresa. No hay sombras difusas de elevación; la profundidad sale del escalón tonal entre fondo y tarjeta. Los desplegables y el menú usan la sombra media de shadcn (`shadow-md`) porque flotan sobre el contenido.
 
 ### Shadow Vocabulary
 
@@ -225,7 +219,6 @@ Sobrios y rectangulares.
 - **Shape:** esquinas rectas (0 px).
 - **Primary:** fondo tinta, texto papel, 8 × 12 px de relleno (más en los avisos de conexión), 0.875rem en peso 500.
 - **Hover / Focus:** el fondo baja al 90 %; anillo de foco de 3 px en `ring` al 50 %.
-- **Ghost (botón de tema):** solo el icono, de 16 px, en grafito al 60 %; al pasar por encima o con foco, fondo `accent` y texto pleno.
 
 ### Filtros (`FilterGroup`)
 
@@ -286,7 +279,7 @@ La pieza que define el sistema. Tarjeta con borde izquierdo de 4 px en el color 
 - **Do** acompañar cada estado de una palabra y cada variación de flecha + texto.
 - **Do** explicar en la tarjeta qué se compara y cuánta confianza merece, en tamaño Label y en grafito.
 - **Do** mantener las esquinas a 0 px y la sombra dura de 4 px en cualquier tarjeta nueva.
-- **Do** comprobar cada pantalla a 500 px y 1280 px, en claro y en oscuro.
+- **Do** comprobar cada pantalla a 390 px y 1280 px.
 - **Do** fijar en el propio componente, con `<style>`, los colores críticos (trofeo, etiquetas de competición, calendario).
 
 ### Don't:

@@ -16,7 +16,6 @@ const envFor = (el: HTMLElement): ChartEnv => ({
   css,
   width: el.clientWidth || window.innerWidth,
   viewportWidth: window.innerWidth,
-  dark: document.documentElement.classList.contains('dark'),
   coarse: matchMedia('(pointer: coarse)').matches,
 });
 
@@ -104,9 +103,4 @@ window.addEventListener('resize', () => {
   lastWidth = window.innerWidth;
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(repaintMounted, 200);
-});
-// Re-pintar con los tokens del tema nuevo al alternar claro/oscuro
-new MutationObserver(repaintMounted).observe(document.documentElement, {
-  attributes: true,
-  attributeFilter: ['class'],
 });

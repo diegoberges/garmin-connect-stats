@@ -120,7 +120,7 @@ GARMIN_FIXTURES=1 pnpm astro dev --port 4322 --ignore-lock
 
 ```
 src/
-  layouts/Base.astro          # barra superior (perfil a la izq., menú a la dcha.), tema, indicador de carga, analítica
+  layouts/Base.astro          # barra superior (perfil a la izq., menú a la dcha.), indicador de carga, analítica
   middleware.ts               # lee ajustes (cookie cifrada) y el aviso flash en locals
   pages/
     index.ts                  # / → redirige a /salud
@@ -167,7 +167,7 @@ src/
     activity-kinds.ts         # familia de cada tipo (a pie, ciclismo, natación, otros)
     stats.ts, dates.ts, format.ts, settings.ts, flash.ts, chart-spec.ts
   scripts/charts.ts           # convierte ChartSpec en ApexCharts en el navegador
-  styles/global.css           # Tailwind, Flowbite, tokens --viz-*, modo oscuro zinc
+  styles/global.css           # Tailwind, Flowbite, tokens (solo oscuro) y --viz-*
 docs/garmin-personal-api.json # spec OpenAPI (la fuente de verdad de rutas y tipos)
 ```
 
@@ -411,17 +411,13 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - menú de perfil a la izquierda, con foto, nombre, key, sexo y estado de la conexión;
   - Salud, Rendimiento y Actividades a la derecha. Actividades es un desplegable con Actividades,
     Competiciones y Comparador.
-- **Modo oscuro** (`lib/theme.ts`, `scripts/theme.ts` y el script en línea de `Base.astro`):
-  - Sin preferencia guardada se sigue al sistema. La preferencia va en `localStorage` (`theme`).
-  - `<meta name="color-scheme">` lleva `light dark` (sistema), `light` o `dark`. De él sale `color-scheme`
-    en `:root`, que hace que los controles nativos y las barras de desplazamiento sigan al tema.
-  - La clase `.dark` en `<html>` se calcula del mismo valor: de ella dependen Tailwind, Flowbite y las gráficas.
-  - El botón pasa al tema contrario del que se ve; si coincide con el del sistema, **borra** la preferencia
-    (no la guarda), para que siempre se pueda volver a seguir al sistema. Su texto dice qué hará.
-  - En oscuro, la paleta `gray-*` se redirige a `zinc` (en `global.css`); en claro, `gray` normal y fondos blancos.
+- **Solo modo oscuro**: no hay modo claro ni botón de tema. Los tokens de `global.css` son los oscuros, sin clase
+  `.dark` ni variante `dark:` (las clases llevan directamente el tono para fondo oscuro, p. ej. `text-green-400`,
+  `text-amber-300`), y `<meta name="color-scheme" content="dark">` pone en oscuro los controles nativos y las barras
+  de desplazamiento. Las gráficas usan el tema oscuro de ApexCharts y el mapa, las teselas invertidas.
 - **Gráficas**:
   - Siempre con un `ChartSpec` serializado en `data-chart`. Nunca uses ApexCharts directamente en una página.
-  - Colores desde los tokens `--viz-*` (paleta validada en claro y oscuro), máximo 4 series de color.
+  - Colores desde los tokens `--viz-*` (paleta validada sobre fondo oscuro), máximo 4 series de color.
   - **Nunca doble eje Y**: si hacen falta dos magnitudes, usa dos gráficas sincronizadas (`group`).
   - El ritmo va con el eje invertido (más rápido arriba) y escalas redondas.
   - Toda gráfica ofrece "Ver datos" (tabla accesible, `DataTable`): `ChartCard` la genera desde el spec si no se
@@ -433,7 +429,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - `points` en una serie: puntos donde está el dato medido (cada rodaje o carrera) y no en la media que lo suaviza.
   - Con dedo, la leyenda no alterna series y `charts.ts` le quita el papel de botón (role, tabindex y etiqueta); con
     ratón, sí alterna. Los textos de ApexCharts (leyenda, zoom) van en español con `ES_LOCALE` en `chart-options.ts`.
-  - En oscuro las bandas van algo más opacas (0,32 frente a 0,22) para leerse sobre la tarjeta.
+  - Las bandas van con opacidad 0,32 para leerse sobre la tarjeta oscura.
   - `minSpan`: amplitud mínima del eje Y (múltiplos de 5) para que datos estables no parezcan grandes cambios
     (12 meses: 20 ms de VFC, 10 ppm de FC en reposo).
   - Eje X: si las etiquetas no caben (ancho según la más larga, mínimo ~70 px; también a media anchura), se muestran menos.
@@ -447,7 +443,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 - **Móvil** (se comprueba a 390 px; a 320 px aún se permite algún desplazamiento lateral dentro de una tabla):
   - Tablas: oculta las columnas secundarias por debajo de `sm` y pasa lo accesorio (fecha, tipo, variación,
     tiempo) a una segunda línea bajo la cifra principal, para no obligar a desplazarse de lado.
-  - Barra superior en dos filas: perfil y tema arriba, secciones a todo el ancho debajo (el desplegable dice
+  - Barra superior en dos filas: perfil arriba, secciones a todo el ancho debajo (el desplegable dice
     siempre "Actividades"). `scroll-padding-top` en `html` evita que tape los títulos al saltar a un ancla.
   - Páginas largas (Salud, Rendimiento): índice "Ir a" bajo el título (`PageIndex`).
   - `StatCard` pinta pequeñas las unidades que van dentro del valor ("68 h 45 min").
@@ -487,7 +483,7 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 2. Implementa, con tests en `src/lib/*.test.ts` para toda lógica de cálculo nueva.
 3. Verifica: `pnpm verify` y `pnpm build` (ejecuta antes `pnpm fix` si has tocado código).
 4. **Revisa la interfaz** con el servidor de fixtures (puerto 4322) y capturas con Chrome headless,
-   en escritorio y móvil (500 px), modo claro y oscuro:
+   en escritorio y móvil:
 
    ```bash
    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
@@ -495,7 +491,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
      --screenshot=.data/captura.png http://localhost:4322/ruta
    ```
 
-   - Para el modo claro, añade `--blink-settings=preferredColorScheme=1`.
+   - `--window-size` no baja de 500 px: para 390 px de verdad, emula el dispositivo por CDP
+     (`Emulation.setDeviceMetricsOverride`).
    - Guarda las capturas en `.data/` y bórralas al terminar.
 
 5. **Subir y desplegar solo cuando el usuario lo pida**:

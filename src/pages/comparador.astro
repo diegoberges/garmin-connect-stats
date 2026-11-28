@@ -218,7 +218,7 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                         <p
                           class:list={[
                             'mt-1 text-xs font-medium tabular-nums',
-                            delta > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400',
+                            delta > 0 ? 'text-green-400' : 'text-red-400',
                           ]}
                         >
                           {delta > 0 ? '↑' : '↓'} {thisYear} va {signed(delta)} frente a {y.year}
@@ -341,8 +341,8 @@ const todayLabel = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'lo
                           delta === undefined
                             ? 'text-muted-foreground'
                             : delta >= 0
-                              ? 'text-green-700 dark:text-green-400'
-                              : 'text-red-700 dark:text-red-400',
+                              ? 'text-green-400'
+                              : 'text-red-400',
                         ]}
                       >
                         {delta === undefined ? '—' : signed(delta)}
