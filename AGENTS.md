@@ -369,7 +369,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - natación: ritmo por 100 m;
   - resto: tiempo, FC y calorías.
 
-  La tabla se pagina de 20 en 20 (`?pagina=`).
+  La tabla se pagina de 20 en 20 (`?pagina=`). En móvil (por debajo de `lg`) las sesiones van primero, con una línea
+  de totales, y los KPI y gráficas después; en las filas, la fecha y el tiempo van bajo el nombre, y la etiqueta del
+  tipo se omite si el nombre ya lo dice. En "Todas" no hay FC media ni calorías (sumar deportes distintos no significa
+  nada).
 
 - `/actividades/[id]`:
   - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave, con la carga
