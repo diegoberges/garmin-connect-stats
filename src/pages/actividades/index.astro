@@ -6,6 +6,7 @@ import StatCard from '../../components/StatCard.astro';
 import ChartCard from '../../components/ChartCard.astro';
 import RangeSelector from '../../components/RangeSelector.astro';
 import ActivityTable from '../../components/ActivityTable.astro';
+import FilterGroup from '../../components/FilterGroup.astro';
 import Pagination from '../../components/Pagination.astro';
 import { clientFor, getActivities, type Activity } from '../../lib/garmin';
 import { addDays, isoDate, weekStart } from '../../lib/dates';
@@ -21,6 +22,9 @@ const WEEK_OPTIONS = [
   { value: 52, label: '1 año' },
 ];
 const ALL = 'todas';
+/** Carrera, trail y cinta juntos (como en el Comparador). */
+const RUN = 'correr';
+const isRunType = (k: string) => /run/.test(k);
 const requested = Number(Astro.url.searchParams.get('semanas'));
 const weeks = WEEK_OPTIONS.some((o) => o.value === requested) ? requested : 12;
 const tipoParam = Astro.url.searchParams.get('tipo') ?? ALL;
@@ -46,9 +50,27 @@ for (const a of all) counts.set(a.typeKey, (counts.get(a.typeKey) ?? 0) + 1);
 const types = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
 const isAll = tipo === ALL;
-const activities = isAll ? all : all.filter((a) => a.typeKey === tipo);
-const kind: ActivityKind | undefined = isAll ? undefined : kindOf(tipo);
-const title = isAll ? 'Actividades' : activityLabel(tipo);
+const isRun = tipo === RUN;
+const runCount = all.filter((a) => isRunType(a.typeKey)).length;
+// "Correr" solo tiene sentido si hay más de un tipo de carrera en el periodo
+const runTypes = types.filter(([k]) => isRunType(k)).length;
+function filterByType(): Activity[] {
+  if (isAll) return all;
+  if (isRun) return all.filter((a) => isRunType(a.typeKey));
+  return all.filter((a) => a.typeKey === tipo);
+}
+const activities = filterByType();
+let kind: ActivityKind | undefined;
+if (isRun) kind = 'foot';
+else if (!isAll) kind = kindOf(tipo);
+let title = 'Actividades';
+if (isRun) title = 'Correr';
+else if (!isAll) title = activityLabel(tipo);
+function menuLabel(key: string): string {
+  if (key === ALL) return 'Todas las actividades';
+  if (key === RUN) return 'Correr (carrera + trail + cinta)';
+  return activityLabel(key);
+}
 const typeHref = (t: string) => {
   const params = new URLSearchParams(Astro.url.search);
   params.delete('pagina');
@@ -58,12 +80,41 @@ const typeHref = (t: string) => {
   return qs ? `?${qs}` : '/actividades';
 };
 
+// Atajo a los tipos más usados (el desplegable del título tiene todos): Todas, Correr y los 2–3 más frecuentes
+const quickKeys = [
+  ALL,
+  ...(runTypes > 1 ? [RUN] : []),
+  ...types
+    .map(([k]) => k)
+    .filter((k) => !(runTypes > 1 && isRunType(k)))
+    .slice(0, runTypes > 1 ? 2 : 3),
+];
+const quickTypes = quickKeys.map((k) => ({
+  href: typeHref(k),
+  label: k === ALL ? 'Todas' : k === RUN ? 'Correr' : activityLabel(k),
+  active: k === tipo,
+}));
 const PAGE_SIZE = 20;
 const pages = Math.max(1, Math.ceil(activities.length / PAGE_SIZE));
 const page = Math.min(Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina'))) || 1), pages);
 const pageItems = activities.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+// El detalle recibe el contexto de esta lista: para volver a ella y moverse por sus sesiones
+const detailParams = new URLSearchParams();
+if (tipo !== ALL) detailParams.set('tipo', tipo);
+if (weeks !== 12) detailParams.set('semanas', String(weeks));
+if (page > 1) detailParams.set('pagina', String(page));
+const detailQuery = detailParams.size ? `?${detailParams}` : '';
 
 const t = totals(activities);
+// Columnas de KPI según cuántas tarjetas hay, para que ninguna quede sola en otra fila
+const KPI_COLS: Record<number, string> = {
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+  5: 'lg:grid-cols-5',
+  6: 'lg:grid-cols-6',
+  7: 'lg:grid-cols-4',
+};
 const chrono = activities.toReversed();
 const weekly = weeklyTotals(activities, weeks, today);
 const weekCats = weekly.map((w) => shortDate(w.week));
@@ -133,6 +184,15 @@ const hrSpec: ChartSpec = {
   format: 'bpm',
 };
 const hasHr = activities.some((a) => a.avgHr);
+const kpiCount = [
+  true,
+  true,
+  distanceBased,
+  Boolean(kind && avgSpeed !== undefined),
+  !isAll && hasHr,
+  !isAll && t.calories > 0,
+  distanceBased && t.elevationGainM > 0,
+].filter(Boolean).length;
 const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' ? speed(v) : pace(v));
 ---
 
@@ -163,25 +223,27 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         </h1>
         <div
           id="type-menu"
-          class="z-50 hidden max-h-96 w-64 overflow-y-auto border border-border bg-popover text-popover-foreground rounded-md shadow-md"
+          class="z-50 hidden max-h-96 w-72 overflow-y-auto border border-border bg-popover text-popover-foreground rounded-md shadow-md"
         >
           <ul class="py-1 text-sm" aria-label="Tipo de actividad">
-            {[[ALL, all.length] as const, ...types].map(([key, n]) => (
-              <li>
-                <a
-                  href={typeHref(key)}
-                  aria-current={key === tipo ? 'page' : undefined}
-                  class:list={[
-                    'flex items-center justify-between gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground',
-                    key === tipo &&
-                      'font-semibold text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground',
-                  ]}
-                >
-                  <span class="truncate">{key === ALL ? 'Todas las actividades' : activityLabel(key)}</span>
-                  <span class="text-xs tabular-nums text-muted-foreground">{n}</span>
-                </a>
-              </li>
-            ))}
+            {[[ALL, all.length] as const, ...(runTypes > 1 ? [[RUN, runCount] as const] : []), ...types].map(
+              ([key, n]) => (
+                <li>
+                  <a
+                    href={typeHref(key)}
+                    aria-current={key === tipo ? 'page' : undefined}
+                    class:list={[
+                      'flex items-center justify-between gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground',
+                      key === tipo &&
+                        'font-semibold text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground',
+                    ]}
+                  >
+                    <span class="truncate">{menuLabel(key)}</span>
+                    <span class="text-xs tabular-nums text-muted-foreground">{n}</span>
+                  </a>
+                </li>
+              ),
+            )}
           </ul>
         </div>
       </div>
@@ -190,6 +252,9 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
     )}
     {client && <RangeSelector options={WEEK_OPTIONS} current={weeks} param="semanas" />}
   </div>
+  {client && !error && quickTypes.length > 2 && (
+    <FilterGroup class="-mt-3 mb-6" size="sm" label="Tipo de actividad" items={quickTypes} />
+  )}
 
   {!client ? (
     <ConnectPrompt />
@@ -201,7 +266,7 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
     </p>
   ) : (
     <div class="flex flex-col gap-6">
-      <div class="order-2 grid grid-cols-2 gap-4 md:grid-cols-3 lg:order-none lg:grid-cols-6">
+      <div class:list={['order-2 grid grid-cols-2 gap-4 md:grid-cols-3 lg:order-none', KPI_COLS[kpiCount]]}>
         <StatCard label="Sesiones" value={int(t.runs)} />
         <StatCard label="Tiempo" value={hoursMinutes(t.movingS)} />
         {distanceBased && (
@@ -216,7 +281,6 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
         {distanceBased && t.elevationGainM > 0 && (
           <StatCard label={'Desnivel\u00a0+'} value={int(t.elevationGainM)} unit="m" />
         )}
-        {isAll && <StatCard label="Tipos" value={int(types.length)} />}
       </div>
 
       <ChartCard
@@ -253,10 +317,16 @@ const speedText = (v?: number) => (v === undefined ? '—' : kind === 'cycling' 
       <section id="sesiones" class="order-1 scroll-mt-4 lg:order-none">
         <h2 class="type-card mb-3">Sesiones ({activities.length})</h2>
         <p class="mb-3 text-sm text-muted-foreground lg:hidden">
-          {int(t.runs)} sesiones · {hoursMinutes(t.movingS)}
-          {distanceBased ? ` · ${swim ? `${int(t.km * 1000)} m` : `${km(t.km)} km`}` : ''}. Totales y gráficas, debajo.
+          {hoursMinutes(t.movingS)}
+          {distanceBased ? ` · ${swim ? `${int(t.km * 1000)} m` : `${km(t.km)} km`}` : ''} en total. Más totales y
+          gráficas, debajo.
         </p>
-        <ActivityTable activities={pageItems} showType={isAll} caption={`Sesiones, página ${page} de ${pages}`} />
+        <ActivityTable
+          activities={pageItems}
+          showType={isAll || isRun}
+          detailQuery={detailQuery}
+          caption={`Sesiones, página ${page} de ${pages}`}
+        />
         <Pagination page={page} pages={pages} total={activities.length} pageSize={PAGE_SIZE} anchor="sesiones" />
       </section>
     </div>

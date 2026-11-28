@@ -280,7 +280,7 @@ La pieza que define el sistema. Tarjeta con borde izquierdo de 4 px en el color 
 - **Do** explicar en la tarjeta qué se compara y cuánta confianza merece, en tamaño Label y en grafito.
 - **Do** mantener las esquinas a 0 px y la sombra dura de 4 px en cualquier tarjeta nueva.
 - **Do** comprobar cada pantalla a 390 px y 1280 px.
-- **Do** fijar en el propio componente, con `<style>`, los colores críticos (trofeo, etiquetas de competición, calendario).
+- **Do** fijar en el propio componente, con `<style>`, los colores críticos (trofeo, etiquetas de competición, calendario). El trofeo lleva también fijos su anillo de foco (`#60a5fa`) y el fondo de su etiqueta emergente (`#111827`), para que se vean igual sobre cualquier tarjeta.
 
 ### Don't:
 

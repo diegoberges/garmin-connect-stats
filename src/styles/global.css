@@ -235,6 +235,12 @@ body::after {
       font-size: 1.5rem;
     }
   }
+  /* Display largo (nombre de una actividad): en móvil, un paso menor para no ocupar tres líneas */
+  @media (width < 40rem) {
+    .type-display-long {
+      font-size: 1.2rem;
+    }
+  }
   /* Sección: el título que agrupa varias tarjetas */
   .type-section {
     font-family: var(--font-display);

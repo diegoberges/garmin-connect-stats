@@ -12,7 +12,7 @@ interface Props {
 const { route, style = 'street' } = Astro.props;
 ---
 
-<section class="overflow-hidden border border-border bg-card text-card-foreground">
+<section class="flex h-full flex-col overflow-hidden border border-border bg-card text-card-foreground">
   <div class="flex items-baseline justify-between gap-3 px-4 pt-4 pb-3">
     <h2 class="type-card">Recorrido</h2>
     <span class="flex items-center gap-3 text-xs text-muted-foreground">
@@ -29,7 +29,7 @@ const { route, style = 'street' } = Astro.props;
     data-route-map
     data-route={JSON.stringify(route)}
     data-style={style}
-    class="route-map h-80 w-full sm:h-96"
+    class="route-map h-56 w-full sm:h-96 lg:h-auto lg:min-h-96 lg:flex-1"
     role="group"
     aria-label={style === 'topo' ? 'Mapa topográfico del recorrido' : 'Mapa del recorrido'}
   ></div>
@@ -54,7 +54,9 @@ const { route, style = 'street' } = Astro.props;
     const route = JSON.parse(el.dataset.route ?? '[]') as [number, number][];
     if (route.length < 2) continue;
 
-    const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+    // Con dedo, el mapa no se arrastra hasta tocarlo: así deslizar sobre él mueve la página, no el mapa
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    const map = L.map(el, { scrollWheelZoom: false, dragging: !coarse, attributionControl: true });
     const t = TILES[el.dataset.style === 'topo' ? 'topo' : 'street'];
     L.tileLayer(t.url, { attribution: t.attribution, maxZoom: t.maxZoom }).addTo(map);
 
@@ -66,7 +68,10 @@ const { route, style = 'street' } = Astro.props;
     map.fitBounds(line.getBounds(), { padding: [20, 20] });
 
     // La rueda solo hace zoom tras un clic en el mapa, para no atrapar el scroll de la página
-    map.once('click', () => map.scrollWheelZoom.enable());
+    map.once('click', () => {
+      map.scrollWheelZoom.enable();
+      map.dragging.enable();
+    });
   }
 </script>
 
@@ -77,5 +82,26 @@ const { route, style = 'street' } = Astro.props;
   }
   .route-map {
     background: #1b1b1d;
+  }
+  /* Controles y atribución de Leaflet con los tokens de la tarjeta (por defecto son blancos) */
+  .route-map .leaflet-bar a {
+    background: var(--card);
+    color: var(--foreground);
+    border-color: var(--border);
+  }
+  .route-map .leaflet-bar a:hover {
+    background: var(--accent);
+  }
+  .route-map .leaflet-bar,
+  .route-map .leaflet-bar a {
+    border-radius: 0;
+  }
+  .route-map .leaflet-control-attribution {
+    background: color-mix(in oklab, var(--card) 85%, transparent);
+    color: var(--muted-foreground);
+    padding: 1px 6px;
+  }
+  .route-map .leaflet-control-attribution a {
+    color: var(--foreground);
   }
 </style>
