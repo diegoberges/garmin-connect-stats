@@ -27,6 +27,8 @@ import { efficiencyFactor } from '../../lib/efficiency';
 import { PACE_ZONES, paceZoneBounds, sameRoute, timeInPaceZones, vdotForDate } from '../../lib/activity-analysis';
 import { card } from '../../lib/ui';
 import Collapsible from '../../components/Collapsible.astro';
+import DataTable from '../../components/DataTable.astro';
+import { bucketTable } from '../../lib/chart-table';
 
 const id = Number(Astro.params.id);
 const client = clientFor(Astro.locals);
@@ -291,6 +293,17 @@ charts.forEach((c, i) => {
   // Los botones solo en la primera: el zoom y el restablecer valen para todas
   c.spec.zoomControls = i === 0;
 });
+// "Ver datos" de todas las series: una fila por km (o cada 5 min si el eje es tiempo) con la media de cada una
+const byKm = track?.xUnit === 'km';
+const stripTable = charts.length
+  ? bucketTable(
+      series.map((p) => p.x),
+      byKm ? 1 : 5,
+      (start) => (byKm ? `${int(start)}–${int(start + 1)} km` : `${int(start)}–${int(start + 5)} min`),
+      byKm ? 'Tramo' : 'Minutos',
+      charts,
+    )
+  : undefined;
 
 // ---------- Parciales ----------
 const splits = kind === 'foot' || cycling ? (track?.splits ?? []) : [];
@@ -497,6 +510,7 @@ const label = 'type-label';
                 </div>
               ))}
             </div>
+            {stripTable && <DataTable title="Series de la actividad" table={stripTable} />}
           </section>
         )}
 

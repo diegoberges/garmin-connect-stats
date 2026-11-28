@@ -18,6 +18,35 @@ export interface ChartEnv {
 }
 
 type Band = NonNullable<ChartSpec['band']>;
+
+/** Textos de ApexCharts en español (lo que no se define aquí sale de su inglés por defecto). */
+const ES_LOCALE = {
+  name: 'es',
+  options: {
+    toolbar: {
+      exportToSVG: 'Descargar SVG',
+      exportToPNG: 'Descargar PNG',
+      exportToCSV: 'Descargar CSV',
+      menu: 'Menú',
+      selection: 'Seleccionar',
+      selectionZoom: 'Ampliar selección',
+      zoomIn: 'Acercar',
+      zoomOut: 'Alejar',
+      pan: 'Desplazar',
+      reset: 'Restablecer zoom',
+    },
+    a11y: {
+      legendItem: '{name}, {state}. Pulsa Intro o Espacio para mostrarla u ocultarla.',
+      visible: 'visible',
+      hidden: 'oculta',
+      zoomedIn: 'Ampliada',
+      zoomedOut: 'Reducida',
+      zoomReset: 'Zoom restablecido',
+      pannedLeft: 'Desplazada a la izquierda',
+      pannedRight: 'Desplazada a la derecha',
+    },
+  },
+};
 type Options = ApexCharts.ApexOptions;
 
 export function fmt(format: ValueFormat, v: number | null | undefined): string {
@@ -291,6 +320,8 @@ export function buildOptions(spec: ChartSpec, env: ChartEnv): Options {
       stacked: spec.stacked,
       ...zoomOf(spec),
       fontFamily: 'inherit',
+      locales: [ES_LOCALE],
+      defaultLocale: 'es',
       foreColor: env.css('--viz-muted'),
       background: 'transparent',
       animations: { enabled: false },

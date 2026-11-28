@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChartSpec } from './chart-spec';
-import { specTable } from './chart-table';
+import { bucketTable, specTable } from './chart-table';
 
 describe('specTable', () => {
   const spec: ChartSpec = {
@@ -31,5 +31,34 @@ describe('specTable', () => {
       format: 'int',
     });
     expect(t.rows).toEqual([['x', '1–2']]);
+  });
+});
+
+describe('bucketTable', () => {
+  it('una fila por tramo con la media de cada serie de cada gráfica', () => {
+    const xs = [0.2, 0.6, 1.1, 1.7];
+    const t = bucketTable(xs, 1, (s) => `${s}–${s + 1} km`, 'Km', [
+      {
+        title: 'FC',
+        spec: { type: 'line', categories: [], format: 'bpm', series: [{ name: 'FC', data: [140, 150, 160, null] }] },
+      },
+      {
+        title: 'Ritmo (min/km)',
+        spec: {
+          type: 'line',
+          categories: [],
+          format: 'pace',
+          series: [
+            { name: 'Ritmo', data: [300, 300, 360, 360] },
+            { name: 'GAP', data: [290, 290, null, null] },
+          ],
+        },
+      },
+    ]);
+    expect(t.headers).toEqual(['Km', 'FC', 'Ritmo · Ritmo', 'Ritmo · GAP']);
+    expect(t.rows).toHaveLength(2);
+    expect(t.rows[0][0]).toBe('0–1 km');
+    expect(t.rows[1][1]).toContain('160');
+    expect(t.rows[1][3]).toBe('—');
   });
 });

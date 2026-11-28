@@ -20,6 +20,14 @@ const envFor = (el: HTMLElement): ChartEnv => ({
   coarse: matchMedia('(pointer: coarse)').matches,
 });
 
+/** Quita a un elemento de la leyenda su papel de botón (role, tabindex y la etiqueta de "pulsa para alternar"). */
+function plainLegendItem(item: Element) {
+  item.removeAttribute('role');
+  item.removeAttribute('tabindex');
+  item.removeAttribute('aria-label');
+  item.removeAttribute('aria-pressed');
+}
+
 /** Gráficas ya pintadas. */
 const charts = new Map<HTMLElement, ApexCharts>();
 /** Cola de gráficas por pintar (o repintar), en orden. */
@@ -37,8 +45,12 @@ function render(el: HTMLElement) {
   charts.get(el)?.destroy();
   const spec = JSON.parse(el.dataset.chart!) as ChartSpec;
   el.replaceChildren();
-  const chart = new ApexCharts(el, buildOptions(spec, envFor(el)));
-  chart.render();
+  const env = envFor(el);
+  const chart = new ApexCharts(el, buildOptions(spec, env));
+  // Con dedo la leyenda no alterna series: que no quede como un botón enfocable que no hace nada
+  void chart.render().then(() => {
+    if (env.coarse) for (const item of el.querySelectorAll('.apexcharts-legend-series')) plainLegendItem(item);
+  });
   charts.set(el, chart);
 }
 

@@ -374,7 +374,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 - `/actividades/[id]`:
   - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave, con la carga
     TRIMP de la sesión, el RPE y la sensación (si se anotaron) y la potencia (solo con sensor);
-  - ritmo (y GAP), FC, altitud, cadencia y respiración con el cursor y el **zoom** sincronizados
+  - ritmo (y GAP), FC, altitud, cadencia y respiración con el cursor y el **zoom** sincronizados; su "Ver datos" es una tabla por km (o cada 5 min) con la
+    media de cada serie (`bucketTable` en `chart-table.ts`)
     (arrastrar en una amplía todas; los botones solo en la primera);
   - parciales por km con GAP (si hay desnivel) y diferencia con la media de los km completos;
   - zonas de FC (las de Garmin en esa fecha) y **zonas de ritmo** con el GAP y los ritmos de Daniels del
@@ -430,7 +431,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
   - Series tenues (`faint`, p. ej. el valor de cada noche detrás de la media): discontinuas y con marcador de línea en
     la leyenda (banda: cuadrado; resto: círculo), para no depender solo de un tono más claro.
   - `points` en una serie: puntos donde está el dato medido (cada rodaje o carrera) y no en la media que lo suaviza.
-  - Con dedo, la leyenda no alterna series (eran blancos de 16 px que el teclado no alcanza); con ratón, sí.
+  - Con dedo, la leyenda no alterna series y `charts.ts` le quita el papel de botón (role, tabindex y etiqueta); con
+    ratón, sí alterna. Los textos de ApexCharts (leyenda, zoom) van en español con `ES_LOCALE` en `chart-options.ts`.
   - En oscuro las bandas van algo más opacas (0,32 frente a 0,22) para leerse sobre la tarjeta.
   - `minSpan`: amplitud mínima del eje Y (múltiplos de 5) para que datos estables no parezcan grandes cambios
     (12 meses: 20 ms de VFC, 10 ppm de FC en reposo).
