@@ -13,6 +13,7 @@ import {
   getHrReference,
   getHrZones,
   getWeights,
+  isRace,
   type Activity,
   type ActivityExtra,
   type ActivityTrack,
@@ -79,9 +80,27 @@ if (client && Number.isInteger(id) && id > 0) {
 const notFound = Boolean(client && !error && !run);
 if (notFound) Astro.response.status = 404;
 
-// Vuelta: a la lista de la que vienes (con sus filtros y página) si es Actividades o Competiciones
+// Contexto de la lista de la que vienes (lo pasan sus enlaces): ?tipo=&semanas=&pagina= de Actividades o
+// ?desde=competiciones. Con él, la vuelta recupera la lista tal cual y Anterior/Siguiente se mueven dentro de ella.
+const q = Astro.url.searchParams;
+const fromRaces = q.get('desde') === 'competiciones';
+const tipoCtx = /^[a-z0-9_]+$/i.test(q.get('tipo') ?? '') ? q.get('tipo')! : 'todas';
+const listParams = new URLSearchParams();
+for (const k of ['tipo', 'semanas', 'pagina']) {
+  const v = q.get(k);
+  if (v && /^[a-z0-9_]+$/i.test(v)) listParams.set(k, v);
+}
+const ctxQuery = fromRaces ? '?desde=competiciones' : listParams.size ? `?${listParams}` : '';
+function inContext(a: Activity): boolean {
+  if (fromRaces) return isRace(a);
+  if (tipoCtx === 'correr') return /run/.test(a.typeKey);
+  return tipoCtx === 'todas' || a.typeKey === tipoCtx;
+}
+// Sin contexto (p. ej. desde Rendimiento o Calidad), la vuelta usa la página de origen si es una lista conocida
 const BACK: Record<string, string> = { '/actividades': 'Actividades', '/competiciones': 'Competiciones' };
 function backLink(): { href: string; label: string } {
+  if (fromRaces) return { href: '/competiciones', label: 'Competiciones' };
+  if (listParams.size) return { href: `/actividades?${listParams}`, label: 'Actividades' };
   try {
     const ref = new URL(Astro.request.headers.get('referer') ?? '');
     if (ref.origin === Astro.url.origin && BACK[ref.pathname])
@@ -93,11 +112,14 @@ function backLink(): { href: string; label: string } {
 }
 const back = backLink();
 
-// Sesión anterior y siguiente (en el historial completo, por fecha y hora)
-const ordered = history?.toSorted((a, b) => a.startLocal.localeCompare(b.startLocal)) ?? [];
+// Sesión anterior y siguiente dentro de esa lista (por fecha y hora), rotuladas con tipo y fecha
+const ordered = (history ?? [])
+  .filter((a) => inContext(a) || a.id === run?.id)
+  .toSorted((a, b) => a.startLocal.localeCompare(b.startLocal));
 const pos = run ? ordered.findIndex((a) => a.id === run!.id) : -1;
 const prevAct = pos > 0 ? ordered[pos - 1] : undefined;
 const nextAct = pos >= 0 && pos < ordered.length - 1 ? ordered[pos + 1] : undefined;
+const neighborLabel = (a: Activity) => `${activityLabel(a.typeKey)} · ${shortDate(a.date)}`;
 
 // ---------- Derivados ----------
 const kind = run ? kindOf(run.typeKey) : 'other';
@@ -401,7 +423,7 @@ const routeMatches = run && history ? sameRoute(run, [...history.filter((a) => a
 const showRoute = routeMatches.length >= 2;
 const routeSpeed = (a: Activity) => speedValue(kind, a.distanceKm, a.movingS);
 const routeSpec: ChartSpec | undefined =
-  routeMatches.length >= 3
+  routeMatches.length >= 5
     ? {
         type: 'line',
         categories: routeMatches.map((a) => a.date),
@@ -422,31 +444,38 @@ const routeSpec: ChartSpec | undefined =
       }
     : undefined;
 
-// Esta vez frente a la media de las anteriores en la misma ruta: la comparación con "tu normal" del detalle
-const routeCmp =
-  run && showRoute && (kind === 'foot' || cycling) ? routeComparison(run, routeMatches, routeSpeed) : undefined;
-function routeVerdict(c: NonNullable<typeof routeCmp>): string {
-  const times = c.previous === 1 ? 'la vez anterior' : `la media de tus ${c.previous} veces anteriores`;
-  let speedPart = '';
-  if (c.valueDiff !== undefined) {
-    const d = c.valueDiff;
-    if (cycling)
-      speedPart =
-        Math.abs(d) < 0.3
-          ? 'A la misma velocidad que '
-          : `${km(Math.abs(d))} km/h ${d > 0 ? 'más rápido' : 'más lento'} que `;
-    else
-      speedPart =
-        Math.abs(d) < 3 ? 'Al mismo ritmo que ' : `${int(Math.abs(d))} s/km ${d < 0 ? 'más rápido' : 'más lento'} que `;
-  }
-  let hrPart = '';
-  if (c.hrDiff !== undefined) {
-    const h = c.hrDiff;
-    hrPart = Math.abs(h) < 2 ? ', con la misma FC' : `, con ${int(Math.abs(h))} ppm ${h < 0 ? 'menos' : 'más'} de FC`;
-  }
-  return speedPart ? `${speedPart}${times}${hrPart}.` : '';
+// Esta vez frente a sus veces anteriores en la misma ruta: la vez anterior y lo habitual (mediana de las 5 últimas)
+const routeKind = run?.startLat !== undefined && (kind === 'foot' || cycling);
+const routeCmp = run && routeKind ? routeComparison(run, routeMatches, routeSpeed) : undefined;
+function speedPart(d: number | undefined): string {
+  if (d === undefined) return '';
+  if (cycling)
+    return Math.abs(d) < 0.3 ? 'a la misma velocidad' : `${km(Math.abs(d))} km/h ${d > 0 ? 'más rápido' : 'más lento'}`;
+  return Math.abs(d) < 3 ? 'al mismo ritmo' : `${int(Math.abs(d))} s/km ${d < 0 ? 'más rápido' : 'más lento'}`;
 }
-const routeText = routeCmp ? routeVerdict(routeCmp) : '';
+function hrPart(h: number | undefined): string {
+  if (h === undefined) return '';
+  return Math.abs(h) < 2 ? 'con la misma FC' : `con ${int(Math.abs(h))} ppm ${h < 0 ? 'menos' : 'más'} de FC`;
+}
+const deltaText = (d: { valueDiff?: number; hrDiff?: number }) =>
+  [speedPart(d.valueDiff), hrPart(d.hrDiff)].filter(Boolean).join(', ');
+const monthYear = (date: string) =>
+  new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${date}T12:00:00Z`))
+    .replace('.', '');
+const routeLines: { label: string; text: string }[] = [];
+if (routeCmp) {
+  routeLines.push({
+    label: `Frente a la vez anterior (${shortDate(routeCmp.last.date)})`,
+    text: deltaText(routeCmp.last),
+  });
+  if (routeCmp.usual)
+    routeLines.push({
+      label: `Frente a lo habitual (mediana de ${routeCmp.usual.count} veces desde ${monthYear(routeCmp.usual.since)})`,
+      text: deltaText(routeCmp.usual),
+    });
+}
+const firstOnRoute = Boolean(run && routeKind && !routeCmp && routeMatches.length <= 1);
 
 /** Intensidad creciente de un mismo color para las zonas (escala ordinal) */
 const ZONE_OPACITY = [0.3, 0.45, 0.6, 0.8, 1];
@@ -468,20 +497,20 @@ const label = 'type-label';
       <span class="flex gap-4">
         {prevAct && (
           <a
-            href={`/actividades/${prevAct.id}`}
+            href={`/actividades/${prevAct.id}${ctxQuery}`}
             class="inline-flex min-h-8 items-center text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground pointer-coarse:min-h-10"
-            title={prevAct.name}
+            title={`Anterior: ${prevAct.name}`}
           >
-            ‹ Anterior
+            ‹ {neighborLabel(prevAct)}
           </a>
         )}
         {nextAct && (
           <a
-            href={`/actividades/${nextAct.id}`}
+            href={`/actividades/${nextAct.id}${ctxQuery}`}
             class="inline-flex min-h-8 items-center text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground pointer-coarse:min-h-10"
-            title={nextAct.name}
+            title={`Siguiente: ${nextAct.name}`}
           >
-            Siguiente ›
+            {neighborLabel(nextAct)} ›
           </a>
         )}
       </span>
@@ -502,7 +531,9 @@ const label = 'type-label';
     run && (
       <div class="mt-3 space-y-6">
         <header>
-          <span class="chip">{activityLabel(run.typeKey)}</span>
+          {!run.name.toLowerCase().includes(activityLabel(run.typeKey).toLowerCase()) && (
+            <span class="chip">{activityLabel(run.typeKey)}</span>
+          )}
           <h1 class="type-display type-display-long mt-2 flex items-center gap-2">
             {run.name}
             {run.isPr && <TrophyTip label="Récord personal en Garmin" class="h-6 w-6" />}
@@ -515,21 +546,34 @@ const label = 'type-label';
         <div class:list={['grid gap-6', hasMap && 'lg:grid-cols-5']}>
           {hasMap && (
             <div class="min-w-0 lg:col-span-3">
+              {/* En escritorio el mapa ocupa todo el alto de su fila (el del panel de cifras) */}
               <RouteMap route={track!.route} style={mapStyleFor(run.typeKey)} />
             </div>
           )}
-          <section class:list={[card, 'flex flex-col p-5', hasMap && 'lg:col-span-2']}>
-            {routeText && (
-              <p class="mb-4 border-b border-border pb-3 text-sm">
-                <span class="type-label block">En esta ruta</span>
-                {routeText}{' '}
+          {/* En móvil, las cifras y el veredicto antes que el mapa */}
+          <section class:list={[card, 'order-first flex flex-col p-5 lg:order-none', hasMap && 'lg:col-span-2']}>
+            {routeLines.length > 0 && (
+              <div class="mb-4 border-b border-border pb-3 text-sm">
+                <p class="type-label">En esta ruta</p>
+                <ul class="mt-1 space-y-1">
+                  {routeLines.map((l) => (
+                    <li>
+                      <span class="text-muted-foreground">{l.label}:</span> {l.text}.
+                    </li>
+                  ))}
+                </ul>
                 <a
                   href="#misma-ruta"
-                  class="whitespace-nowrap text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground"
+                  class="mt-1 inline-block text-muted-foreground underline decoration-foreground/30 underline-offset-4 hover:text-foreground"
                   data-no-loading
                 >
-                  Ver las {routeMatches.length}
+                  Ver las {routeMatches.length} veces
                 </a>
+              </div>
+            )}
+            {firstOnRoute && (
+              <p class="mb-4 border-b border-border pb-3 text-sm text-muted-foreground">
+                Primera vez en esta ruta: no hay otra con la misma salida y una distancia parecida.
               </p>
             )}
             <dl class="grid grid-cols-3 gap-3">
@@ -545,7 +589,7 @@ const label = 'type-label';
             </dl>
 
             {secondary.length > 0 && (
-              <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t pt-4 text-sm sm:grid-cols-2 border-border">
+              <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-2.5 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-1 border-border">
                 {secondary.map(([l, v]) => (
                   <div class="flex items-baseline justify-between gap-2">
                     <dt class="text-muted-foreground">{l}</dt>
@@ -752,11 +796,19 @@ const label = 'type-label';
                 </ul>
               </section>
             )}
+          </div>
+        </div>
 
-            {rr && (
-              <section class:list={[card, 'p-4']}>
-                <h2 class="type-card">Variabilidad de la FC durante la sesión</h2>
-                <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+        <div class="grid items-start gap-6 lg:grid-cols-2">
+          {rr && (
+            <section class:list={[card, 'p-4']}>
+              <h2 class="type-card">Variabilidad de la FC durante la sesión</h2>
+              <p class="mt-1 text-sm">
+                RMSSD <span class="font-semibold tabular-nums">{km(rr.rmssd)} ms</span>
+                <span class="text-muted-foreground"> · evidencia limitada, sin referencia con la que compararla</span>
+              </p>
+              <Collapsible summary="Ver las cifras y cómo leerlas" class="mt-1">
+                <dl class="mt-1 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
                   <div>
                     <dt class="text-muted-foreground">RMSSD</dt>
                     <dd class="font-semibold tabular-nums">{km(rr.rmssd)} ms</dd>
@@ -786,50 +838,50 @@ const label = 'type-label';
                   Intervalos RR del archivo FIT, sin artefactos. En ejercicio la VFC cae mucho: compárala solo con
                   sesiones parecidas, no con la nocturna. Evidencia limitada.
                 </p>
-              </section>
-            )}
+              </Collapsible>
+            </section>
+          )}
 
-            {(dynamics.length > 0 || power.length > 0 || others.length > 0) && (
-              <section class:list={[card, 'p-4']}>
-                <Collapsible
-                  summary={`Más datos: ${[
-                    dynamics.length > 0 && 'dinámica de carrera',
-                    power.length > 0 && 'potencia',
-                    others.length > 0 && 'otros',
-                  ]
-                    .filter(Boolean)
-                    .join(', ')}`}
+          {(dynamics.length > 0 || power.length > 0 || others.length > 0) && (
+            <section class:list={[card, 'p-4']}>
+              <Collapsible
+                summary={`Más datos: ${[
+                  dynamics.length > 0 && 'dinámica de carrera',
+                  power.length > 0 && 'potencia',
+                  others.length > 0 && 'otros',
+                ]
+                  .filter(Boolean)
+                  .join(', ')}`}
+              >
+                <div
+                  class:list={[
+                    'grid gap-6',
+                    [dynamics, power, others].filter((g) => g.length > 0).length > 1 && 'sm:grid-cols-2',
+                  ]}
                 >
-                  <div
-                    class:list={[
-                      'grid gap-6',
-                      [dynamics, power, others].filter((g) => g.length > 0).length > 1 && 'sm:grid-cols-2',
-                    ]}
-                  >
-                    {[
-                      { title: 'Dinámica de carrera', rows: dynamics },
-                      { title: 'Potencia', rows: power },
-                      { title: 'Otros datos', rows: others },
-                    ]
-                      .filter((g) => g.rows.length > 0)
-                      .map((g) => (
-                        <div>
-                          <h2 class="type-card">{g.title}</h2>
-                          <dl class="mt-3 space-y-2 text-sm">
-                            {g.rows.map(([l, v]) => (
-                              <div class="flex items-baseline justify-between gap-2">
-                                <dt class="text-muted-foreground">{l}</dt>
-                                <dd class="font-semibold tabular-nums">{v}</dd>
-                              </div>
-                            ))}
-                          </dl>
-                        </div>
-                      ))}
-                  </div>
-                </Collapsible>
-              </section>
-            )}
-          </div>
+                  {[
+                    { title: 'Dinámica de carrera', rows: dynamics },
+                    { title: 'Potencia', rows: power },
+                    { title: 'Otros datos', rows: others },
+                  ]
+                    .filter((g) => g.rows.length > 0)
+                    .map((g) => (
+                      <div>
+                        <h2 class="type-card">{g.title}</h2>
+                        <dl class="mt-3 space-y-2 text-sm">
+                          {g.rows.map(([l, v]) => (
+                            <div class="flex items-baseline justify-between gap-2">
+                              <dt class="text-muted-foreground">{l}</dt>
+                              <dd class="font-semibold tabular-nums">{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                </div>
+              </Collapsible>
+            </section>
+          )}
         </div>
 
         {showRoute && (

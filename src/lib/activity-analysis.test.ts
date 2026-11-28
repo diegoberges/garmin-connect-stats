@@ -91,26 +91,33 @@ describe('esta vez frente a las anteriores en la misma ruta', () => {
     act(id, { startLocal: `${day} 08:00:00`, date: day, movingS, avgHr });
   const pace = (a: Activity) => a.movingS / a.distanceKm;
 
-  it('media de las anteriores (las 5 últimas), no de las posteriores', () => {
+  it('frente a la vez anterior y a la mediana de las 5 últimas, sin contar las posteriores', () => {
     const target = at(10, '2026-11-20', 2900, 150);
     const matches = [
       at(1, '2026-01-01', 9999, 999), // queda fuera: hay 5 más recientes
-      at(2, '2026-03-01', 3000, 152),
+      at(2, '2026-03-01', 3600, 152), // una vez rara: la mediana no se mueve por ella
       at(3, '2026-05-01', 3000, 152),
       at(4, '2026-07-01', 3000, 152),
       at(5, '2026-09-01', 3000, 152),
-      at(6, '2026-10-01', 3000, 152),
+      at(6, '2026-10-01', 2900, 150),
       target,
       at(11, '2026-11-25', 1000, 100), // posterior: no cuenta
     ];
     const c = routeComparison(target, matches, pace)!;
-    expect(c.previous).toBe(5);
-    expect(c.valueDiff).toBeCloseTo(-10, 5); // 290 frente a 300 s/km
-    expect(c.hrDiff).toBeCloseTo(-2, 5);
+    expect(c.last.date).toBe('2026-10-01');
+    expect(c.last.valueDiff).toBeCloseTo(0, 5);
+    expect(c.last.hrDiff).toBeCloseTo(0, 5);
+    expect(c.usual!.count).toBe(5);
+    expect(c.usual!.since).toBe('2026-03-01');
+    expect(c.usual!.valueDiff).toBeCloseTo(-10, 5); // 290 frente a la mediana de 300 s/km
+    expect(c.usual!.hrDiff).toBeCloseTo(-2, 5);
   });
 
-  it('sin veces anteriores, nada', () => {
+  it('con una sola vez anterior no hay habitual; sin ninguna, nada', () => {
     const target = at(10, '2026-11-20', 2900, 150);
+    const one = routeComparison(target, [at(1, '2026-11-01', 3000, 152), target], pace)!;
+    expect(one.usual).toBeUndefined();
+    expect(one.last.valueDiff).toBeCloseTo(-10, 5);
     expect(routeComparison(target, [target], pace)).toBeUndefined();
   });
 });

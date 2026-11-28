@@ -363,7 +363,8 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 ### Actividades
 
 - `/actividades`: el título es un desplegable con los tipos del periodo (y "Correr" = carrera + trail + cinta si hay
-  más de un tipo de carrera, `?tipo=correr`). Indicadores, gráficas y tabla
+  más de un tipo de carrera, `?tipo=correr`). Bajo el título, atajos (`FilterGroup`) a Todas, Correr y los tipos más
+  usados; la fila entera de la tabla lleva al detalle. Indicadores, gráficas y tabla
   se adaptan a la familia (`activity-kinds.ts`):
   - a pie: ritmo en min/km;
   - ciclismo: km/h;
@@ -372,13 +373,15 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
 
   La tabla se pagina de 20 en 20 (`?pagina=`). En móvil (por debajo de `lg`) las sesiones van primero, con una línea
   de totales, y los KPI y gráficas después; en las filas, la fecha y el tiempo van bajo el nombre, y la etiqueta del
-  tipo se omite si el nombre ya lo dice. En "Todas" no hay FC media ni calorías (sumar deportes distintos no significa
+  tipo (en Todas y Correr) va siempre, en todas las filas. En "Todas" no hay FC media ni calorías (sumar deportes distintos no significa
   nada).
 
 - `/actividades/[id]`:
-  - arriba, "← Actividades" (o "← Competiciones") vuelve a la lista de la que vienes con sus filtros y página (por el
-    referer) y "‹ Anterior / Siguiente ›" recorren el historial por fecha; si la actividad no existe, página 404 con
-    el diseño de la web;
+  - contexto de la lista: los enlaces de Actividades pasan `?tipo=&semanas=&pagina=` y los de Competiciones
+    `?desde=competiciones`. Con él, "← Actividades" (o "← Competiciones") vuelve a esa lista tal cual y "‹ Carrera ·
+    18 nov / … ›" recorren solo sus sesiones; sin contexto (desde otras páginas), la vuelta usa el referer. Si la
+    actividad no existe, página 404 con el diseño de la web;
+  - en móvil, el panel de cifras (con el veredicto) va antes que el mapa, y el mapa no se arrastra hasta tocarlo;
   - mapa (topográfico en trail y montaña, callejero en el resto) junto a las cifras clave, con la carga
     TRIMP de la sesión, el RPE y la sensación (si se anotaron) y la potencia (solo con sensor);
   - ritmo (y GAP), FC, altitud, cadencia y respiración con el cursor y el **zoom** sincronizados; su "Ver datos" es una tabla por km (o cada 5 min) con la
@@ -389,9 +392,10 @@ Los criterios y su evidencia están en el informe `reports/Métricas de salud y 
     VDOT de los 180 días previos a la actividad (así quedan versionadas por fecha);
   - VFC intra-sesión (RMSSD, SDNN, pNN50) si el FIT trae intervalos RR;
   - actividades en la misma ruta (salida a < 250 m y distancia ±5 %) con su ritmo y eficiencia, en una gráfica con eje
-    de fechas reales (`timeAxis`), y arriba del resumen el veredicto "En esta ruta": ritmo (o velocidad) y FC frente
-    a la media de las 5 veces anteriores como mucho (`routeComparison`; estable si cambia menos de 3 s/km, 0,3 km/h o
-    2 ppm). Sin veces anteriores, no hay veredicto.
+    de fechas reales (`timeAxis`) solo con 5 veces o más, y arriba del resumen el veredicto "En esta ruta" en dos
+    partes: frente a la vez anterior y frente a lo habitual (mediana de las 5 anteriores, con desde cuándo;
+    `routeComparison`; igual si cambia menos de 3 s/km, 0,3 km/h o 2 ppm). Sin veces anteriores: "Primera vez en esta
+    ruta". La VFC de la sesión va plegada (sin referencia con la que compararla).
 - `/competiciones`: `eventType=race` de todo el historial, por años (la API puede ignorar el filtro: también se
   filtra por `eventTypeKey === 'race'` en `getRaces`); mejor marca de 5K, 10K, media y
   maratón con trofeo; etiquetas por distancia (maratón > media > 10K > 5K).

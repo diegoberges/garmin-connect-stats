@@ -76,18 +76,30 @@ export function sameRoute(target: Activity, activities: Activity[]): Activity[] 
     .sort((a, b) => a.startLocal.localeCompare(b.startLocal));
 }
 
-export interface RouteComparison {
-  /** cuántas veces anteriores se comparan (las últimas, como mucho 5) */
-  previous: number;
-  /** esta vez menos la media de las anteriores, en la unidad de `value` (s/km en ritmo, km/h en velocidad) */
+export interface RouteDelta {
+  /** esta vez menos la referencia, en la unidad de `value` (s/km en ritmo, km/h en velocidad) */
   valueDiff?: number;
-  /** FC media de esta vez menos la media de las anteriores (ppm) */
+  /** FC media de esta vez menos la de la referencia (ppm) */
   hrDiff?: number;
 }
 
+export interface RouteComparison {
+  /** la vez anterior en esta ruta */
+  last: RouteDelta & { date: string };
+  /** frente a la mediana de las anteriores (las 5 últimas como mucho); solo con 2 o más */
+  usual?: RouteDelta & { count: number; since: string };
+}
+
+const median = (xs: number[]) => {
+  const s = xs.toSorted((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
 /**
- * Esta actividad frente a la media de las anteriores en la misma ruta (las 5 últimas antes de su fecha). Es la
- * comparación con "tu normal" del detalle: misma ruta, así que el ritmo y la FC son comparables.
+ * Esta actividad frente a sus veces anteriores en la misma ruta, en dos partes: la vez anterior y tu valor
+ * habitual en esa ruta (mediana de las 5 últimas, menos sensible a una vez rara que la media). Es la comparación con
+ * "tu normal" del detalle: misma ruta, así que el ritmo y la FC son comparables.
  */
 export function routeComparison(
   target: Activity,
@@ -99,16 +111,21 @@ export function routeComparison(
     .sort((a, b) => a.startLocal.localeCompare(b.startLocal))
     .slice(-5);
   if (!before.length) return undefined;
-  const avg = (xs: (number | undefined)[]) => {
-    const ok = xs.filter((x): x is number => x !== undefined && Number.isFinite(x));
-    return ok.length ? ok.reduce((a, b) => a + b, 0) / ok.length : undefined;
-  };
   const mine = value(target);
-  const theirs = avg(before.map(value));
-  const hrTheirs = avg(before.map((a) => a.avgHr));
+  const delta = (ref: number | undefined, mineV: number | undefined) =>
+    ref !== undefined && mineV !== undefined && Number.isFinite(ref) ? mineV - ref : undefined;
+  const prev = before.at(-1)!;
+  const last = { date: prev.date, valueDiff: delta(value(prev), mine), hrDiff: delta(prev.avgHr, target.avgHr) };
+  if (before.length < 2) return { last };
+  const vals = before.map(value).filter((v): v is number => v !== undefined && Number.isFinite(v));
+  const hrs = before.map((a) => a.avgHr).filter((v): v is number => v !== undefined);
   return {
-    previous: before.length,
-    valueDiff: mine !== undefined && theirs !== undefined ? mine - theirs : undefined,
-    hrDiff: target.avgHr !== undefined && hrTheirs !== undefined ? target.avgHr - hrTheirs : undefined,
+    last,
+    usual: {
+      count: before.length,
+      since: before[0].date,
+      valueDiff: delta(vals.length ? median(vals) : undefined, mine),
+      hrDiff: delta(hrs.length ? median(hrs) : undefined, target.avgHr),
+    },
   };
 }
